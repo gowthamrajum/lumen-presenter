@@ -1,0 +1,94 @@
+/* Shared presentation surface — used full-screen on the output window and
+   small inside the operator previews/thumbnails. Sizes scale with the box via
+   container query units so one component works at every size. */
+
+.stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  container-type: size;
+}
+
+.stage-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.stage-scrim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+}
+
+.stage-black {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 5;
+}
+
+.stage-textwrap {
+  position: absolute;
+  inset: 0;
+  padding: 4% 6%;
+  display: flex;
+  flex-direction: column;
+  z-index: 3;
+}
+
+.stage-fitbox {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.stage-text {
+  display: inline-block;
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.stage-caption {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: 3.2cqmin;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  padding-top: 1.5%;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.stage-logo {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5cqmin;
+  color: #fff;
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+}
+.stage-logo .logo-mark {
+  font-size: 12cqmin;
+  color: #ffd27f;
+}
+.stage-logo .logo-word {
+  font-size: 9cqmin;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  padding-left: 0.35em;
+}
