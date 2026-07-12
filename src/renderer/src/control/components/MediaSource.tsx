@@ -1,15 +1,19 @@
+import { useState } from 'react'
 import type { Background, MediaFile } from '@shared/types'
 import { useStore } from '../../store/useStore'
-import { mediaSlide } from '../slides'
+import { mediaSlide, pptxSlides } from '../slides'
 
 const PRESET_COLORS = ['#0b1020', '#000000', '#101826', '#1b1035', '#0d2818', '#2a0d0d', '#243b53']
 
 export function MediaSource(): JSX.Element {
   const media = useStore((s) => s.media)
   const importMedia = useStore((s) => s.importMedia)
+  const importPptx = useStore((s) => s.importPptx)
   const addSlides = useStore((s) => s.addSlides)
   const setBackground = useStore((s) => s.setBackground)
   const background = useStore((s) => s.background)
+
+  const [pptxNote, setPptxNote] = useState('')
 
   const asBackground = (m: MediaFile): void => {
     const bg: Background = { type: m.isVideo ? 'video' : 'image', value: m.url, fit: 'cover' }
@@ -20,11 +24,27 @@ export function MediaSource(): JSX.Element {
     addSlides([mediaSlide(m.url, m.name, m.isVideo)])
   }
 
+  const importFromPptx = async (): Promise<void> => {
+    setPptxNote('Importing…')
+    const decks = await importPptx()
+    if (!decks.length) return setPptxNote('') // dialog canceled
+    const slides = decks.flatMap(pptxSlides)
+    if (!slides.length) return setPptxNote('No slides found in that file.')
+    addSlides(slides)
+    const from = decks.length === 1 ? decks[0].name : `${decks.length} files`
+    setPptxNote(`Added ${slides.length} slide${slides.length === 1 ? '' : 's'} from ${from}.`)
+  }
+
   return (
     <div className="source media-source">
       <button className="btn btn-primary full" onClick={() => void importMedia()}>
         + Add image / video…
       </button>
+
+      <button className="btn full" onClick={() => void importFromPptx()}>
+        + Import PowerPoint (.pptx)…
+      </button>
+      {pptxNote && <div className="empty-note">{pptxNote}</div>}
 
       <div className="section-label">Stage background color</div>
       <div className="color-row">

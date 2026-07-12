@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc'
-import type { LiveState, DisplayInfo, OutputStatus, MediaFile } from '../shared/types'
+import type { LiveState, DisplayInfo, OutputStatus, MediaFile, PptxImport } from '../shared/types'
 
 const api = {
   // queries / commands (control window)
@@ -10,6 +10,7 @@ const api = {
     ipcRenderer.invoke(IPC.outputOpen, displayId),
   closeOutput: (): Promise<OutputStatus> => ipcRenderer.invoke(IPC.outputClose),
   pickMedia: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC.pickMedia),
+  importPptx: (): Promise<PptxImport[]> => ipcRenderer.invoke(IPC.pickPptx),
 
   // live state
   getLive: (): Promise<LiveState> => ipcRenderer.invoke(IPC.liveGet),

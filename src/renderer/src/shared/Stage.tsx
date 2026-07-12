@@ -37,6 +37,9 @@ export function Stage({ state }: { state: LiveState }): JSX.Element {
   const { slide, theme } = state
   const bg = slide?.background ?? state.background
   const lines = slide?.lines ?? []
+  // Extra full-bleed image layers (e.g. a transparent lyrics PNG from an
+  // imported PowerPoint) drawn over the background; hidden by blackout.
+  const overlays = state.blackout ? [] : slide?.overlays ?? []
   const showText = !state.blackout && !state.clearText && !state.showLogo && lines.length > 0
 
   const textStyle: CSSProperties = {
@@ -59,6 +62,10 @@ export function Stage({ state }: { state: LiveState }): JSX.Element {
       {!state.blackout && theme.scrim > 0 && (
         <div className="stage-scrim" style={{ opacity: theme.scrim }} />
       )}
+
+      {overlays.map((src, i) => (
+        <img key={i} className="stage-bg stage-overlay" style={{ objectFit: 'cover' }} src={src} alt="" />
+      ))}
 
       {state.blackout && <div className="stage-black" />}
 

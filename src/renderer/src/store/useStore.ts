@@ -7,6 +7,7 @@ import {
   type LiveState,
   type MediaFile,
   type OutputStatus,
+  type PptxImport,
   type SlideContent,
   type ThemeStyle
 } from '@shared/types'
@@ -36,6 +37,8 @@ interface AppState {
 
   // media library
   importMedia: () => Promise<void>
+  /** Open a file dialog and parse .pptx files into slide payloads. */
+  importPptx: () => Promise<PptxImport[]>
 
   // deck
   addSlides: (slides: SlideContent[], goLiveFirst?: boolean) => void
@@ -121,6 +124,8 @@ export const useStore = create<AppState>((set, get) => {
         return { media: [...s.media, ...fresh] }
       })
     },
+
+    importPptx: () => window.lumen.importPptx(),
 
     addSlides: (slides, goLiveFirst = false) => {
       set((s) => ({ deck: [...s.deck, ...slides] }))

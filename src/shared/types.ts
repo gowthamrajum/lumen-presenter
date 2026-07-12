@@ -37,6 +37,12 @@ export interface SlideContent {
   caption?: string
   /** optional per-slide background overriding the global background */
   background?: Background
+  /**
+   * Full-bleed image layers drawn above the background (in order), below the
+   * live text. Used by PowerPoint import for pre-rendered photo + text-PNG
+   * slides so the baked-in words are preserved.
+   */
+  overlays?: string[]
 }
 
 export interface LiveState {
@@ -69,6 +75,34 @@ export interface MediaFile {
   /** lumen-media:// url usable directly in img/video src */
   url: string
   isVideo: boolean
+}
+
+/** One slide extracted from an imported PowerPoint (.pptx) deck. */
+export interface ImportedSlide {
+  /** 1-based position in the source deck */
+  index: number
+  /** text lines pulled from the slide's shapes, in reading order */
+  lines: string[]
+  /**
+   * lumen-media:// url of the slide's bottom-most background image, resolved
+   * through the slide -> layout -> master inheritance chain. Beats color.
+   */
+  backgroundUrl?: string
+  /**
+   * Additional full-bleed image layers stacked above the background, in paint
+   * order. Decks that pre-render slides use a photo + a transparent text PNG;
+   * both must be drawn to keep the words.
+   */
+  overlayUrls?: string[]
+  /** hex background color (e.g. from the master/theme) when there's no image */
+  backgroundColor?: string
+}
+
+/** The result of importing a single .pptx file. */
+export interface PptxImport {
+  /** source file name without extension, used to label slides */
+  name: string
+  slides: ImportedSlide[]
 }
 
 export const DEFAULT_THEME: ThemeStyle = {

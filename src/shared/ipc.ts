@@ -8,6 +8,7 @@ export const IPC = {
   liveGet: 'live:get',
   liveSet: 'live:set',
   pickMedia: 'media:pick',
+  pickPptx: 'pptx:pick',
 
   // main -> renderers (send)
   liveState: 'live:state',

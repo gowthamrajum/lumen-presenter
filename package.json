@@ -21,6 +21,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
+    "fflate": "^0.8.3",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
@@ -39,10 +40,29 @@
   "build": {
     "appId": "com.lumen.presenter",
     "productName": "Lumen Presenter",
-    "directories": { "output": "release" },
-    "files": ["out/**/*", "resources/**/*"],
-    "mac": { "category": "public.app-category.productivity", "target": ["dmg"] },
-    "win": { "target": ["nsis"] },
-    "linux": { "target": ["AppImage"], "category": "AudioVideo" }
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "AudioVideo"
+    }
   }
 }

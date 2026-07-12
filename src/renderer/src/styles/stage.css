@@ -28,6 +28,12 @@
   pointer-events: none;
 }
 
+/* Image layers stacked above the background + scrim (e.g. a transparent
+   lyrics PNG), kept below the live text (z-index 3) and logo/blackout. */
+.stage-overlay {
+  z-index: 1;
+}
+
 .stage-black {
   position: absolute;
   inset: 0;

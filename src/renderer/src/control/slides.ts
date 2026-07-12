@@ -1,4 +1,4 @@
-import type { Background, SlideContent } from '@shared/types'
+import type { Background, PptxImport, SlideContent } from '@shared/types'
 import type { BibleVerse } from '@shared/bible'
 import { referenceOf } from '@shared/bible'
 import { uid } from '../store/useStore'
@@ -37,6 +37,30 @@ export function textSlides(text: string, label = 'Text'): SlideContent[] {
 export function mediaSlide(url: string, name: string, isVideo: boolean): SlideContent {
   const background: Background = { type: isVideo ? 'video' : 'image', value: url, fit: 'cover' }
   return { id: uid(), kind: 'media', label: name, lines: [], background }
+}
+
+/**
+ * Imported PowerPoint deck -> slides. Each source slide becomes one Lumen
+ * slide, keeping its text (editable) and its full-bleed background image if the
+ * importer found one (resolved through the slide/layout/master chain). Slides
+ * with no text render as media/background-only.
+ */
+export function pptxSlides(imp: PptxImport): SlideContent[] {
+  return imp.slides.map((s) => {
+    const background: Background | undefined = s.backgroundUrl
+      ? { type: 'image', value: s.backgroundUrl, fit: 'cover' }
+      : s.backgroundColor
+        ? { type: 'color', value: s.backgroundColor }
+        : undefined
+    return {
+      id: uid(),
+      kind: s.lines.length ? 'text' : background ? 'media' : 'blank',
+      label: `${imp.name} ${s.index}`,
+      lines: s.lines,
+      background,
+      overlays: s.overlayUrls
+    }
+  })
 }
 
 /** A blank slide with a solid color (useful as an intentional interstitial). */

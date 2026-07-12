@@ -4,6 +4,7 @@ import { pathToFileURL } from 'url'
 import { is } from '@electron-toolkit/utils'
 import { IPC } from '../shared/ipc'
 import { DEFAULT_LIVE, type LiveState, type DisplayInfo, type OutputStatus } from '../shared/types'
+import { importPptxFiles } from './pptx'
 
 // ---- app state -------------------------------------------------------------
 let controlWindow: BrowserWindow | null = null
@@ -20,6 +21,11 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true }
   }
 ])
+
+/** Build a privileged url the renderer can load directly from an absolute path. */
+function mediaUrl(absPath: string): string {
+  return `${MEDIA_SCHEME}://local/${encodeURIComponent(absPath)}`
+}
 
 function rendererUrl(page: 'index' | 'output'): string {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -173,9 +179,20 @@ function registerIpc(): void {
     return res.filePaths.map((p) => ({
       path: p,
       name: p.split(/[\\/]/).pop() ?? p,
-      url: `${MEDIA_SCHEME}://local/${encodeURIComponent(p)}`,
+      url: mediaUrl(p),
       isVideo: /\.(mp4|webm|mov|m4v)$/i.test(p)
     }))
+  })
+
+  ipcMain.handle(IPC.pickPptx, async () => {
+    const res = await dialog.showOpenDialog(controlWindow!, {
+      title: 'Import PowerPoint',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'PowerPoint', extensions: ['pptx'] }]
+    })
+    if (res.canceled) return []
+    const cacheDir = join(app.getPath('userData'), 'pptx-cache')
+    return importPptxFiles(res.filePaths, cacheDir, mediaUrl)
   })
 }
 
