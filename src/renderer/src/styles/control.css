@@ -408,6 +408,11 @@ select,
 }
 .leftcol-switch {
   margin: 10px 10px 6px;
+}
+/* width:auto (overriding .seg.full's width:100%, which + the side margins made
+   the control 9px wider than the column and clipped the last pill's right corner
+   against .col-left's overflow:hidden). Auto lets the margins inset it. */
+.seg.full.leftcol-switch {
   width: auto;
 }
 .leftcol-body {
