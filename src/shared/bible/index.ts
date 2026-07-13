@@ -4,7 +4,7 @@ import { SAMPLE_TRANSLATION } from './sample'
 export type { BibleBook, BibleVerse, Translation }
 export { SAMPLE_TRANSLATION }
 
-/** Canonical order used to sort the book list. */
+/** Fallback canonical order when a translation doesn't provide its own. */
 const CANON = [
   'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy',
   'Joshua', 'Judges', 'Ruth', '1 Samuel', '2 Samuel', '1 Kings', '2 Kings',
@@ -21,11 +21,25 @@ const CANON = [
 
 export class Bible {
   private verses: BibleVerse[]
+  private order: string[]
+  private names: Record<string, string>
   readonly name: string
 
   constructor(t: Translation = SAMPLE_TRANSLATION) {
     this.name = t.name
     this.verses = t.verses
+    this.order = t.order ?? CANON
+    this.names = t.names ?? {}
+  }
+
+  /** Localized display name for an English book key. */
+  displayName(book: string): string {
+    return this.names[book] ?? book
+  }
+
+  private orderIndex(book: string): number {
+    const i = this.order.indexOf(book)
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i
   }
 
   books(): BibleBook[] {
@@ -34,8 +48,8 @@ export class Bible {
       counts.set(v.book, Math.max(counts.get(v.book) ?? 0, v.chapter))
     }
     return [...counts.entries()]
-      .map(([book, chapters]) => ({ book, chapters }))
-      .sort((a, b) => CANON.indexOf(a.book) - CANON.indexOf(b.book))
+      .map(([book, chapters]) => ({ book, display: this.displayName(book), chapters }))
+      .sort((a, b) => this.orderIndex(a.book) - this.orderIndex(b.book))
   }
 
   chaptersFor(book: string): number[] {
@@ -50,19 +64,32 @@ export class Bible {
       .sort((a, b) => a.verse - b.verse)
   }
 
-  /** Full-text search over verse text plus a "Book c:v" reference match. */
+  /** "Book c:v" using the localized book name (for slide captions/labels). */
+  reference(v: BibleVerse): string {
+    return `${this.displayName(v.book)} ${v.chapter}:${v.verse}`
+  }
+
+  /**
+   * Full-text search over verse text, plus reference matching against both the
+   * English key ("john 3:16") and the localized book name (e.g. Telugu).
+   */
   search(query: string, limit = 40): BibleVerse[] {
-    const q = query.trim().toLowerCase()
-    if (!q) return []
+    const raw = query.trim()
+    if (!raw) return []
+    const q = raw.toLowerCase()
     const ref = this.parseRef(q)
     const out: BibleVerse[] = []
     for (const v of this.verses) {
+      const localizedName = this.names[v.book]
       const matchesRef =
         ref &&
-        v.book.toLowerCase().startsWith(ref.book) &&
+        (v.book.toLowerCase().startsWith(ref.book) ||
+          (localizedName ? localizedName.startsWith(ref.book) : false)) &&
         (ref.chapter == null || v.chapter === ref.chapter) &&
         (ref.verse == null || v.verse === ref.verse)
-      if (matchesRef || v.text.toLowerCase().includes(q)) {
+      const matchesText = v.text.toLowerCase().includes(q)
+      const matchesLocalizedBook = localizedName ? localizedName.includes(raw) : false
+      if (matchesRef || matchesText || matchesLocalizedBook) {
         out.push(v)
         if (out.length >= limit) break
       }
@@ -71,11 +98,15 @@ export class Bible {
   }
 
   private parseRef(q: string): { book: string; chapter: number | null; verse: number | null } | null {
-    // e.g. "john 3:16", "psalm 23", "1 cor 13"
-    const m = q.match(/^([1-3]?\s?[a-z ]+?)\s*(\d+)?\s*(?::\s*(\d+))?$/)
+    // e.g. "john 3:16", "psalm 23", "1 cor 13", or a localized book name
+    const m = q.match(/^(.+?)\s*(\d+)?\s*(?::\s*(\d+))?$/)
     if (!m) return null
     const book = m[1].trim()
-    if (!book) return null
+    // The book part must contain a letter (Latin or localized script). This
+    // stops bare numbers like "23" from being parsed as book "2" chapter "3",
+    // which produced spurious reference matches — such queries fall through to
+    // plain text search instead.
+    if (!book || !/\p{L}/u.test(book)) return null
     return {
       book,
       chapter: m[2] ? parseInt(m[2], 10) : null,
@@ -84,6 +115,7 @@ export class Bible {
   }
 }
 
+/** English reference, independent of any loaded translation. */
 export function referenceOf(v: BibleVerse): string {
   return `${v.book} ${v.chapter}:${v.verse}`
 }
