@@ -1,6 +1,6 @@
 {
   "name": "lumen-presenter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lumen — an open worship presentation app (ProPresenter / Worship Tools Presenter style)",
   "main": "./out/main/index.js",
   "author": "Lumen",
