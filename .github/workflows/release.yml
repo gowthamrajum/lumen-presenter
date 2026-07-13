@@ -58,18 +58,91 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --notes-file .github/RELEASE_NOTES.md
 
-  # Bump the Homebrew cask in gowthamrajum/homebrew-lumen. Skipped until you add a
-  # HOMEBREW_TAP_TOKEN secret (a PAT with write access to the tap repo) — see
-  # RELEASING.md. Until then, update the cask by hand: scripts/bump-cask.sh vX.Y.Z
+  # Bump the Homebrew cask in gowthamrajum/homebrew-lumen. Skipped until a tap
+  # credential is present — preferred is HOMEBREW_TAP_DEPLOY_KEY (an SSH deploy
+  # key scoped to just the tap repo, no PAT to manage); HOMEBREW_TAP_TOKEN (a PAT
+  # with write to the tap) also works. See RELEASING.md. Until then, bump by hand:
+  # scripts/bump-cask.sh vX.Y.Z
   homebrew:
     needs: release
     runs-on: macos-latest
     if: startsWith(github.ref, 'refs/tags/')
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
       HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+
+      # Preferred path: an SSH deploy key scoped to the tap repo alone.
+      - name: Configure tap deploy key
+        if: ${{ env.HOMEBREW_TAP_DEPLOY_KEY != '' }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$HOMEBREW_TAP_DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          echo "HOMEBREW_TAP_SSH=1" >> "$GITHUB_ENV"
+
       - name: Bump the Homebrew cask
-        if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}
+        if: ${{ env.HOMEBREW_TAP_DEPLOY_KEY != '' || env.HOMEBREW_TAP_TOKEN != '' }}
         run: bash scripts/bump-cask.sh "${{ github.ref_name }}"
+
+  # Sign the Windows installer with SignPath's free OSS plan, then replace the
+  # release's .exe + auto-update feed with the signed one. Pure no-op until you
+  # add the SIGNPATH_API_TOKEN secret + SIGNPATH_* variables — see SIGNING.md.
+  # (The unsigned .exe published by `release` above stays valid meanwhile.)
+  sign-windows:
+    needs: release
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    env:
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        if: ${{ env.SIGNPATH_API_TOKEN != '' }}
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Build unsigned installer
+        if: ${{ env.SIGNPATH_API_TOKEN != '' }}
+        run: |
+          npm ci
+          npm run build
+          npx electron-builder --win --publish never
+
+      - uses: actions/upload-artifact@v4
+        id: unsigned
+        if: ${{ env.SIGNPATH_API_TOKEN != '' }}
+        with:
+          name: lumen-unsigned-win
+          path: release/*.exe
+
+      - name: Sign with SignPath (free OSS)
+        if: ${{ env.SIGNPATH_API_TOKEN != '' }}
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: release
+
+      - name: Repatch auto-update metadata for the signed installer
+        if: ${{ env.SIGNPATH_API_TOKEN != '' }}
+        shell: bash
+        run: node scripts/repatch-latest-yml.mjs "$(ls release/*.exe | head -1)" release/latest.yml
+
+      - name: Replace the release's Windows asset with the signed one
+        if: ${{ env.SIGNPATH_API_TOKEN != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" release/*.exe release/latest.yml --clobber --repo "${{ github.repository }}"

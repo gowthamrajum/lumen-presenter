@@ -73,12 +73,23 @@ brew upgrade --cask lumen-presenter                       # update
 Tap repo: [`gowthamrajum/homebrew-lumen`](https://github.com/gowthamrajum/homebrew-lumen).
 
 **Keeping the cask current:** every release must update the cask's version +
-sha256. That's automated by the `homebrew` job in `release.yml` once you add a
-**`HOMEBREW_TAP_TOKEN`** secret — a PAT (or fine-grained token) with **write access
-to `homebrew-lumen`**. Add it under Settings ▸ Secrets ▸ Actions. Until then, bump
-it by hand after a release:
+sha256. That's automated by the `homebrew` job in `release.yml` once the tap has a
+push credential. Two ways:
+
+- **`HOMEBREW_TAP_TOKEN`** (the configured path) — a **fine-grained PAT** with
+  **Contents: read & write** on `homebrew-lumen` only, added as a repo secret on
+  `lumen-presenter` (Settings ▸ Secrets and variables ▸ Actions). Create it under
+  GitHub ▸ Settings ▸ Developer settings ▸ Personal access tokens ▸ Fine-grained.
+- **`HOMEBREW_TAP_DEPLOY_KEY`** (alternative) — an SSH deploy key scoped to the
+  `homebrew-lumen` repo only; nothing to renew. The `homebrew` job also accepts
+  this if you'd rather not manage a token.
+
+Until the secret exists, bump by hand after a release:
 
 ```sh
+# with the deploy key configured in ~/.ssh:
+HOMEBREW_TAP_SSH=1 scripts/bump-cask.sh v0.1.2
+# or with a token:
 HOMEBREW_TAP_TOKEN=<pat> scripts/bump-cask.sh v0.1.2
 ```
 

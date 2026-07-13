@@ -22,45 +22,36 @@ CI signs every release automatically.
 - Same page ▸ **Variables** → add `SIGNPATH_ORGANIZATION_ID`,
   `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_POLICY_SLUG`.
 
-## Step 3 — Swap the Windows job in `.github/workflows/release.yml`
+That's the whole remaining to-do. **The CI is already wired** (Step 3 below is
+done) — the moment those four values exist, signed Windows builds start happening
+on the next release. Until then the pipeline is a strict no-op and the unsigned
+installer keeps publishing as before.
 
-Replace the Windows half of the matrix build with a build → sign → publish flow
-(the mac job is unchanged). Ping me and I'll wire it, or paste this:
+## Step 3 — CI wiring (already done ✅)
 
-```yaml
-  release-win:
-    runs-on: windows-latest
-    permissions: { contents: write }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
-      - run: npm ci
-      - name: Build unsigned installer
-        run: |
-          npm run build
-          npx electron-builder --win --publish never
-      - uses: actions/upload-artifact@v4
-        id: unsigned
-        with: { name: unsigned, path: release/*.exe }
-      - name: Sign with SignPath (free OSS)
-        uses: signpath/github-action-submit-signing-request@v1
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
-          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
-          wait-for-completion: true
-          output-artifact-directory: signed
-      - name: Attach signed installer + update feed to the release
-        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
-        run: |
-          gh release upload ${{ github.ref_name }} signed/*.exe release/latest.yml --clobber
-```
+`.github/workflows/release.yml` has a gated **`sign-windows`** job that runs after
+the normal build only when `SIGNPATH_API_TOKEN` is set. It:
 
-That's it — signed Windows installers, $0, forever. Exact input names can drift
-between SignPath action versions; check their README if a field is renamed.
+1. rebuilds the installer unsigned and uploads it as a workflow artifact,
+2. submits it to SignPath (`signpath/github-action-submit-signing-request@v1`)
+   using your org/project/policy variables, and waits for the signed result,
+3. **repatches `latest.yml`** against the signed `.exe`
+   (`scripts/repatch-latest-yml.mjs`) so electron-updater's sha512/size still
+   match — signing changes the file's bytes, and without this auto-update would
+   reject the release, and
+4. replaces the release's `.exe` + `latest.yml` with the signed versions
+   (`gh release upload --clobber`).
+
+You don't touch the workflow. Two caveats, both expected:
+
+- **First run needs a live SignPath project to validate.** The wiring can't be
+  exercised until your OSS plan is approved and the four values are in — so treat
+  the first signed release as the smoke test.
+- SignPath occasionally **renames the action's inputs** between versions; if a run
+  fails on an unknown input, check the action's README and adjust the `with:`
+  block in the `sign-windows` job.
+
+That's it — signed Windows installers, $0, forever.
 
 ## macOS — see the plan in RELEASING.md
 

@@ -61,14 +61,24 @@ end
 CASK
 )"
 
-if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
+# Pick a push transport: an SSH deploy key (HOMEBREW_TAP_SSH=1, the key already
+# configured in ~/.ssh or via GIT_SSH_COMMAND) or an HTTPS token. With neither,
+# just print the cask so a dry run still shows what would change.
+remote=""
+if [ "${HOMEBREW_TAP_SSH:-}" = "1" ]; then
+  remote="git@github.com:$tap.git"
+elif [ -n "${HOMEBREW_TAP_TOKEN:-}" ]; then
+  remote="https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/$tap.git"
+fi
+
+if [ -z "$remote" ]; then
   printf '%s\n' "$cask"
-  echo "--- HOMEBREW_TAP_TOKEN not set: printed cask, did not push ---" >&2
+  echo "--- no tap credential (set HOMEBREW_TAP_SSH=1 with a deploy key, or HOMEBREW_TAP_TOKEN): printed cask, did not push ---" >&2
   exit 0
 fi
 
 work="$(mktemp -d)"
-git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/$tap.git" "$work" 2>/dev/null
+git clone --depth 1 "$remote" "$work" 2>/dev/null
 mkdir -p "$work/Casks"
 printf '%s\n' "$cask" > "$work/Casks/lumen-presenter.rb"
 cd "$work"
