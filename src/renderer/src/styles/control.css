@@ -450,6 +450,23 @@ select,
 .autosave-status.saved {
   color: var(--ok);
 }
+.export-status {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+.export-status.done {
+  color: var(--ok);
+}
+.export-status.error {
+  color: var(--danger, #ff6b6b);
+}
 .service-name-input {
   flex: 1;
   min-width: 0;

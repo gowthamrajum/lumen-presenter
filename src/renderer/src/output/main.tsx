@@ -3,11 +3,15 @@ import ReactDOM from 'react-dom/client'
 import { DEFAULT_LIVE, type LiveState } from '@shared/types'
 import { Stage } from '../shared/Stage'
 import { StageDisplay } from './StageDisplay'
+import { ExportHost } from './ExportHost'
 import '../styles/fonts.css'
 import '../styles/stage.css'
 import '../styles/output.css'
 
-const layout = new URLSearchParams(window.location.search).get('layout')
+const params = new URLSearchParams(window.location.search)
+const layout = params.get('layout')
+/** Hidden render surface driven by the main process to build a .pptx export. */
+const isExport = params.has('export')
 
 function Output(): JSX.Element {
   const [state, setState] = useState<LiveState>(DEFAULT_LIVE)
@@ -20,8 +24,14 @@ function Output(): JSX.Element {
   return layout === 'stage' ? <StageDisplay state={state} /> : <Stage state={state} />
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <Output />
-  </React.StrictMode>
+const root = ReactDOM.createRoot(document.getElementById('root')!)
+// The export host manages its own imperative lifecycle (no StrictMode double-mount).
+root.render(
+  isExport ? (
+    <ExportHost />
+  ) : (
+    <React.StrictMode>
+      <Output />
+    </React.StrictMode>
+  )
 )

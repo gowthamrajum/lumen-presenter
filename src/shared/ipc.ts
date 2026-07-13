@@ -8,6 +8,7 @@ export const IPC = {
   liveSet: 'live:set',
   pickMedia: 'media:pick',
   pickPptx: 'pptx:pick',
+  pptxExport: 'pptx:export',
   bibleLoad: 'bible:load',
   servicesList: 'services:list',
   serviceSave: 'services:save',
@@ -28,6 +29,8 @@ export const IPC = {
   screensChanged: 'screens:changed',
   displaysChanged: 'displays:changed',
   broadcastStatus: 'broadcast:status',
+  // main -> control: progress of a running PowerPoint export
+  pptxExportProgress: 'pptx:exportProgress',
   // output window -> control (forwarded key presses)
   outputKey: 'output:key'
 } as const

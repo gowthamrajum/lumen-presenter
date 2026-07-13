@@ -14,7 +14,10 @@ import type {
   RemoteSong,
   PsalmVerse,
   BroadcastConfig,
-  BroadcastStatus
+  BroadcastStatus,
+  PptxExportRequest,
+  PptxExportProgress,
+  PptxExportResult
 } from '../shared/types'
 import type { Translation } from '../shared/bible/types'
 
@@ -26,6 +29,13 @@ const api = {
     ipcRenderer.invoke(IPC.screenSet, displayId, role),
   pickMedia: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC.pickMedia),
   importPptx: (): Promise<PptxImport[]> => ipcRenderer.invoke(IPC.pickPptx),
+  exportPptx: (req: PptxExportRequest): Promise<PptxExportResult> =>
+    ipcRenderer.invoke(IPC.pptxExport, req),
+  onPptxProgress: (cb: (p: PptxExportProgress) => void): (() => void) => {
+    const h = (_e: unknown, p: PptxExportProgress): void => cb(p)
+    ipcRenderer.on(IPC.pptxExportProgress, h)
+    return () => ipcRenderer.removeListener(IPC.pptxExportProgress, h)
+  },
   loadTranslation: (id: string): Promise<Translation | null> =>
     ipcRenderer.invoke(IPC.bibleLoad, id),
 

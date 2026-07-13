@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore, suppressedOn } from '../../store/useStore'
 import { SERVICE_TEMPLATES } from '../templates'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -27,6 +27,8 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
 
   const serviceName = useStore((s) => s.serviceName)
   const serviceId = useStore((s) => s.serviceId)
+  const background = useStore((s) => s.background)
+  const theme = useStore((s) => s.theme)
   const renameService = useStore((s) => s.renameService)
   const autoSaveStatus = useStore((s) => s.autoSaveStatus)
   const newService = useStore((s) => s.newService)
@@ -36,8 +38,47 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const deleteService = useStore((s) => s.deleteService)
 
   const [menu, setMenu] = useState(false)
+  /** PowerPoint export status shown inline in the header */
+  const [exp, setExp] = useState<{
+    phase: 'idle' | 'running' | 'done' | 'error'
+    done: number
+    total: number
+    msg?: string
+  }>({ phase: 'idle', done: 0, total: 0 })
   /** template id awaiting a replace-confirmation (null = no dialog open) */
   const [pendingTemplate, setPendingTemplate] = useState<string | null>(null)
+
+  // Live progress from the main-process exporter.
+  useEffect(
+    () =>
+      window.lumen.onPptxProgress(({ done, total }) =>
+        setExp((e) => (e.phase === 'running' ? { ...e, done, total } : e))
+      ),
+    []
+  )
+  // Auto-clear a finished/failed message after a few seconds.
+  useEffect(() => {
+    if (exp.phase !== 'done' && exp.phase !== 'error') return
+    const t = setTimeout(() => setExp({ phase: 'idle', done: 0, total: 0 }), 4500)
+    return () => clearTimeout(t)
+  }, [exp.phase])
+
+  const exportPptx = async (): Promise<void> => {
+    if (!items.length || exp.phase === 'running') return
+    setExp({ phase: 'running', done: 0, total: 0 })
+    try {
+      const res = await window.lumen.exportPptx({ name: serviceName, items, background, theme })
+      if (res.ok) {
+        setExp({ phase: 'done', done: res.count ?? 0, total: res.count ?? 0, msg: `Exported ${res.count} slides` })
+      } else if (res.canceled) {
+        setExp({ phase: 'idle', done: 0, total: 0 })
+      } else {
+        setExp({ phase: 'error', done: 0, total: 0, msg: res.error || 'Export failed' })
+      }
+    } catch (e) {
+      setExp({ phase: 'error', done: 0, total: 0, msg: e instanceof Error ? e.message : 'Export failed' })
+    }
+  }
   /** drag-and-drop reorder state (indices into `items`) */
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
@@ -71,9 +112,25 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
           placeholder="Service name"
           title="Service name"
         />
-        <span className={`autosave-status ${autoSaveStatus}`} title="Changes save automatically">
-          {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? 'Saved' : 'Auto-save'}
-        </span>
+        {exp.phase === 'idle' ? (
+          <span className={`autosave-status ${autoSaveStatus}`} title="Changes save automatically">
+            {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? 'Saved' : 'Auto-save'}
+          </span>
+        ) : (
+          <span className={`export-status ${exp.phase}`} title={exp.msg}>
+            {exp.phase === 'running'
+              ? `Exporting ${exp.done}/${exp.total || '…'}`
+              : exp.msg}
+          </span>
+        )}
+        <button
+          className="btn tiny icon-btn"
+          onClick={exportPptx}
+          disabled={!items.length || exp.phase === 'running'}
+          title="Export session to PowerPoint (.pptx)"
+        >
+          <Icon name="download" />
+        </button>
         <div className="menu-wrap">
           <button className="btn tiny icon-btn" onClick={() => setMenu((v) => !v)} title="Service menu">
             <Icon name="dots" />

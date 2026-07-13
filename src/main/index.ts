@@ -17,6 +17,8 @@ import {
   type SongMeta
 } from '../shared/types'
 import { importPptxFiles } from './pptx'
+import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExport'
+import type { PptxExportRequest } from '../shared/types'
 import {
   initBroadcast,
   publishBroadcast,
@@ -322,6 +324,37 @@ function registerIpc(): void {
     if (res.canceled) return []
     const cacheDir = join(app.getPath('userData'), 'pptx-cache')
     return importPptxFiles(res.filePaths, cacheDir, mediaUrl)
+  })
+
+  // Export the whole session to a .pptx (one image slide per slide, captured from
+  // the live Stage). LUMEN_EXPORT_TEST=<path> skips the save dialog (test hook).
+  ipcMain.handle(IPC.pptxExport, async (_e, req: PptxExportRequest) => {
+    if (!req?.items?.length) return { ok: false, error: 'The session has no slides to export.' }
+    const safeName = (req.name || 'Lumen Session').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Lumen Session'
+
+    let filePath = process.env.LUMEN_EXPORT_TEST
+    if (!filePath) {
+      const res = await dialog.showSaveDialog(controlWindow!, {
+        title: 'Export to PowerPoint',
+        defaultPath: `${safeName}.pptx`,
+        filters: [{ name: 'PowerPoint', extensions: ['pptx'] }]
+      })
+      if (res.canceled || !res.filePath) return { ok: false, canceled: true }
+      filePath = res.filePath
+    }
+
+    try {
+      const { count } = await exportSessionToPptx(req, filePath, {
+        preloadPath: preloadPathFrom(__dirname),
+        exportUrl: exportUrlFrom(rendererUrl('output')),
+        onProgress: (done, total) =>
+          controlWindow?.webContents.send(IPC.pptxExportProgress, { done, total })
+      })
+      return { ok: true, path: filePath, count }
+    } catch (err) {
+      console.error('PowerPoint export failed:', err)
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
   })
 
   // Read a bundled full Bible translation (resources/bible/<id>.json). Ids are

@@ -282,6 +282,33 @@ export interface PptxImport {
   slides: ImportedSlide[]
 }
 
+// ---- PowerPoint export ----
+/** A whole session handed to the main process to render + pack into a .pptx.
+ *  One slide per SlideContent, captured exactly as the audience output shows it. */
+export interface PptxExportRequest {
+  /** used for the default file name */
+  name: string
+  items: ServiceItem[]
+  /** global/stage background for slides without their own */
+  background: Background
+  theme: ThemeStyle
+}
+
+/** Progress of a running export, pushed to the control window. */
+export interface PptxExportProgress {
+  done: number
+  total: number
+}
+
+/** Result of an export attempt (canceled when the operator dismisses the save dialog). */
+export interface PptxExportResult {
+  ok: boolean
+  path?: string
+  count?: number
+  canceled?: boolean
+  error?: string
+}
+
 // ---- web broadcast (OBS) ----
 /** Operator config for broadcasting live state to the web relay (for OBS). */
 export interface BroadcastConfig {
