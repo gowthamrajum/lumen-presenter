@@ -406,6 +406,33 @@ function registerIpc(): void {
       clearTimeout(timer)
     }
   })
+
+  // Psalms (bilingual) from the same backend. Fetched in main to avoid renderer
+  // CORS; a whole chapter, or a verse range via ?start&end.
+  ipcMain.handle(IPC.psalmsGet, async (_e, chapter: number, start?: number, end?: number) => {
+    const base = process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com'
+    const ch = Math.max(1, Math.min(150, Math.floor(chapter) || 1))
+    let path = `/psalms/${ch}`
+    if (start != null && end != null) {
+      const s = Math.max(1, Math.floor(Number(start)) || 1)
+      const e = Math.max(s, Math.floor(Number(end)) || s)
+      path = `/psalms/${ch}/range?start=${s}&end=${e}`
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 70_000)
+    try {
+      const res = await fetch(`${base}${path}`, { signal: controller.signal, headers: { Accept: 'application/json' } })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (!Array.isArray(data)) return { error: 'Unexpected response from psalms backend' }
+      return data
+    } catch (err) {
+      console.error('Psalms fetch failed:', err)
+      return { error: err instanceof Error ? err.message : String(err) }
+    } finally {
+      clearTimeout(timer)
+    }
+  })
 }
 let remoteSongsCache: unknown[] | null = null
 

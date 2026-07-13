@@ -8,8 +8,10 @@ export function SlidesPanel(): JSX.Element {
   const items = useStore((s) => s.items)
   const selectedItemId = useStore((s) => s.selectedItemId)
   const liveId = useStore((s) => s.liveId)
+  const attachMediaToItem = useStore((s) => s.attachMediaToItem)
 
   const item = items.find((i) => i.id === selectedItemId) ?? null
+  const isMediaItem = item?.kind === 'video' || item?.kind === 'media'
 
   if (!item) {
     return (
@@ -35,6 +37,15 @@ export function SlidesPanel(): JSX.Element {
         <span className="slides-sub">
           {item.slides.length} slide{item.slides.length === 1 ? '' : 's'}
         </span>
+        {isMediaItem && (
+          <button
+            className="btn tiny with-ico slides-add-media"
+            onClick={() => void attachMediaToItem(item.id)}
+            title="Choose an image or video for this item"
+          >
+            <Icon name="image" /> Add media
+          </button>
+        )}
       </div>
       <div className="slides-grid">
         {item.slides.map((sl, i) => (

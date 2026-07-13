@@ -1,8 +1,24 @@
-import type { Background, PptxImport, SlideContent, Song, SongSection } from '@shared/types'
+import type { Background, PptxImport, PsalmVerse, SlideContent, Song, SongSection } from '@shared/types'
 import type { BibleVerse } from '@shared/bible'
 import { referenceOf } from '@shared/bible'
 import { uid } from '../store/useStore'
 import { composeFromLines } from './compose'
+
+export type PsalmLang = 'both' | 'telugu' | 'english'
+
+/** Psalm verses -> scripture slides, one per verse, in the chosen language(s).
+ *  Verses with no text in the chosen language are skipped (no blank slides). */
+export function psalmSlides(verses: PsalmVerse[], lang: PsalmLang = 'both'): SlideContent[] {
+  return verses
+    .map((v) => {
+      const ref = `Psalm ${v.chapter}:${v.verse}`
+      const lines = (lang === 'telugu' ? [v.telugu] : lang === 'english' ? [v.english] : [v.telugu, v.english]).filter(
+        (l) => l && l.trim()
+      )
+      return { id: uid(), kind: 'scripture' as const, label: ref, lines, caption: ref }
+    })
+    .filter((s) => s.lines.length > 0)
+}
 
 /**
  * One slide per verse, with the reference as the caption. `refOf` builds the

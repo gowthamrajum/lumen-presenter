@@ -63,8 +63,15 @@ interface AppState {
   removeItem: (id: string) => void
   removeSlide: (id: string) => void
   moveItem: (id: string, dir: -1 | 1) => void
+  /** move the item at `from` to index `to` (drag-and-drop reorder) */
+  reorderItems: (from: number, to: number) => void
   duplicateItem: (id: string) => void
-  toggleItemBroadcast: (id: string) => void
+  /** turn a broadcast channel on/off for one item (on = broadcasting) */
+  setItemBroadcast: (id: string, channel: 'users' | 'stream', on: boolean) => void
+  /** turn both channels on/off for one item at once */
+  setItemBroadcastAll: (id: string, on: boolean) => void
+  /** pick a media file and set it as the item's (first) slide background */
+  attachMediaToItem: (itemId: string) => Promise<void>
   selectItem: (id: string | null) => void
   clearService: () => void
   renameService: (name: string) => void
@@ -117,6 +124,26 @@ export function selectSlides(s: AppState): SlideContent[] {
   return s.items.flatMap((it) => it.slides)
 }
 
+/** Whether an item is suppressed on a given web-broadcast channel. Reads the
+ *  per-channel flag, falling back to the legacy single `noBroadcast`. */
+export function suppressedOn(it: ServiceItem | undefined, channel: 'users' | 'stream'): boolean {
+  if (!it) return false
+  const chan = channel === 'users' ? it.noBroadcastUsers : it.noBroadcastStream
+  return chan ?? it.noBroadcast ?? false
+}
+
+/** Materialize the legacy `noBroadcast` flag into the two channel flags and drop
+ *  it, so items carry an unambiguous per-channel state. */
+export function normalizeBroadcast(it: ServiceItem): ServiceItem {
+  if (it.noBroadcast === undefined) return it
+  const { noBroadcast, ...rest } = it
+  return {
+    ...rest,
+    noBroadcastUsers: it.noBroadcastUsers ?? noBroadcast,
+    noBroadcastStream: it.noBroadcastStream ?? noBroadcast
+  }
+}
+
 export function selectLive(s: AppState): LiveState {
   const slides = selectSlides(s)
   const i = slides.findIndex((d) => d.id === s.liveId)
@@ -126,8 +153,10 @@ export function selectLive(s: AppState): LiveState {
   return {
     slide: i >= 0 ? slides[i] : null,
     next: nextSlide,
-    noBroadcast: liveItem?.noBroadcast === true,
-    nextNoBroadcast: nextItem?.noBroadcast === true,
+    noBroadcastUsers: suppressedOn(liveItem, 'users'),
+    noBroadcastStream: suppressedOn(liveItem, 'stream'),
+    nextNoBroadcastUsers: suppressedOn(nextItem, 'users'),
+    nextNoBroadcastStream: suppressedOn(nextItem, 'stream'),
     background: s.background,
     blackout: s.blackout,
     clearText: s.clearText,
@@ -224,13 +253,48 @@ export const useStore = create<AppState>((set, get) => {
       push()
     },
 
-    toggleItemBroadcast: (id) => {
+    setItemBroadcast: (id, channel, on) => {
+      const key = channel === 'users' ? 'noBroadcastUsers' : 'noBroadcastStream'
       set((s) => ({
-        items: s.items.map((it) => (it.id === id ? { ...it, noBroadcast: !it.noBroadcast } : it))
+        items: s.items.map((it) =>
+          it.id === id ? { ...normalizeBroadcast(it), [key]: !on } : it
+        )
       }))
       // re-push so the relay reflects it now — whether the item is the live slide
       // or the `next` preview of the live one
       push()
+    },
+
+    setItemBroadcastAll: (id, on) => {
+      set((s) => ({
+        items: s.items.map((it) => {
+          if (it.id !== id) return it
+          const { noBroadcast, ...rest } = it
+          void noBroadcast
+          return { ...rest, noBroadcastUsers: !on, noBroadcastStream: !on }
+        })
+      }))
+      push()
+    },
+
+    attachMediaToItem: async (itemId) => {
+      const files = await window.lumen.pickMedia()
+      if (!files.length) return
+      const f = files[0]
+      const bg: Background = { type: f.isVideo ? 'video' : 'image', value: f.url, fit: 'cover' }
+      set((s) => ({
+        items: s.items.map((it) => {
+          if (it.id !== itemId) return it
+          const kind: ItemKind = f.isVideo ? 'video' : 'media'
+          const slides: SlideContent[] = it.slides.length
+            ? it.slides.map((sl, i) =>
+                i === 0 ? { ...sl, kind: 'media', background: bg, lines: [], label: f.name } : sl
+              )
+            : [{ id: uid(), kind: 'media', label: f.name, lines: [], background: bg }]
+          return { ...it, kind, slides }
+        })
+      }))
+      push() // the affected slide may be live
     },
 
     selectItem: (id) => set({ selectedItemId: id }),
@@ -281,15 +345,33 @@ export const useStore = create<AppState>((set, get) => {
       push()
     },
 
+    reorderItems: (from, to) => {
+      set((s) => {
+        if (from === to || from < 0 || to < 0 || from >= s.items.length || to >= s.items.length) return {}
+        const items = s.items.slice()
+        const [moved] = items.splice(from, 1)
+        // The drop-target highlight means "insert before this row". After removing
+        // the dragged item, a downward move shifts the target index down by one, so
+        // insert at to-1 to land exactly where the highlight indicated.
+        const dest = from < to ? to - 1 : to
+        items.splice(dest, 0, moved)
+        return { items }
+      })
+      push()
+    },
+
     duplicateItem: (id) => {
       set((s) => {
         const i = s.items.findIndex((it) => it.id === id)
         if (i < 0) return {}
         const src = s.items[i]
+        // Carry the per-channel broadcast suppression onto the copy — otherwise a
+        // duplicate of an off-air item (e.g. Praise & Worship) would go fully on
+        // air and leak its lyrics to the web relay.
         const copy: ServiceItem = {
+          ...normalizeBroadcast(src),
           id: uid(),
           title: `${src.title} (copy)`,
-          kind: src.kind,
           slides: src.slides.map((sl) => ({ ...sl, id: uid() }))
         }
         const items = s.items.slice()
@@ -360,7 +442,7 @@ export const useStore = create<AppState>((set, get) => {
       // show an expired 0:00.
       const now = Date.now()
       const items = (service.items ?? []).map((it) => ({
-        ...it,
+        ...normalizeBroadcast(it), // migrate legacy single no-broadcast flag
         slides: it.slides.map((sl) =>
           sl.kind === 'countdown' && sl.countdownMinutes != null
             ? { ...sl, countdownTo: now + sl.countdownMinutes * 60_000 }

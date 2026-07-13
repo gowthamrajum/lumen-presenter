@@ -31,7 +31,9 @@ export function SongsPanel(): JSX.Element {
   const loadRemoteSongs = useStore((s) => s.loadRemoteSongs)
   const currentBackground = useStore((s) => s.background)
 
-  const [mode, setMode] = useState<'library' | 'online'>('library')
+  // Adding a song lands on Online (the Telugu catalog) by default; the local
+  // Library is a click away.
+  const [mode, setMode] = useState<'library' | 'online'>('online')
   const [query, setQuery] = useState('')
   const [lang, setLang] = useState<SongLang>('both')
   const [editing, setEditing] = useState<Song | null>(null)
@@ -206,7 +208,9 @@ export function SongsPanel(): JSX.Element {
         </>
       ) : (
         <>
-          {remoteState === 'loading' && <div className="empty-note">Loading catalog… (first load can take a moment)</div>}
+          {(remoteState === 'loading' || remoteState === 'idle') && (
+            <div className="empty-note">Loading catalog… (first load can take a moment)</div>
+          )}
           {remoteState === 'error' && (
             <div className="empty-note">
               Couldn&apos;t reach the catalog ({remoteError}).{' '}

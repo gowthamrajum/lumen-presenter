@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useStore } from '../../store/useStore'
+import { useStore, suppressedOn } from '../../store/useStore'
 import { SERVICE_TEMPLATES } from '../templates'
 import { ConfirmDialog } from './ConfirmDialog'
+import { BroadcastToggle } from './BroadcastToggle'
 import { Icon, type IconName } from '../../shared/Icon'
 import type { ItemKind } from '@shared/types'
 
@@ -21,8 +22,8 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const selectedItemId = useStore((s) => s.selectedItemId)
   const selectItem = useStore((s) => s.selectItem)
   const moveItem = useStore((s) => s.moveItem)
+  const reorderItems = useStore((s) => s.reorderItems)
   const removeItem = useStore((s) => s.removeItem)
-  const toggleItemBroadcast = useStore((s) => s.toggleItemBroadcast)
 
   const serviceName = useStore((s) => s.serviceName)
   const serviceId = useStore((s) => s.serviceId)
@@ -38,6 +39,18 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const [saving, setSaving] = useState(false)
   /** template id awaiting a replace-confirmation (null = no dialog open) */
   const [pendingTemplate, setPendingTemplate] = useState<string | null>(null)
+  /** drag-and-drop reorder state (indices into `items`) */
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [overIndex, setOverIndex] = useState<number | null>(null)
+
+  const endDrag = (): void => {
+    setDragIndex(null)
+    setOverIndex(null)
+  }
+  const dropOn = (idx: number): void => {
+    if (dragIndex !== null && dragIndex !== idx) reorderItems(dragIndex, idx)
+    endDrag()
+  }
 
   // Replacing the current setlist with a template shouldn't silently discard
   // unsaved work — confirm first when there's something in the schedule.
@@ -122,25 +135,29 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
         {items.length === 0 && (
           <div className="empty-note">Empty service. Add items from the Library.</div>
         )}
-        {items.map((it, idx) => (
+        {items.map((it, idx) => {
+          const offAir = suppressedOn(it, 'users') && suppressedOn(it, 'stream')
+          return (
           <div
             key={it.id}
-            className={`sched-item ${it.id === selectedItemId ? 'active' : ''} ${it.noBroadcast ? 'no-broadcast' : ''}`}
+            className={`sched-item ${it.id === selectedItemId ? 'active' : ''} ${offAir ? 'no-broadcast' : ''} ${dragIndex === idx ? 'dragging' : ''} ${overIndex === idx && dragIndex !== null && dragIndex !== idx ? 'drop-target' : ''}`}
             onClick={() => selectItem(it.id)}
+            draggable
+            onDragStart={(e) => { setDragIndex(idx); e.dataTransfer.effectAllowed = 'move' }}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (overIndex !== idx) setOverIndex(idx) }}
+            onDrop={(e) => { e.preventDefault(); dropOn(idx) }}
+            onDragEnd={endDrag}
           >
+            <span className="sched-grip" title="Drag to reorder">
+              <Icon name="grip" />
+            </span>
             <span className={`sched-icon kind-${it.kind}`}>
               <Icon name={KIND_ICON[it.kind]} />
             </span>
             <span className="sched-title" title={it.title}>
               {it.title}
             </span>
-            <button
-              className={`bcast-toggle ${it.noBroadcast ? 'off' : ''}`}
-              title={it.noBroadcast ? 'Off the web broadcast — click to include' : 'On the web broadcast — click to exclude'}
-              onClick={(e) => { e.stopPropagation(); toggleItemBroadcast(it.id) }}
-            >
-              <Icon name={it.noBroadcast ? 'broadcast-off' : 'broadcast'} />
-            </button>
+            <BroadcastToggle item={it} />
             <span className="sched-count">{it.slides.length}</span>
             <div className="sched-actions">
               <button
@@ -168,7 +185,8 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
               </button>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <button className="btn btn-primary full add-items" onClick={onBrowse}>

@@ -108,14 +108,30 @@ async function flush(): Promise<void> {
   const t = setTimeout(() => controller.abort(), 10_000)
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (ENV_ADMIN_TOKEN) headers.Authorization = `Bearer ${ENV_ADMIN_TOKEN}`
-  // Items marked no-broadcast still show locally, but the web relay must never
-  // carry their lyrics — not as the live slide, and not as the `next` preview of
-  // the following item. Strip the internal flags from what we publish.
-  const { noBroadcast, nextNoBroadcast, ...rest } = latest
+  // Items can be suppressed per channel: the User (audience mirror) and the
+  // Stream (OBS) views each get their own slice, so an item that's off-air for
+  // one channel never carries its lyrics to that channel's page. Shared, non-
+  // lyric fields (background/theme/flags) live at the top level. The relay
+  // projects the right slice per viewer (?view=users|stream).
+  const {
+    slide,
+    next,
+    noBroadcastUsers,
+    noBroadcastStream,
+    nextNoBroadcastUsers,
+    nextNoBroadcastStream,
+    ...rest
+  } = latest
   const payload = {
     ...rest,
-    slide: noBroadcast ? null : latest.slide,
-    next: noBroadcast || nextNoBroadcast ? null : latest.next
+    users: {
+      slide: noBroadcastUsers ? null : slide ?? null,
+      next: nextNoBroadcastUsers ? null : next ?? null
+    },
+    stream: {
+      slide: noBroadcastStream ? null : slide ?? null,
+      next: nextNoBroadcastStream ? null : next ?? null
+    }
   }
   try {
     const res = await fetch(url, { method: 'POST', signal: controller.signal, headers, body: JSON.stringify(payload) })

@@ -103,8 +103,10 @@
       <div class="caption" id="caption"></div>
     </div>
   </div>
-  <button id="fs" class="fsbtn" title="Fullscreen (rotate for a bigger view)" aria-label="Toggle fullscreen">⛶</button>
+  <button id="fs" class="fsbtn" title="Fullscreen (rotate for a bigger view)" aria-label="Toggle fullscreen"></button>
 <script>
+  var ICON_EXPAND = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
+  var ICON_COMPRESS = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6H3M21 15h-6v6M15 9l6-6M3 21l6-6"/></svg>';
 (function () {
   var q = new URLSearchParams(location.search);
   var m = location.pathname.match(/\/broadcast\/([^/]+)\/view/);
@@ -135,6 +137,7 @@
   function inFs() { return document.fullscreenElement || document.webkitFullscreenElement; }
   if (mode === 'audience' && reqFs) {
     fsBtn.classList.add('avail');
+    fsBtn.innerHTML = ICON_EXPAND;
     fsBtn.addEventListener('click', function () {
       if (!inFs()) {
         var p = reqFs.call(root);
@@ -144,7 +147,7 @@
         exitFs.call(document);
       }
     });
-    document.addEventListener('fullscreenchange', function () { fsBtn.textContent = inFs() ? '⤡' : '⛶'; });
+    document.addEventListener('fullscreenchange', function () { fsBtn.innerHTML = inFs() ? ICON_COMPRESS : ICON_EXPAND; });
     // auto-hide the button after a moment; reveal on tap/move (like a player)
     var idle;
     function poke() {
@@ -168,6 +171,40 @@
     if (slide.composed && slide.composed.length) return slide.composed.map(function (l) { return l.text; });
     return slide.lines || [];
   }
+
+  // ---- countdown / clock (rendered locally so the web view isn't blank while a
+  //      timer is live, matching the audience/stage output) ----
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function fmtCountdown(toMs) {
+    var ms = Math.max(0, (toMs || 0) - Date.now());
+    var total = Math.round(ms / 1000);
+    var h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+    return h > 0 ? (h + ':' + pad2(m) + ':' + pad2(s)) : (m + ':' + pad2(s));
+  }
+  function fmtClock() {
+    var d = new Date(), h = d.getHours(), m = d.getMinutes();
+    var ap = h >= 12 ? 'PM' : 'AM', h12 = h % 12; if (h12 === 0) h12 = 12;
+    return h12 + ':' + pad2(m) + ' ' + ap;
+  }
+  function isTimer(slide) { return slide && (slide.kind === 'countdown' || slide.kind === 'clock'); }
+  function renderTimer(slide, scale) {
+    composedEl.style.display = 'none';
+    lyricsEl.style.display = '';
+    lyricsEl.innerHTML = '';
+    var span = document.createElement('span');
+    span.className = 'line';
+    span.textContent = slide.kind === 'clock' ? fmtClock() : fmtCountdown(slide.countdownTo);
+    lyricsEl.appendChild(span);
+    if (mode === 'audience') lyricsEl.style.fontSize = sizeFor(1, (scale || 1) * 1.6);
+    var cap = slide.message || '';
+    captionEl.textContent = cap;
+    captionEl.style.display = cap ? '' : 'none';
+    stage.classList.add('show');
+  }
+
+  var liveSlide = null, liveScale = 1, tick = null;
+  function startTick() { if (!tick) tick = setInterval(function () { if (isTimer(liveSlide)) renderTimer(liveSlide, liveScale); }, 500); }
+  function stopTick() { if (tick) { clearInterval(tick); tick = null; } }
 
   function applyBackground(bg) {
     bgImg.style.display = 'none'; bgVideo.style.display = 'none';
@@ -224,16 +261,24 @@
   function render(state) {
     var slide = state && state.slide;
     var theme = state && state.theme;
+    var scale = (theme && theme.fontScale) || 1;
+    liveSlide = slide; liveScale = scale;
 
     if (mode === 'audience') {
       applyTheme(theme);
-      if (state && state.blackout) { bgEl.style.background = '#000'; bgImg.style.display = 'none'; bgVideo.style.display = 'none'; stage.classList.remove('show'); return; }
+      if (state && state.blackout) { bgEl.style.background = '#000'; bgImg.style.display = 'none'; bgVideo.style.display = 'none'; stage.classList.remove('show'); stopTick(); return; }
       applyBackground(slide && slide.background ? slide.background : (state && state.background));
     }
 
-    var hidden = !state || state.blackout || state.clearText || !slide;
-    var scale = (theme && theme.fontScale) || 1;
-    if (hidden) { stage.classList.remove('show'); return; }
+    // Hide when the operator shows the logo too, matching the native output
+    // (otherwise a ticking countdown would stay on air over the logo).
+    var hidden = !state || state.blackout || state.clearText || state.showLogo || !slide;
+    if (hidden) { stage.classList.remove('show'); stopTick(); return; }
+
+    // Countdown / clock: render a live-ticking timer (else the web view is blank
+    // whenever a countdown is on air, unlike the local audience output).
+    if (isTimer(slide)) { renderTimer(slide, scale); startTick(); return; }
+    stopTick();
 
     if (mode === 'audience' && slide.composed && slide.composed.length) {
       renderComposed(slide.composed);
@@ -253,7 +298,14 @@
   function apply(msg) { if (msg && typeof msg === 'object' && 'state' in msg) render(msg.state); }
 
   // Primary: Server-Sent Events (instant). Fallback: short-poll.
-  var qs = token ? ('?token=' + encodeURIComponent(token)) : '';
+  // The relay projects the payload per channel: the audience page asks for the
+  // User slice, the OBS page for the Stream slice, so an item that's off-air for
+  // one channel never even reaches that channel's page.
+  var viewChan = mode === 'audience' ? 'users' : 'stream';
+  var params = [];
+  if (token) params.push('token=' + encodeURIComponent(token));
+  params.push('view=' + viewChan);
+  var qs = '?' + params.join('&');
   var pollTimer = null, lastRev = -1, es = null;
 
   function startPolling() {

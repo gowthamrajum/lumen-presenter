@@ -42,13 +42,38 @@ function welcome(english: string): ServiceItem {
   return section('Welcome', 'text', 'స్వాగతం', english)
 }
 
+/** A placeholder welcome-video item. The operator attaches the real clip with
+ *  the "Add media" button on the Slides panel. */
+function welcomeVideo(): ServiceItem {
+  // A visible placeholder word until the operator attaches the real clip with
+  // "Add media" (which clears the text and sets the video background).
+  return {
+    id: uid(),
+    title: 'Welcome Video',
+    kind: 'video',
+    slides: [{ id: uid(), kind: 'text', label: 'Welcome Video', lines: ['Welcome'] }]
+  }
+}
+
+/** A live Praise & Worship section — off the web broadcast by default (both
+ *  channels), since live worship usually isn't streamed. */
+function praiseWorship(): ServiceItem {
+  return {
+    ...section('Praise & Worship', 'song', 'స్తుతి ఆరాధన', 'Praise & Worship'),
+    noBroadcastUsers: true,
+    noBroadcastStream: true
+  }
+}
+
 export const SERVICE_TEMPLATES: ServiceTemplate[] = [
   {
     id: 'sunday-worship',
     name: 'Sunday Worship Service',
-    description: 'Full worship gathering — welcome, worship, the Word, response and benediction.',
+    description: 'Full worship gathering — welcome video, countdown, worship, the Word, response and benediction.',
     build: () => [
+      welcomeVideo(),
       countdown(5, 'Service begins soon'),
+      praiseWorship(), // opening worship — before the first content slide
       welcome('Welcome to Telugu Church'),
       section('Opening Prayer', 'text', 'ప్రారంభ ప్రార్థన', 'Opening Prayer'),
       section('Worship', 'song', 'ఆరాధన', 'Worship'),
@@ -58,6 +83,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
       section('Offering', 'text', 'కానుక', 'Offering'),
       section('Announcements', 'text', 'ప్రకటనలు', 'Announcements'),
       section('Benediction', 'text', 'దీవెన', 'Go in peace'),
+      praiseWorship(), // closing worship — after the last content slide
       blank()
     ]
   },

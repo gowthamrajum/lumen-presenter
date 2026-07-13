@@ -3,6 +3,7 @@ import type { Background, MediaFile } from '@shared/types'
 import { useStore } from '../../store/useStore'
 import { mediaSlide, pptxSlides } from '../slides'
 import { BACKGROUND_PRESETS } from '../presets'
+import { Icon } from '../../shared/Icon'
 
 export function MediaSource(): JSX.Element {
   const media = useStore((s) => s.media)
@@ -92,7 +93,7 @@ export function MediaSource(): JSX.Element {
               ) : (
                 <img src={m.url} alt={m.name} />
               )}
-              {m.isVideo && <span className="badge">▶</span>}
+              {m.isVideo && <span className="badge"><Icon name="play" /></span>}
             </div>
             <div className="media-name">{m.name}</div>
             <div className="media-actions">

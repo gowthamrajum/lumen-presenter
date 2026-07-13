@@ -18,6 +18,7 @@ export const IPC = {
   songLoad: 'songs:load',
   songDelete: 'songs:delete',
   songsRemote: 'songs:remote',
+  psalmsGet: 'psalms:get',
   broadcastGet: 'broadcast:get',
   broadcastSet: 'broadcast:set',
   broadcastStatusGet: 'broadcast:statusGet',

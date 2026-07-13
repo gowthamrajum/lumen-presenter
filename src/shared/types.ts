@@ -84,12 +84,15 @@ export interface LiveState {
   slide: SlideContent | null
   /** the following slide, for the stage-display confidence monitor */
   next?: SlideContent | null
-  /** true when the live item is marked no-broadcast: local output shows it, but
-   *  the web relay must suppress it (see the main-process publisher) */
-  noBroadcast?: boolean
-  /** true when the NEXT slide belongs to a no-broadcast item, so the relay drops
-   *  `next` (the local stage monitor still shows it) */
-  nextNoBroadcast?: boolean
+  /** Per-channel broadcast suppression for the LIVE item. Local output always
+   *  shows the slide; these only gate the web relay (see the main publisher),
+   *  independently for the User (audience mirror) and Stream (OBS) views. */
+  noBroadcastUsers?: boolean
+  noBroadcastStream?: boolean
+  /** Same, for the item owning the NEXT slide, so the relay can drop `next`
+   *  per-channel (the local stage monitor still shows it). */
+  nextNoBroadcastUsers?: boolean
+  nextNoBroadcastStream?: boolean
   /** global/stage background, used when a slide has no background of its own */
   background: Background
   blackout: boolean
@@ -141,8 +144,14 @@ export interface ServiceItem {
   title: string
   kind: ItemKind
   slides: SlideContent[]
-  /** when true, this item is shown locally but never sent to the web broadcast
-   *  (e.g. a break, or live Praise & Worship you don't want on the stream) */
+  /** Per-channel web-broadcast suppression. The item always shows on the local
+   *  output; these hide it from the web relay independently for the User
+   *  (audience) view and the Stream (OBS) view. Both true = fully off-air (red);
+   *  one true = partial (yellow); neither = on all (green). */
+  noBroadcastUsers?: boolean
+  noBroadcastStream?: boolean
+  /** @deprecated legacy single flag (both channels). Read via the helpers;
+   *  normalized to the two fields above when a saved service is opened. */
   noBroadcast?: boolean
 }
 
@@ -217,6 +226,15 @@ export interface RemoteSong {
   song_name: string
   main_stanza?: { telugu?: string[]; english?: string[] }
   stanzas?: RemoteStanza[]
+}
+
+/** A psalm verse from the grey-gratis-ice `/psalms` backend (bilingual). */
+export interface PsalmVerse {
+  id: number
+  chapter: number
+  verse: number
+  telugu: string
+  english: string
 }
 
 export interface MediaFile {

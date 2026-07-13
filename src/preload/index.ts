@@ -12,6 +12,7 @@ import type {
   Song,
   SongMeta,
   RemoteSong,
+  PsalmVerse,
   BroadcastConfig,
   BroadcastStatus
 } from '../shared/types'
@@ -42,6 +43,8 @@ const api = {
   deleteSong: (id: string): Promise<SongMeta[]> => ipcRenderer.invoke(IPC.songDelete, id),
   remoteSongs: (): Promise<RemoteSong[] | { error: string }> =>
     ipcRenderer.invoke(IPC.songsRemote),
+  psalms: (chapter: number, start?: number, end?: number): Promise<PsalmVerse[] | { error: string }> =>
+    ipcRenderer.invoke(IPC.psalmsGet, chapter, start, end),
 
   // live state
   getLive: (): Promise<LiveState> => ipcRenderer.invoke(IPC.liveGet),

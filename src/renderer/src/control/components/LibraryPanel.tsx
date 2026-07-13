@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { SongsPanel } from './SongsPanel'
 import { BibleSource } from './BibleSource'
+import { PsalmsSource } from './PsalmsSource'
 import { MediaSource } from './MediaSource'
 import { TextSource } from './TextSource'
 
-type Tab = 'songs' | 'bible' | 'media' | 'text'
+type Tab = 'songs' | 'bible' | 'psalms' | 'media' | 'text'
 
 export function LibraryPanel(): JSX.Element {
   const [tab, setTab] = useState<Tab>('songs')
@@ -18,6 +19,9 @@ export function LibraryPanel(): JSX.Element {
         <button className={`tab ${tab === 'bible' ? 'active' : ''}`} onClick={() => setTab('bible')}>
           Bible
         </button>
+        <button className={`tab ${tab === 'psalms' ? 'active' : ''}`} onClick={() => setTab('psalms')}>
+          Psalms
+        </button>
         <button className={`tab ${tab === 'media' ? 'active' : ''}`} onClick={() => setTab('media')}>
           Media
         </button>
@@ -28,6 +32,7 @@ export function LibraryPanel(): JSX.Element {
       <div className="tab-body">
         {tab === 'songs' && <SongsPanel />}
         {tab === 'bible' && <BibleSource />}
+        {tab === 'psalms' && <PsalmsSource />}
         {tab === 'media' && <MediaSource />}
         {tab === 'text' && <TextSource />}
       </div>
