@@ -35,6 +35,12 @@ export function loadSessionCache(): CachedSession | null {
     }
     return env.session ?? null
   } catch {
+    // Corrupt/unparseable entry — drop it so we don't re-parse it every launch.
+    try {
+      localStorage.removeItem(KEY)
+    } catch {
+      /* ignore */
+    }
     return null
   }
 }

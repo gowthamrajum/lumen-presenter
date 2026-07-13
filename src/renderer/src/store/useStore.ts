@@ -44,6 +44,20 @@ function reArmItems(items: ServiceItem[], now: number): ServiceItem[] {
 /** Flipped true once init() has restored any cache, so the auto-save
  *  subscription doesn't fire during startup (or in a non-control window). */
 let cacheReady = false
+/** Last-persisted snapshot, shared by init() (to seed the baseline) and the
+ *  auto-save subscription (to dedup). Seeding it after restore stops the first
+ *  transient change from re-writing the session and re-stamping its TTL. */
+let cacheLast = ''
+
+function sessionSnapshot(s: AppState): string {
+  return JSON.stringify({
+    serviceId: s.serviceId,
+    serviceName: s.serviceName,
+    items: s.items,
+    background: s.background,
+    theme: s.theme
+  })
+}
 
 interface AppState {
   // the current service (working setlist)
@@ -230,9 +244,11 @@ export const useStore = create<AppState>((set, get) => {
         window.lumen.onDisplaysChanged((d) => set({ displays: d }))
       }
       // Restore the last working session from cache (unless expired) so an
-      // in-progress setlist survives a restart without an explicit Save.
+      // in-progress setlist survives a restart without an explicit Save. Only if
+      // the store is still pristine — the UI is interactive during the IPC load
+      // above, so don't clobber anything the operator already started.
       const cached = loadSessionCache()
-      if (cached && Array.isArray(cached.items) && cached.items.length) {
+      if (cached && Array.isArray(cached.items) && cached.items.length && get().items.length === 0) {
         const items = reArmItems(cached.items, Date.now())
         set({
           serviceId: cached.serviceId ?? null,
@@ -245,6 +261,9 @@ export const useStore = create<AppState>((set, get) => {
         })
       }
       cacheReady = true
+      // Seed the baseline so the first transient change (selectItem, an incoming
+      // display event, …) doesn't needlessly re-save and re-stamp the TTL.
+      cacheLast = sessionSnapshot(get())
       push()
     },
 
@@ -593,28 +612,27 @@ export const useStore = create<AppState>((set, get) => {
 // so an empty state never clobbers a good cache.
 {
   let timer: ReturnType<typeof setTimeout> | null = null
-  let last = ''
   useStore.subscribe((s) => {
     if (!cacheReady) return
-    const snap = JSON.stringify({
-      serviceId: s.serviceId,
-      serviceName: s.serviceName,
-      items: s.items,
-      background: s.background,
-      theme: s.theme
-    })
-    if (snap === last) return
-    last = snap
+    const snap = sessionSnapshot(s)
+    if (snap === cacheLast) return
+    cacheLast = snap
     if (timer) clearTimeout(timer)
-    timer = setTimeout(() => saveSessionCache(JSON.parse(snap)), 700)
+    timer = setTimeout(() => {
+      timer = null
+      saveSessionCache(JSON.parse(snap))
+    }, 700)
   })
-  // Flush the latest snapshot on close so a change in the last debounce window
-  // isn't lost.
+  // On close, flush only a still-pending edit (timer set) — so merely opening or
+  // closing the app doesn't re-write the session and re-stamp its TTL. This keeps
+  // the TTL counting from the last real edit.
   if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', () => {
-      if (cacheReady && last) {
+      if (cacheReady && timer) {
+        clearTimeout(timer)
+        timer = null
         try {
-          saveSessionCache(JSON.parse(last))
+          saveSessionCache(JSON.parse(cacheLast))
         } catch {
           /* ignore */
         }
