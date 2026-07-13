@@ -136,9 +136,9 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
       {state.showLogo && !state.blackout && (
         <div className="stage-logo">
           <span className="logo-mark">
-            <Icon name="spark" />
+            <Icon name="flame" />
           </span>
-          <span className="logo-word">LUMEN</span>
+          <span className="logo-word">CANTICA</span>
         </div>
       )}
 

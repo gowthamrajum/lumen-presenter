@@ -66,8 +66,8 @@ path — the cask's `postflight` clears the quarantine, so it opens with **no
 Gatekeeper prompt at all**:
 
 ```sh
-brew install --cask gowthamrajum/lumen/lumen-presenter   # install
-brew upgrade --cask lumen-presenter                       # update
+brew install --cask gowthamrajum/lumen/cantica   # install
+brew upgrade --cask cantica                       # update
 ```
 
 Tap repo: [`gowthamrajum/homebrew-lumen`](https://github.com/gowthamrajum/homebrew-lumen).

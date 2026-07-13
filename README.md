@@ -1,8 +1,12 @@
-# Lumen Presenter
+# Cantica
 
 An open, cross-platform **worship / church presentation app** in the spirit of
 ProPresenter and Worship Tools *Presenter*. Built with **Electron + React +
 TypeScript** (electron-vite).
+
+Made for [Telugu Community Church](https://teluguchurchdfw.org) · © 2026 Telugu
+Community Church. (Repo/updates still ship under the `lumen-presenter` GitHub
+name for continuity.)
 
 It drives a live audience screen (projector / second display) from an operator
 control window: build a deck of slides from **scripture**, **media

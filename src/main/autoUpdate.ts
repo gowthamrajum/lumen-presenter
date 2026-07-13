@@ -52,7 +52,7 @@ async function checkAndNotify(): Promise<void> {
       defaultId: 0,
       cancelId: 1,
       title: 'Update available',
-      message: `Lumen Presenter ${latest} is available.`,
+      message: `Cantica ${latest} is available.`,
       detail: 'Open the download page to get the latest version.'
     })
     if (r.response === 0) void shell.openExternal(data.html_url ?? RELEASES_URL)

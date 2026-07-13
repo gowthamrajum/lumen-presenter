@@ -34,9 +34,9 @@ export function TopBar(): JSX.Element {
     <header className="topbar">
       <div className="brand">
         <span className="brand-mark">
-          <Icon name="spark" />
+          <Icon name="flame" />
         </span>
-        <span className="brand-name">Lumen</span>
+        <span className="brand-name">Cantica</span>
         <span className="brand-sub">Presenter</span>
       </div>
 

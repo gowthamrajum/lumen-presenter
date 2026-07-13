@@ -15,15 +15,15 @@ tap="gowthamrajum/homebrew-lumen"
 
 tmp="$(mktemp -d)"
 gh release download "$tag" --repo "$repo" --pattern '*.dmg' --dir "$tmp"
-arm_sha="$(shasum -a 256 "$tmp/Lumen-Presenter-$v-arm64.dmg" | cut -d' ' -f1)"
-x64_sha="$(shasum -a 256 "$tmp/Lumen-Presenter-$v.dmg" | cut -d' ' -f1)"
+arm_sha="$(shasum -a 256 "$tmp/Cantica-$v-arm64.dmg" | cut -d' ' -f1)"
+x64_sha="$(shasum -a 256 "$tmp/Cantica-$v.dmg" | cut -d' ' -f1)"
 rm -rf "$tmp"
 
 cask="$(cat <<CASK
 # typed: strict
 # frozen_string_literal: true
 
-cask "lumen-presenter" do
+cask "cantica" do
   arch arm: "arm64", intel: "x64"
 
   version "$v"
@@ -31,31 +31,31 @@ cask "lumen-presenter" do
   on_arm do
     sha256 "$arm_sha"
 
-    url "https://github.com/$repo/releases/download/v#{version}/Lumen-Presenter-#{version}-arm64.dmg"
+    url "https://github.com/$repo/releases/download/v#{version}/Cantica-#{version}-arm64.dmg"
   end
   on_intel do
     sha256 "$x64_sha"
 
-    url "https://github.com/$repo/releases/download/v#{version}/Lumen-Presenter-#{version}.dmg"
+    url "https://github.com/$repo/releases/download/v#{version}/Cantica-#{version}.dmg"
   end
 
-  name "Lumen Presenter"
+  name "Cantica"
   desc "Open worship / church presentation app (ProPresenter style)"
   homepage "https://github.com/$repo"
 
-  app "Lumen Presenter.app"
+  app "Cantica.app"
 
   # Unsigned open-source build: clear the download quarantine so it launches
   # without a Gatekeeper prompt (no \$99 Apple account needed).
   postflight do
     system_command "/usr/bin/xattr",
-                   args: ["-dr", "com.apple.quarantine", "#{appdir}/Lumen Presenter.app"]
+                   args: ["-dr", "com.apple.quarantine", "#{appdir}/Cantica.app"]
   end
 
   zap trash: [
-    "~/Library/Application Support/lumen-presenter",
-    "~/Library/Logs/Lumen Presenter",
-    "~/Library/Preferences/com.lumen.presenter.plist",
+    "~/Library/Application Support/Cantica",
+    "~/Library/Logs/Cantica",
+    "~/Library/Preferences/org.teluguchurchdfw.cantica.plist",
   ]
 end
 CASK
@@ -80,9 +80,9 @@ fi
 work="$(mktemp -d)"
 git clone --depth 1 "$remote" "$work" 2>/dev/null
 mkdir -p "$work/Casks"
-printf '%s\n' "$cask" > "$work/Casks/lumen-presenter.rb"
+printf '%s\n' "$cask" > "$work/Casks/cantica.rb"
 cd "$work"
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-git add Casks/lumen-presenter.rb
-git commit -m "lumen-presenter $v" 2>/dev/null && git push || echo "cask already up to date"
+git add Casks/cantica.rb
+git commit -m "cantica $v" 2>/dev/null && git push || echo "cask already up to date"

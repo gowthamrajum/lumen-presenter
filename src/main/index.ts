@@ -66,7 +66,7 @@ function createControlWindow(): void {
     minWidth: 1024,
     minHeight: 680,
     show: false,
-    title: 'Lumen Presenter',
+    title: 'Cantica',
     backgroundColor: '#0b0e17',
     autoHideMenuBar: true,
     webPreferences: {
@@ -136,7 +136,7 @@ function buildOutputWindow(
   const common: Electron.BrowserWindowConstructorOptions = {
     backgroundColor: '#000000',
     show: false,
-    title: kind === 'stage' ? 'Lumen Stage' : 'Lumen Output',
+    title: kind === 'stage' ? 'Cantica Stage' : 'Cantica Output',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -330,7 +330,7 @@ function registerIpc(): void {
   // the live Stage). LUMEN_EXPORT_TEST=<path> skips the save dialog (test hook).
   ipcMain.handle(IPC.pptxExport, async (_e, req: PptxExportRequest) => {
     if (!req?.items?.length) return { ok: false, error: 'The session has no slides to export.' }
-    const safeName = (req.name || 'Lumen Session').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Lumen Session'
+    const safeName = (req.name || 'Cantica Session').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Cantica Session'
 
     let filePath = process.env.LUMEN_EXPORT_TEST
     if (!filePath) {

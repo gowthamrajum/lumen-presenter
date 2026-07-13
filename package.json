@@ -1,9 +1,9 @@
 {
-  "name": "lumen-presenter",
+  "name": "cantica",
   "version": "0.1.1",
-  "description": "Lumen — an open worship presentation app (ProPresenter / Worship Tools Presenter style)",
+  "description": "Cantica — an open worship presentation app (ProPresenter / Worship Tools Presenter style)",
   "main": "./out/main/index.js",
-  "author": "Lumen",
+  "author": "Telugu Community Church (https://teluguchurchdfw.org)",
   "license": "MIT",
   "scripts": {
     "dev": "ELECTRON_RUN_AS_NODE= electron-vite dev",
@@ -40,8 +40,9 @@
     "vite": "^5.3.1"
   },
   "build": {
-    "appId": "com.lumen.presenter",
-    "productName": "Lumen Presenter",
+    "appId": "org.teluguchurchdfw.cantica",
+    "productName": "Cantica",
+    "copyright": "Copyright © 2026 Telugu Community Church (teluguchurchdfw.org)",
     "directories": {
       "output": "release"
     },
@@ -52,6 +53,7 @@
     "mac": {
       "category": "public.app-category.productivity",
       "identity": null,
+      "icon": "build/icon.icns",
       "target": [
         {
           "target": "dmg",
@@ -63,6 +65,7 @@
       ]
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis"
       ]
@@ -70,7 +73,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "perMachine": false
+      "perMachine": false,
+      "artifactName": "Cantica-Setup-${version}.${ext}"
     },
     "publish": [
       {
@@ -80,6 +84,7 @@
       }
     ],
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         "AppImage"
       ],
