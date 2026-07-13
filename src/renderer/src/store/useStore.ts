@@ -48,6 +48,8 @@ let cacheReady = false
  *  auto-save subscription (to dedup). Seeding it after restore stops the first
  *  transient change from re-writing the session and re-stamping its TTL. */
 let cacheLast = ''
+/** Baseline for the disk auto-save dedup (content only). */
+let autoSaveLast = ''
 
 function sessionSnapshot(s: AppState): string {
   return JSON.stringify({
@@ -59,6 +61,26 @@ function sessionSnapshot(s: AppState): string {
   })
 }
 
+/** Content key for disk auto-save dedup — deliberately excludes serviceId so the
+ *  id assigned on the first save doesn't re-trigger another save. */
+function contentSnapshot(s: AppState): string {
+  return JSON.stringify({
+    serviceName: s.serviceName,
+    items: s.items,
+    background: s.background,
+    theme: s.theme
+  })
+}
+
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`
+}
+/** "2026-07-13 14:30" for stamping template-created session names. */
+function stampNow(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
 interface AppState {
   // the current service (working setlist)
   serviceId: string | null
@@ -67,6 +89,8 @@ interface AppState {
   /** the item whose slides are shown in the center panel */
   selectedItemId: string | null
   liveId: string | null
+  /** disk auto-save status shown in the Sessions header (no manual Save) */
+  autoSaveStatus: 'idle' | 'saving' | 'saved'
 
   theme: ThemeStyle
   background: Background
@@ -211,6 +235,7 @@ export const useStore = create<AppState>((set, get) => {
     items: [],
     selectedItemId: null,
     liveId: null,
+    autoSaveStatus: 'idle',
 
     theme: DEFAULT_THEME,
     background: DEFAULT_BACKGROUND,
@@ -261,9 +286,10 @@ export const useStore = create<AppState>((set, get) => {
         })
       }
       cacheReady = true
-      // Seed the baseline so the first transient change (selectItem, an incoming
-      // display event, …) doesn't needlessly re-save and re-stamp the TTL.
+      // Seed the baselines so the first transient change (selectItem, an incoming
+      // display event, …) doesn't needlessly re-save / re-stamp the TTL.
       cacheLast = sessionSnapshot(get())
+      autoSaveLast = contentSnapshot(get())
       push()
     },
 
@@ -477,6 +503,7 @@ export const useStore = create<AppState>((set, get) => {
     saveService: async () => {
       const s = get()
       const id = s.serviceId ?? uid()
+      set({ autoSaveStatus: 'saving' })
       const service: Service = {
         id,
         name: s.serviceName.trim() || 'Untitled Service',
@@ -485,8 +512,12 @@ export const useStore = create<AppState>((set, get) => {
         background: s.background,
         theme: s.theme
       }
-      const list = await window.lumen.saveService(service)
-      set({ serviceId: id, savedServices: list })
+      try {
+        const list = await window.lumen.saveService(service)
+        set({ serviceId: id, savedServices: list, autoSaveStatus: 'saved' })
+      } catch {
+        set({ autoSaveStatus: 'idle' })
+      }
     },
 
     openService: async (id) => {
@@ -532,7 +563,8 @@ export const useStore = create<AppState>((set, get) => {
       const items = tpl.build()
       set({
         serviceId: null,
-        serviceName: tpl.name,
+        // stamp date + time so each template-created session is a distinct file
+        serviceName: `${tpl.name} · ${stampNow()}`,
         items,
         selectedItemId: items[0]?.id ?? null,
         liveId: null,
@@ -639,4 +671,22 @@ export const useStore = create<AppState>((set, get) => {
       }
     })
   }
+}
+
+// Disk auto-save: persist the working session to the saved-services store on any
+// content change (debounced), so there's no manual Save button. The first save
+// assigns a serviceId; the content key excludes it to avoid a re-trigger loop.
+{
+  let timer: ReturnType<typeof setTimeout> | null = null
+  useStore.subscribe((s) => {
+    if (!cacheReady || !s.items.length) return
+    const key = contentSnapshot(s)
+    if (key === autoSaveLast) return
+    autoSaveLast = key
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      timer = null
+      void useStore.getState().saveService()
+    }, 1200)
+  })
 }

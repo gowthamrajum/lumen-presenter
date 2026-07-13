@@ -436,6 +436,20 @@ select,
   align-items: center;
   gap: 6px;
 }
+.autosave-status {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.autosave-status.saving {
+  color: var(--accent);
+}
+.autosave-status.saved {
+  color: var(--ok);
+}
 .service-name-input {
   flex: 1;
   min-width: 0;

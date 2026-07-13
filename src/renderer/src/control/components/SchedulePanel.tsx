@@ -28,7 +28,7 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const serviceName = useStore((s) => s.serviceName)
   const serviceId = useStore((s) => s.serviceId)
   const renameService = useStore((s) => s.renameService)
-  const saveService = useStore((s) => s.saveService)
+  const autoSaveStatus = useStore((s) => s.autoSaveStatus)
   const newService = useStore((s) => s.newService)
   const applyTemplate = useStore((s) => s.applyTemplate)
   const savedServices = useStore((s) => s.savedServices)
@@ -36,7 +36,6 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const deleteService = useStore((s) => s.deleteService)
 
   const [menu, setMenu] = useState(false)
-  const [saving, setSaving] = useState(false)
   /** template id awaiting a replace-confirmation (null = no dialog open) */
   const [pendingTemplate, setPendingTemplate] = useState<string | null>(null)
   /** drag-and-drop reorder state (indices into `items`) */
@@ -62,15 +61,6 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
 
   const pending = pendingTemplate ? SERVICE_TEMPLATES.find((t) => t.id === pendingTemplate) : null
 
-  const save = async (): Promise<void> => {
-    setSaving(true)
-    try {
-      await saveService()
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <div className="schedule">
       <div className="schedule-head">
@@ -81,9 +71,9 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
           placeholder="Service name"
           title="Service name"
         />
-        <button className="btn tiny" onClick={() => void save()} disabled={saving}>
-          {saving ? '…' : 'Save'}
-        </button>
+        <span className={`autosave-status ${autoSaveStatus}`} title="Changes save automatically">
+          {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? 'Saved' : 'Auto-save'}
+        </span>
         <div className="menu-wrap">
           <button className="btn tiny icon-btn" onClick={() => setMenu((v) => !v)} title="Service menu">
             <Icon name="dots" />
