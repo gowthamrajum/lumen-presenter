@@ -115,6 +115,22 @@ Crossway's terms require. ESV text is fetched on demand (never stored beyond a
 small session cache), shows the required attribution, and falls back to WEBBE if
 the key is missing or you're offline, so a live service never breaks.
 
+**Packaged install on a church machine (zero setup for users):** the `.env`
+above is for running from source. For a packaged Cantica, provision the key once
+per machine — it lands in Cantica's app-data dir (read at runtime; still never in
+the public build):
+
+```bash
+# macOS / Linux
+scripts/provision-esv.sh <ESV_API_KEY>
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -File scripts\provision-esv.ps1 -Key <ESV_API_KEY>
+```
+
+Copy the matching script to each machine and run it once (or set the key in the
+`ESV_API_KEY` environment variable). After that, whoever uses Cantica has the ESV
+with no in-app setup. Remove it later with `--remove` / `-Remove`.
+
 The Telugu text lives in [`resources/bible/telugu.json`](resources/bible/telugu.json)
 and is read by the **main process** on demand and sent to the renderer over IPC,
 so the ~12 MB file never enters the renderer bundle. Internally every
