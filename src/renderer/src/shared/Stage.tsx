@@ -178,7 +178,7 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
             </div>
           </div>
           {slide?.caption && (
-            <div className="stage-caption" style={{ color: theme.captionColor }}>
+            <div className="stage-caption" style={{ color: theme.captionColor, fontFamily: theme.fontFamily }}>
               {slide.caption}
             </div>
           )}

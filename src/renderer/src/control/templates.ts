@@ -73,7 +73,7 @@ function offerings(): ServiceItem {
     id: uid(),
     kind: 'text',
     label: 'Offerings',
-    lines: ['Offerings Kaanukalu'],
+    lines: ['Offerings కానుకలు'],
     qr: QR_DONATIONS
   }
   return { id: uid(), title: 'Offerings', kind: 'text', slides: [slide] }
@@ -88,7 +88,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
       welcomeVideo(),
       countdown(5, 'Service begins soon'),
       praiseWorship(), // opening worship
-      section('Sermon', 'text', 'Vaakyopadesam', 'Sermon'),
+      section('Sermon', 'text', 'వాక్యోపదేశం', 'Sermon'),
       offerings(),
       section('Announcements', 'text', 'ప్రకటనలు', 'Announcements'),
       section('Benediction', 'text', 'దీవెన', 'Go in peace'),

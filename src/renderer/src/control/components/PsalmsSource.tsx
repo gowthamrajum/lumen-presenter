@@ -98,8 +98,8 @@ export function PsalmsSource(): JSX.Element {
   return (
     <div className="source psalms-source">
       <div className="browse-row">
-        <label className="psalm-chapter">
-          <span className="psalm-chapter-pre">Psalm</span>
+        <label className="chapter-field">
+          <span className="chapter-field-pre">Psalm</span>
           <input
             className="search"
             type="text"
@@ -117,15 +117,15 @@ export function PsalmsSource(): JSX.Element {
           <option value="english">English only</option>
         </select>
       </div>
-      {chapterError && <div className="psalm-chapter-error">{chapterError}</div>}
+      {chapterError && <div className="chapter-error">{chapterError}</div>}
 
-      <div className="psalm-range">
+      <div className="verse-range">
         <label className="chk">
           <input type="checkbox" checked={rangeOn} onChange={(e) => setRangeOn(e.target.checked)} />
           Verse range
         </label>
         {rangeOn && (
-          <div className="psalm-range-inputs">
+          <div className="verse-range-inputs">
             <input
               type="number"
               min={1}

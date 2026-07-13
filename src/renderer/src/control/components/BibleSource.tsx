@@ -14,6 +14,11 @@ export function BibleSource(): JSX.Element {
   const [query, setQuery] = useState('')
   const [book, setBook] = useState('')
   const [chapter, setChapter] = useState(1)
+  const [chapterText, setChapterText] = useState('1')
+  const [chapterError, setChapterError] = useState('')
+  const [rangeOn, setRangeOn] = useState(false)
+  const [vStart, setVStart] = useState(1)
+  const [vEnd, setVEnd] = useState(10)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   // Load the selected translation (Telugu comes from the main process).
@@ -27,8 +32,13 @@ export function BibleSource(): JSX.Element {
         if (cancelled) return
         const b = new Bible(t)
         setBible(b)
-        setBook(b.books()[0]?.book ?? '')
-        setChapter(1)
+        const firstBook = b.books()[0]?.book ?? ''
+        const firstChapter = firstBook ? b.chaptersFor(firstBook)[0] ?? 1 : 1
+        setBook(firstBook)
+        setChapter(firstChapter)
+        setChapterText(String(firstChapter))
+        setChapterError('')
+        setRangeOn(false)
         setSelected(new Set())
         setLoading(false)
       })
@@ -42,6 +52,7 @@ export function BibleSource(): JSX.Element {
 
   const books = useMemo(() => bible?.books() ?? [], [bible])
   const chapters = useMemo(() => (bible && book ? bible.chaptersFor(book) : []), [bible, book])
+  const maxChapter = chapters.length ? chapters[chapters.length - 1] : 1
   const searchResults = useMemo(
     () => (bible && query.trim() ? bible.search(query) : null),
     [bible, query]
@@ -50,7 +61,40 @@ export function BibleSource(): JSX.Element {
     () => (bible && book ? bible.versesFor(book, chapter) : []),
     [bible, book, chapter]
   )
-  const verses = searchResults ?? browseVerses
+  const maxVerse = browseVerses.length ? browseVerses[browseVerses.length - 1].verse : 1
+  // In browse mode, an optional verse range narrows the chapter to vStart–vEnd.
+  const rangedVerses = useMemo(
+    () => (rangeOn && vStart <= vEnd ? browseVerses.filter((v) => v.verse >= vStart && v.verse <= vEnd) : browseVerses),
+    [browseVerses, rangeOn, vStart, vEnd]
+  )
+  const verses = searchResults ?? rangedVerses
+
+  // Free-form chapter box: whole number within the selected book's chapters.
+  const onChapterText = (raw: string): void => {
+    setChapterText(raw)
+    const t = raw.trim()
+    if (t === '') {
+      setChapterError('')
+      return
+    }
+    if (!/^\d+$/.test(t)) {
+      setChapterError('Enter a number')
+      return
+    }
+    const n = Number(t)
+    // Only chapters this book actually has (matches the old dropdown's set).
+    if (!chapters.includes(n)) {
+      setChapterError(`This book has ${maxChapter} chapter${maxChapter > 1 ? 's' : ''}`)
+      return
+    }
+    setChapterError('')
+    // Only drop the selection / stale range when the chapter really changes.
+    if (n !== chapter) {
+      setChapter(n)
+      setSelected(new Set())
+      setRangeOn(false)
+    }
+  }
 
   const refOf = (v: BibleVerse): string => bible?.reference(v) ?? `${v.book} ${v.chapter}:${v.verse}`
   const keyOf = refOf
@@ -109,37 +153,73 @@ export function BibleSource(): JSX.Element {
       />
 
       {!searchResults && (
-        <div className="browse-row">
-          <select
-            value={book}
-            onChange={(e) => {
-              setBook(e.target.value)
-              setChapter(1)
-              setSelected(new Set())
-            }}
-            disabled={loading}
-          >
-            {books.map((b) => (
-              <option key={b.book} value={b.book}>
-                {b.display}
-              </option>
-            ))}
-          </select>
-          <select
-            value={chapter}
-            onChange={(e) => {
-              setChapter(Number(e.target.value))
-              setSelected(new Set())
-            }}
-            disabled={loading}
-          >
-            {chapters.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
+        <>
+          <div className="browse-row">
+            <select
+              value={book}
+              onChange={(e) => {
+                const nb = e.target.value
+                const first = (bible ? bible.chaptersFor(nb)[0] : 1) ?? 1
+                setBook(nb)
+                setChapter(first)
+                setChapterText(String(first))
+                setChapterError('')
+                setRangeOn(false)
+                setSelected(new Set())
+              }}
+              disabled={loading}
+            >
+              {books.map((b) => (
+                <option key={b.book} value={b.book}>
+                  {b.display}
+                </option>
+              ))}
+            </select>
+            <label className="chapter-field">
+              <span className="chapter-field-pre">Ch.</span>
+              <input
+                className="search"
+                type="text"
+                inputMode="numeric"
+                value={chapterText}
+                onChange={(e) => onChapterText(e.target.value)}
+                placeholder={`1–${maxChapter}`}
+                aria-label="Chapter number"
+                title={`Type a chapter (1–${maxChapter})`}
+                disabled={loading}
+              />
+            </label>
+          </div>
+          {chapterError && <div className="chapter-error">{chapterError}</div>}
+          <div className="verse-range">
+            <label className="chk">
+              <input type="checkbox" checked={rangeOn} onChange={(e) => setRangeOn(e.target.checked)} disabled={loading} />
+              Verse range
+            </label>
+            {rangeOn && (
+              <div className="verse-range-inputs">
+                <input
+                  type="number"
+                  min={1}
+                  max={maxVerse}
+                  value={vStart}
+                  onChange={(e) => setVStart(Math.max(1, Number(e.target.value) || 1))}
+                  title="From verse"
+                />
+                <span>–</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={maxVerse}
+                  value={vEnd}
+                  onChange={(e) => setVEnd(Math.max(1, Number(e.target.value) || 1))}
+                  title="To verse"
+                />
+                <span className="verse-range-max">of {maxVerse}</span>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       <div className="verse-list">

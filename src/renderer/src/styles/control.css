@@ -1722,6 +1722,17 @@ select:focus {
   cursor: pointer;
   font-size: 13px;
 }
+/* Round the outer button corners to match the container — otherwise an opaque
+   active button bleeds a square corner past the parent's rounded overflow clip
+   (a Chromium anti-aliasing quirk). */
+.seg-btn:first-child {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+.seg-btn:last-child {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
 .seg-btn.active {
   background: var(--accent);
   color: #fff;
@@ -1954,39 +1965,40 @@ select:focus {
 }
 
 /* ---------- psalms source ---------- */
-.psalm-chapter {
+/* free-form chapter box + verse range — shared by the Bible and Psalms sources */
+.chapter-field {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 3;
   min-width: 0;
 }
-.psalm-chapter-pre {
+.chapter-field-pre {
   flex: 0 0 auto;
   color: var(--muted);
   font-weight: 700;
   font-size: 12.5px;
 }
-.psalm-chapter .search {
+.chapter-field .search {
   flex: 1;
   min-width: 0;
 }
-.psalm-chapter-error {
+.chapter-error {
   color: var(--danger-strong);
   font-size: 11.5px;
 }
-.psalm-range {
+.verse-range {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
-.psalm-range-inputs {
+.verse-range-inputs {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.psalm-range-inputs input[type='number'] {
+.verse-range-inputs input[type='number'] {
   width: 58px;
   background: var(--panel-2);
   border: 1px solid var(--line);
@@ -1994,6 +2006,10 @@ select:focus {
   border-radius: 8px;
   padding: 6px 8px;
   font-size: 12.5px;
+}
+.verse-range-max {
+  color: var(--muted);
+  font-size: 11.5px;
 }
 .psalm-text {
   white-space: pre-line;
