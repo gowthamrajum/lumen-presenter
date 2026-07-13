@@ -4,11 +4,19 @@ import {
   DEFAULT_THEME,
   type Background,
   type DisplayInfo,
+  type ItemKind,
   type LiveState,
   type MediaFile,
-  type OutputStatus,
+  type ScreenInfo,
+  type ScreenRole,
   type PptxImport,
+  type Service,
+  type ServiceItem,
+  type ServiceMeta,
   type SlideContent,
+  type Song,
+  type SongMeta,
+  type RemoteSong,
   type ThemeStyle
 } from '@shared/types'
 
@@ -17,8 +25,12 @@ export function uid(): string {
 }
 
 interface AppState {
-  deck: SlideContent[]
+  // the current service (working setlist)
+  serviceId: string | null
+  serviceName: string
+  items: ServiceItem[]
   liveId: string | null
+
   theme: ThemeStyle
   background: Background
   blackout: boolean
@@ -26,10 +38,11 @@ interface AppState {
   showLogo: boolean
 
   media: MediaFile[]
+  savedServices: ServiceMeta[]
+  songs: SongMeta[]
 
-  outputStatus: OutputStatus
+  screens: ScreenInfo[]
   displays: DisplayInfo[]
-  selectedDisplayId: number | null
 
   // lifecycle
   init: () => Promise<void>
@@ -37,14 +50,34 @@ interface AppState {
 
   // media library
   importMedia: () => Promise<void>
-  /** Open a file dialog and parse .pptx files into slide payloads. */
   importPptx: () => Promise<PptxImport[]>
 
-  // deck
-  addSlides: (slides: SlideContent[], goLiveFirst?: boolean) => void
+  // service items
+  addItem: (item: { title: string; kind: ItemKind; slides: SlideContent[] }, goLiveFirst?: boolean) => void
+  removeItem: (id: string) => void
   removeSlide: (id: string) => void
-  clearDeck: () => void
-  setSlideBackground: (id: string, bg: Background | undefined) => void
+  moveItem: (id: string, dir: -1 | 1) => void
+  duplicateItem: (id: string) => void
+  clearService: () => void
+  renameService: (name: string) => void
+
+  // song library (persisted)
+  refreshSongs: () => Promise<void>
+  saveSong: (song: Song) => Promise<void>
+  deleteSong: (id: string) => Promise<void>
+
+  // remote song catalog (backend)
+  remoteSongs: RemoteSong[]
+  remoteState: 'idle' | 'loading' | 'ready' | 'error'
+  remoteError: string
+  loadRemoteSongs: (force?: boolean) => Promise<void>
+
+  // saved services (persisted)
+  refreshServices: () => Promise<void>
+  saveService: () => Promise<void>
+  openService: (id: string) => Promise<void>
+  deleteService: (id: string) => Promise<void>
+  newService: () => void
 
   // live control
   goLive: (id: string | null) => void
@@ -57,16 +90,23 @@ interface AppState {
   // look
   setBackground: (bg: Background) => void
   setTheme: (patch: Partial<ThemeStyle>) => void
+  applyTheme: (patch: Partial<ThemeStyle>, background?: Background) => void
 
-  // output window
-  openOutput: () => Promise<void>
-  closeOutput: () => Promise<void>
-  setSelectedDisplay: (id: number | null) => void
+  // output screens (per display)
+  setScreen: (displayId: number, role: ScreenRole) => Promise<void>
+}
+
+/** Flattened slide list across all items, in program order. */
+export function selectSlides(s: AppState): SlideContent[] {
+  return s.items.flatMap((it) => it.slides)
 }
 
 export function selectLive(s: AppState): LiveState {
+  const slides = selectSlides(s)
+  const i = slides.findIndex((d) => d.id === s.liveId)
   return {
-    slide: s.deck.find((d) => d.id === s.liveId) ?? null,
+    slide: i >= 0 ? slides[i] : null,
+    next: i >= 0 ? slides[i + 1] ?? null : null,
     background: s.background,
     blackout: s.blackout,
     clearText: s.clearText,
@@ -79,10 +119,15 @@ export const useStore = create<AppState>((set, get) => {
   const push = (): void => {
     void window.lumen.setLive(selectLive(get()))
   }
+  // Register IPC subscriptions exactly once (StrictMode/HMR can call init twice).
+  let subscribed = false
 
   return {
-    deck: [],
+    serviceId: null,
+    serviceName: 'Untitled Service',
+    items: [],
     liveId: null,
+
     theme: DEFAULT_THEME,
     background: DEFAULT_BACKGROUND,
     blackout: false,
@@ -90,24 +135,29 @@ export const useStore = create<AppState>((set, get) => {
     showLogo: false,
 
     media: [],
+    savedServices: [],
+    songs: [],
 
-    outputStatus: { open: false, displayId: null },
+    remoteSongs: [],
+    remoteState: 'idle',
+    remoteError: '',
+
+    screens: [],
     displays: [],
-    selectedDisplayId: null,
 
     init: async () => {
-      const [displays, status] = await Promise.all([
+      const [displays, screens, services, songs] = await Promise.all([
         window.lumen.listDisplays(),
-        window.lumen.outputStatus()
+        window.lumen.screensStatus(),
+        window.lumen.listServices(),
+        window.lumen.listSongs()
       ])
-      const preferExternal = displays.find((d) => !d.primary) ?? displays[0]
-      set({
-        displays,
-        outputStatus: status,
-        selectedDisplayId: status.displayId ?? preferExternal?.id ?? null
-      })
-      window.lumen.onOutputChanged((outputStatus) => set({ outputStatus }))
-      window.lumen.onDisplaysChanged((d) => set({ displays: d }))
+      set({ displays, screens, savedServices: services, songs })
+      if (!subscribed) {
+        subscribed = true
+        window.lumen.onScreensChanged((s) => set({ screens: s }))
+        window.lumen.onDisplaysChanged((d) => set({ displays: d }))
+      }
       push()
     },
 
@@ -127,49 +177,182 @@ export const useStore = create<AppState>((set, get) => {
 
     importPptx: () => window.lumen.importPptx(),
 
-    addSlides: (slides, goLiveFirst = false) => {
-      set((s) => ({ deck: [...s.deck, ...slides] }))
-      if (goLiveFirst && slides[0]) get().goLive(slides[0].id)
+    addItem: ({ title, kind, slides }, goLiveFirst = false) => {
+      if (!slides.length) return
+      const item: ServiceItem = { id: uid(), title, kind, slides }
+      set((s) => ({ items: [...s.items, item] }))
+      if (goLiveFirst) get().goLive(slides[0].id)
+    },
+
+    removeItem: (id) => {
+      set((s) => {
+        const item = s.items.find((it) => it.id === id)
+        const removedLive = item?.slides.some((sl) => sl.id === s.liveId)
+        return {
+          items: s.items.filter((it) => it.id !== id),
+          liveId: removedLive ? null : s.liveId
+        }
+      })
+      push()
     },
 
     removeSlide: (id) => {
       set((s) => ({
-        deck: s.deck.filter((d) => d.id !== id),
+        items: s.items
+          .map((it) => ({ ...it, slides: it.slides.filter((sl) => sl.id !== id) }))
+          .filter((it) => it.slides.length > 0),
         liveId: s.liveId === id ? null : s.liveId
       }))
-      if (get().liveId === null) push()
-    },
-
-    clearDeck: () => {
-      set({ deck: [], liveId: null })
       push()
     },
 
-    setSlideBackground: (id, bg) => {
-      set((s) => ({
-        deck: s.deck.map((d) => (d.id === id ? { ...d, background: bg } : d))
-      }))
-      if (get().liveId === id) push()
+    moveItem: (id, dir) => {
+      set((s) => {
+        const i = s.items.findIndex((it) => it.id === id)
+        const j = i + dir
+        if (i < 0 || j < 0 || j >= s.items.length) return {}
+        const items = s.items.slice()
+        ;[items[i], items[j]] = [items[j], items[i]]
+        return { items }
+      })
     },
 
+    duplicateItem: (id) => {
+      set((s) => {
+        const i = s.items.findIndex((it) => it.id === id)
+        if (i < 0) return {}
+        const src = s.items[i]
+        const copy: ServiceItem = {
+          id: uid(),
+          title: `${src.title} (copy)`,
+          kind: src.kind,
+          slides: src.slides.map((sl) => ({ ...sl, id: uid() }))
+        }
+        const items = s.items.slice()
+        items.splice(i + 1, 0, copy)
+        return { items }
+      })
+    },
+
+    clearService: () => {
+      set({ items: [], liveId: null })
+      push()
+    },
+
+    renameService: (name) => set({ serviceName: name }),
+
+    // ---- song library ----
+    refreshSongs: async () => {
+      set({ songs: await window.lumen.listSongs() })
+    },
+    saveSong: async (song) => {
+      set({ songs: await window.lumen.saveSong(song) })
+    },
+    deleteSong: async (id) => {
+      set({ songs: await window.lumen.deleteSong(id) })
+    },
+
+    loadRemoteSongs: async (force = false) => {
+      const s = get()
+      if (!force && (s.remoteState === 'loading' || s.remoteState === 'ready')) return
+      set({ remoteState: 'loading', remoteError: '' })
+      try {
+        const res = await window.lumen.remoteSongs()
+        if (Array.isArray(res)) {
+          set({ remoteSongs: res, remoteState: 'ready' })
+        } else {
+          set({ remoteState: 'error', remoteError: res?.error ?? 'Failed to load catalog' })
+        }
+      } catch (e) {
+        set({ remoteState: 'error', remoteError: e instanceof Error ? e.message : 'Failed to load catalog' })
+      }
+    },
+
+    // ---- saved services ----
+    refreshServices: async () => {
+      set({ savedServices: await window.lumen.listServices() })
+    },
+
+    saveService: async () => {
+      const s = get()
+      const id = s.serviceId ?? uid()
+      const service: Service = {
+        id,
+        name: s.serviceName.trim() || 'Untitled Service',
+        savedAt: new Date().toISOString(),
+        items: s.items,
+        background: s.background,
+        theme: s.theme
+      }
+      const list = await window.lumen.saveService(service)
+      set({ serviceId: id, savedServices: list })
+    },
+
+    openService: async (id) => {
+      const service = await window.lumen.loadService(id)
+      if (!service) return
+      // Re-arm countdown slides to a fresh target so a reopened service doesn't
+      // show an expired 0:00.
+      const now = Date.now()
+      const items = (service.items ?? []).map((it) => ({
+        ...it,
+        slides: it.slides.map((sl) =>
+          sl.kind === 'countdown' && sl.countdownMinutes != null
+            ? { ...sl, countdownTo: now + sl.countdownMinutes * 60_000 }
+            : sl
+        )
+      }))
+      set({
+        serviceId: service.id,
+        serviceName: service.name,
+        items,
+        liveId: null,
+        background: service.background ?? get().background,
+        theme: service.theme ?? get().theme,
+        blackout: false,
+        clearText: false,
+        showLogo: false
+      })
+      push()
+    },
+
+    deleteService: async (id) => {
+      const list = await window.lumen.deleteService(id)
+      set((s) => ({
+        savedServices: list,
+        // if we deleted the service we're editing, detach it (keep the content)
+        serviceId: s.serviceId === id ? null : s.serviceId
+      }))
+    },
+
+    newService: () => {
+      set({ serviceId: null, serviceName: 'Untitled Service', items: [], liveId: null })
+      push()
+    },
+
+    // ---- live control (over the flattened slide list) ----
     goLive: (id) => {
       set({ liveId: id, clearText: false, blackout: false, showLogo: false })
       push()
     },
 
     goNext: () => {
-      const { deck, liveId } = get()
-      if (deck.length === 0) return
-      const i = deck.findIndex((d) => d.id === liveId)
-      const next = deck[Math.min(i + 1, deck.length - 1)] ?? deck[0]
+      const slides = selectSlides(get())
+      if (slides.length === 0) return
+      const i = slides.findIndex((d) => d.id === get().liveId)
+      const next = slides[Math.min(i + 1, slides.length - 1)] ?? slides[0]
+      // Already at the last slide: don't re-fire goLive (which would reset an
+      // intentional blackout/clear/logo and flash content on the audience).
+      if (next.id === get().liveId) return
       get().goLive(next.id)
     },
 
     goPrev: () => {
-      const { deck, liveId } = get()
-      if (deck.length === 0) return
-      const i = deck.findIndex((d) => d.id === liveId)
-      const prev = deck[Math.max(i - 1, 0)] ?? deck[0]
+      const slides = selectSlides(get())
+      if (slides.length === 0) return
+      const i = slides.findIndex((d) => d.id === get().liveId)
+      const prev = slides[Math.max(i - 1, 0)] ?? slides[0]
+      if (prev.id === get().liveId) return
       get().goLive(prev.id)
     },
 
@@ -194,16 +377,18 @@ export const useStore = create<AppState>((set, get) => {
       set((s) => ({ theme: { ...s.theme, ...patch } }))
       push()
     },
-
-    openOutput: async () => {
-      const status = await window.lumen.openOutput(get().selectedDisplayId)
-      set({ outputStatus: status })
+    applyTheme: (patch, background) => {
+      set((s) => ({
+        theme: { ...s.theme, ...patch },
+        ...(background ? { background } : {})
+      }))
       push()
     },
-    closeOutput: async () => {
-      const status = await window.lumen.closeOutput()
-      set({ outputStatus: status })
-    },
-    setSelectedDisplay: (id) => set({ selectedDisplayId: id })
+
+    setScreen: async (displayId, role) => {
+      const screens = await window.lumen.setScreen(displayId, role)
+      set({ screens })
+      push()
+    }
   }
 })

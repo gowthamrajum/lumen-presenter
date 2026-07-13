@@ -43,7 +43,7 @@ export function SlideThumb({
         ×
       </button>
       <div className="thumb-stage">
-        <Stage state={preview} />
+        <Stage state={preview} preview />
       </div>
       <div className="thumb-label">
         {live && <span className="live-tag">LIVE</span>}

@@ -1,10 +1,67 @@
-import { type CSSProperties } from 'react'
-import type { Background, LiveState } from '@shared/types'
+import { useEffect, useState, type CSSProperties } from 'react'
+import type { Background, LiveState, SlideContent, ThemeStyle } from '@shared/types'
 import { useFitText } from './useFitText'
 
+function pad(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`
+}
+
+/** Self-ticking countdown / clock rendered locally in each window. In preview
+ *  (thumbnail) mode it renders a static snapshot — no interval. */
+function TimerDisplay({
+  slide,
+  theme,
+  preview
+}: {
+  slide: SlideContent
+  theme: ThemeStyle
+  preview?: boolean
+}): JSX.Element {
+  const [now, setNow] = useState<number>(() => Date.now())
+  useEffect(() => {
+    if (preview) return // thumbnails don't need to tick
+    // clock only changes each minute; countdown needs per-second updates
+    const id = setInterval(() => setNow(Date.now()), slide.kind === 'clock' ? 1000 : 250)
+    return () => clearInterval(id)
+  }, [preview, slide.kind])
+
+  let text: string
+  if (slide.kind === 'clock') {
+    text = new Date(now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  } else {
+    const remain = Math.max(0, Math.round(((slide.countdownTo ?? now) - now) / 1000))
+    const h = Math.floor(remain / 3600)
+    const m = Math.floor((remain % 3600) / 60)
+    const s = remain % 60
+    text = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`
+  }
+
+  return (
+    <div className="stage-timerwrap">
+      {slide.message && (
+        <div className="stage-timer-msg" style={{ color: theme.captionColor }}>
+          {slide.message}
+        </div>
+      )}
+      <div
+        className="stage-timer"
+        style={{
+          color: theme.textColor,
+          fontFamily: theme.fontFamily,
+          textShadow: theme.shadow ? '0 2px 18px rgba(0,0,0,0.65)' : 'none'
+        }}
+      >
+        {text}
+      </div>
+    </div>
+  )
+}
+
 function BackgroundLayer({ bg }: { bg: Background }): JSX.Element {
-  if (bg.type === 'color') {
-    return <div className="stage-bg" style={{ background: bg.value }} />
+  if (bg.type === 'color' || bg.type === 'gradient') {
+    // `value` is a CSS color or any CSS gradient string; `anim` adds motion.
+    const cls = `stage-bg${bg.anim ? ` anim-${bg.anim}` : ''}`
+    return <div className={cls} style={{ background: bg.value }} />
   }
   if (bg.type === 'video') {
     return (
@@ -33,14 +90,17 @@ function BackgroundLayer({ bg }: { bg: Background }): JSX.Element {
  * Pure presentational render of a LiveState. Fills its parent; the parent
  * decides the size (fullscreen on the output window, small on previews).
  */
-export function Stage({ state }: { state: LiveState }): JSX.Element {
+export function Stage({ state, preview }: { state: LiveState; preview?: boolean }): JSX.Element {
   const { slide, theme } = state
   const bg = slide?.background ?? state.background
   const lines = slide?.lines ?? []
   // Extra full-bleed image layers (e.g. a transparent lyrics PNG from an
   // imported PowerPoint) drawn over the background; hidden by blackout.
   const overlays = state.blackout ? [] : slide?.overlays ?? []
-  const showText = !state.blackout && !state.clearText && !state.showLogo && lines.length > 0
+  const isTimer = slide?.kind === 'countdown' || slide?.kind === 'clock'
+  const visible = !state.blackout && !state.clearText && !state.showLogo
+  const showText = visible && !isTimer && lines.length > 0
+  const showTimer = visible && isTimer && !!slide
 
   const textStyle: CSSProperties = {
     color: theme.textColor,
@@ -48,7 +108,7 @@ export function Stage({ state }: { state: LiveState }): JSX.Element {
     textAlign: theme.textAlign,
     textTransform: theme.uppercase ? 'uppercase' : 'none',
     textShadow: theme.shadow ? '0 2px 18px rgba(0,0,0,0.65)' : 'none',
-    lineHeight: 1.15,
+    lineHeight: 1.22,
     fontWeight: 700
   }
 
@@ -75,6 +135,8 @@ export function Stage({ state }: { state: LiveState }): JSX.Element {
           <span className="logo-word">LUMEN</span>
         </div>
       )}
+
+      {showTimer && slide && <TimerDisplay slide={slide} theme={theme} preview={preview} />}
 
       {showText && (
         <div className="stage-textwrap">

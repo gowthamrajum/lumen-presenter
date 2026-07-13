@@ -15,16 +15,21 @@ export interface ThemeStyle {
   scrim: number
 }
 
-export type BackgroundType = 'color' | 'image' | 'video'
+export type BackgroundType = 'color' | 'gradient' | 'image' | 'video'
 
 export interface Background {
   type: BackgroundType
-  /** hex color for 'color'; a lumen-media:// url for image/video */
+  /**
+   * hex color for 'color'; any CSS background/gradient string for 'gradient';
+   * a lumen-media:// url for image/video.
+   */
   value: string
   fit?: 'cover' | 'contain'
+  /** optional motion for color/gradient backgrounds (CSS anim id, e.g. 'aurora') */
+  anim?: string
 }
 
-export type SlideKind = 'text' | 'scripture' | 'media' | 'blank'
+export type SlideKind = 'text' | 'scripture' | 'media' | 'blank' | 'countdown' | 'clock'
 
 export interface SlideContent {
   id: string
@@ -33,6 +38,13 @@ export interface SlideContent {
   label?: string
   /** body lines shown large on the audience screen */
   lines: string[]
+  /** for kind 'countdown': epoch ms the output counts down to (ticks locally) */
+  countdownTo?: number
+  /** for kind 'countdown': the duration in minutes, so a reopened service can
+   *  re-arm a fresh target instead of showing an expired 0:00 */
+  countdownMinutes?: number
+  /** optional caption shown above a countdown/clock */
+  message?: string
   /** small caption rendered at the bottom of the audience screen */
   caption?: string
   /** optional per-slide background overriding the global background */
@@ -47,6 +59,8 @@ export interface SlideContent {
 
 export interface LiveState {
   slide: SlideContent | null
+  /** the following slide, for the stage-display confidence monitor */
+  next?: SlideContent | null
   /** global/stage background, used when a slide has no background of its own */
   background: Background
   blackout: boolean
@@ -67,6 +81,110 @@ export interface DisplayInfo {
 export interface OutputStatus {
   open: boolean
   displayId: number | null
+}
+
+/** A screen's assigned output layout. Each connected display can host one. */
+export type ScreenRole = 'off' | 'audience' | 'stage'
+
+/** Status of a display currently showing output. */
+export interface ScreenInfo {
+  displayId: number
+  role: ScreenRole
+  /** true when it opened as a movable window (shares the operator's screen) */
+  windowed: boolean
+}
+
+/** The kind of a service item, used for its badge/icon in the program view. */
+export type ItemKind =
+  | 'scripture'
+  | 'song'
+  | 'text'
+  | 'media'
+  | 'video'
+  | 'ppt'
+  | 'blank'
+  | 'countdown'
+
+/** A titled group of slides within a service (e.g. one imported PowerPoint,
+ *  a video, a scripture reading, or a song). */
+export interface ServiceItem {
+  id: string
+  title: string
+  kind: ItemKind
+  slides: SlideContent[]
+}
+
+/** A worship service / setlist: an ordered collection of items plus the look
+ *  it was saved with. Persisted to disk so it survives restarts. */
+export interface Service {
+  id: string
+  name: string
+  savedAt?: string
+  items: ServiceItem[]
+  background?: Background
+  theme?: ThemeStyle
+}
+
+/** Lightweight service listing (no slide payloads). */
+export interface ServiceMeta {
+  id: string
+  name: string
+  savedAt?: string
+  itemCount: number
+}
+
+// ---- songs ----
+export type SongSectionKind =
+  | 'verse'
+  | 'prechorus'
+  | 'chorus'
+  | 'bridge'
+  | 'tag'
+  | 'intro'
+  | 'ending'
+  | 'other'
+
+export interface SongSection {
+  id: string
+  kind: SongSectionKind
+  /** display label, e.g. "Verse 1", "Chorus" */
+  label: string
+  /** lyric lines for this section (split into slides by linesPerSlide) */
+  lines: string[]
+}
+
+export interface Song {
+  id: string
+  title: string
+  author?: string
+  ccli?: string
+  sections: SongSection[]
+  /** ordered section ids defining play order; empty/absent = sections order */
+  arrangement?: string[]
+  /** lyric lines per slide (default 2) */
+  linesPerSlide?: number
+  savedAt?: string
+}
+
+/** Lightweight song listing (no lyric payloads). */
+export interface SongMeta {
+  id: string
+  title: string
+  author?: string
+  savedAt?: string
+}
+
+/** Song shape returned by the remote songs backend (Telugu catalog). */
+export interface RemoteStanza {
+  stanza_number?: number
+  telugu?: string[]
+  english?: string[]
+}
+export interface RemoteSong {
+  song_id: number
+  song_name: string
+  main_stanza?: { telugu?: string[]; english?: string[] }
+  stanzas?: RemoteStanza[]
 }
 
 export interface MediaFile {
@@ -106,7 +224,7 @@ export interface PptxImport {
 }
 
 export const DEFAULT_THEME: ThemeStyle = {
-  fontFamily: `'Inter', 'Helvetica Neue', Arial, sans-serif`,
+  fontFamily: `'Anek Telugu', 'Inter', 'Helvetica Neue', Arial, sans-serif`,
   textColor: '#ffffff',
   captionColor: '#ffd27f',
   fontScale: 1,
@@ -117,8 +235,8 @@ export const DEFAULT_THEME: ThemeStyle = {
 }
 
 export const DEFAULT_BACKGROUND: Background = {
-  type: 'color',
-  value: '#0b1020',
+  type: 'gradient',
+  value: 'radial-gradient(circle at 50% 28%, #3a2b6b 0%, #1c1440 55%, #0a0720 100%)',
   fit: 'cover'
 }
 

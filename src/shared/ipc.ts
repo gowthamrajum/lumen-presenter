@@ -2,16 +2,27 @@
 export const IPC = {
   // control -> main (invoke)
   displaysList: 'displays:list',
-  outputOpen: 'output:open',
-  outputClose: 'output:close',
-  outputStatus: 'output:status',
+  screenSet: 'screen:set',
+  screensStatus: 'screens:status',
   liveGet: 'live:get',
   liveSet: 'live:set',
   pickMedia: 'media:pick',
   pickPptx: 'pptx:pick',
+  bibleLoad: 'bible:load',
+  servicesList: 'services:list',
+  serviceSave: 'services:save',
+  serviceLoad: 'services:load',
+  serviceDelete: 'services:delete',
+  songsList: 'songs:list',
+  songSave: 'songs:save',
+  songLoad: 'songs:load',
+  songDelete: 'songs:delete',
+  songsRemote: 'songs:remote',
 
   // main -> renderers (send)
   liveState: 'live:state',
-  outputChanged: 'output:changed',
-  displaysChanged: 'displays:changed'
+  screensChanged: 'screens:changed',
+  displaysChanged: 'displays:changed',
+  // output window -> control (forwarded key presses)
+  outputKey: 'output:key'
 } as const

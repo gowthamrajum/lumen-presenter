@@ -21,6 +21,64 @@
   display: block;
 }
 
+/* Animated (motion) gradient backgrounds — used for the Welcome scene and any
+   "animated" background preset. The gradient slowly flows and a soft glow
+   drifts across for a subtle looping "video" feel. */
+.anim-aurora,
+.anim-flow {
+  background-size: 300% 300% !important;
+  animation: bgFlow 24s ease-in-out infinite;
+}
+.anim-flow {
+  animation-duration: 30s;
+}
+.anim-aurora::after,
+.anim-flow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(45% 45% at 32% 30%, rgba(124, 91, 255, 0.28), transparent 70%);
+  animation: glowDrift 18s ease-in-out infinite;
+}
+.anim-flow::after {
+  background: radial-gradient(45% 45% at 68% 32%, rgba(255, 180, 120, 0.22), transparent 70%);
+  animation-duration: 22s;
+}
+@keyframes bgFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+@keyframes glowDrift {
+  0% {
+    transform: translate(-7%, -5%);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate(9%, 6%);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-7%, -5%);
+    opacity: 0.75;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-aurora,
+  .anim-flow,
+  .anim-aurora::after,
+  .anim-flow::after {
+    animation: none;
+  }
+}
+
 .stage-scrim {
   position: absolute;
   inset: 0;
@@ -62,7 +120,9 @@
 
 .stage-text {
   display: inline-block;
-  max-width: 100%;
+  /* wrap within <100% so glyph ink has left/right breathing room and never
+     clips against the fit box edge (which is overflow:hidden). */
+  max-width: 92%;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -75,6 +135,30 @@
   font-weight: 600;
   padding-top: 1.5%;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.stage-timerwrap {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4% 6%;
+}
+.stage-timer-msg {
+  font-size: 5cqmin;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.5cqmin;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+.stage-timer {
+  font-size: 26cqmin;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .stage-logo {
