@@ -712,6 +712,16 @@ select,
   color: var(--muted);
   font-size: 12.5px;
 }
+.media-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: -6px 0 14px;
+}
+.media-url-row .search {
+  flex: 1;
+  min-width: 0;
+}
 .slides-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));

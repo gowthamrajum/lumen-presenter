@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { SlideThumb } from './SlideThumb'
 import { Icon } from '../../shared/Icon'
@@ -9,9 +10,22 @@ export function SlidesPanel(): JSX.Element {
   const selectedItemId = useStore((s) => s.selectedItemId)
   const liveId = useStore((s) => s.liveId)
   const attachMediaToItem = useStore((s) => s.attachMediaToItem)
+  const attachMediaUrlToItem = useStore((s) => s.attachMediaUrlToItem)
+
+  const [urlOpen, setUrlOpen] = useState(false)
+  const [urlVal, setUrlVal] = useState('')
 
   const item = items.find((i) => i.id === selectedItemId) ?? null
   const isMediaItem = item?.kind === 'video' || item?.kind === 'media'
+
+  const submitUrl = (): void => {
+    if (!item) return
+    const u = urlVal.trim()
+    if (!/^https?:\/\//i.test(u)) return
+    attachMediaUrlToItem(item.id, u)
+    setUrlVal('')
+    setUrlOpen(false)
+  }
 
   if (!item) {
     return (
@@ -38,15 +52,39 @@ export function SlidesPanel(): JSX.Element {
           {item.slides.length} slide{item.slides.length === 1 ? '' : 's'}
         </span>
         {isMediaItem && (
-          <button
-            className="btn tiny with-ico slides-add-media"
-            onClick={() => void attachMediaToItem(item.id)}
-            title="Choose an image or video for this item"
-          >
-            <Icon name="image" /> Add media
-          </button>
+          <>
+            <button
+              className="btn tiny with-ico slides-add-media"
+              onClick={() => void attachMediaToItem(item.id)}
+              title="Choose an image or video file for this item"
+            >
+              <Icon name="image" /> Add media
+            </button>
+            <button
+              className="btn tiny with-ico"
+              onClick={() => setUrlOpen((v) => !v)}
+              title="Attach media from a web link — this also plays on the web broadcast (a local file can't)"
+            >
+              <Icon name="link" /> Add URL
+            </button>
+          </>
         )}
       </div>
+      {isMediaItem && urlOpen && (
+        <div className="media-url-row">
+          <input
+            className="search"
+            placeholder="https://…/welcome.mp4"
+            value={urlVal}
+            onChange={(e) => setUrlVal(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submitUrl()}
+            autoFocus
+          />
+          <button className="btn tiny" onClick={submitUrl} disabled={!/^https?:\/\//i.test(urlVal.trim())}>
+            Set
+          </button>
+        </div>
+      )}
       <div className="slides-grid">
         {item.slides.map((sl, i) => (
           <SlideThumb key={sl.id} slide={sl} index={i} live={sl.id === liveId} />

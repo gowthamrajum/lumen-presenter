@@ -129,6 +129,9 @@ interface AppState {
   setItemBroadcastAll: (id: string, on: boolean) => void
   /** pick a media file and set it as the item's (first) slide background */
   attachMediaToItem: (itemId: string) => Promise<void>
+  /** set a web-URL image/video as the item's (first) slide background — reaches
+   *  the web broadcast too, unlike a local file */
+  attachMediaUrlToItem: (itemId: string, url: string) => void
   selectItem: (id: string | null) => void
   clearService: () => void
   renameService: (name: string) => void
@@ -386,6 +389,29 @@ export const useStore = create<AppState>((set, get) => {
         })
       }))
       push() // the affected slide may be live
+    },
+
+    attachMediaUrlToItem: (itemId, url) => {
+      const u = url.trim()
+      if (!/^https?:\/\//i.test(u)) return
+      // Unlike a local file, a web URL also reaches the web broadcast (the relay
+      // can load it); the overlay renders http(s) image/video backgrounds.
+      const isVideo = /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(u)
+      const bg: Background = { type: isVideo ? 'video' : 'image', value: u, fit: 'cover' }
+      const name = u.split('/').pop()?.split(/[?#]/)[0] || 'Media link'
+      set((s) => ({
+        items: s.items.map((it) => {
+          if (it.id !== itemId) return it
+          const kind: ItemKind = isVideo ? 'video' : 'media'
+          const slides: SlideContent[] = it.slides.length
+            ? it.slides.map((sl, i) =>
+                i === 0 ? { ...sl, kind: 'media', background: bg, lines: [], label: name } : sl
+              )
+            : [{ id: uid(), kind: 'media', label: name, lines: [], background: bg }]
+          return { ...it, kind, slides }
+        })
+      }))
+      push()
     },
 
     selectItem: (id) => set({ selectedItemId: id }),
