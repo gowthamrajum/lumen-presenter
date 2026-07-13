@@ -1,6 +1,6 @@
 import { TopBar } from './components/TopBar'
 import { LibraryPanel } from './components/LibraryPanel'
-import { DeckGrid } from './components/DeckGrid'
+import { ServiceView } from './components/ServiceView'
 import { LivePanel } from './components/LivePanel'
 
 export function App(): JSX.Element {
@@ -12,7 +12,7 @@ export function App(): JSX.Element {
           <LibraryPanel />
         </aside>
         <main className="col-deck">
-          <DeckGrid />
+          <ServiceView />
         </main>
         <aside className="col-live">
           <LivePanel />
