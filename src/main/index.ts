@@ -1,4 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, screen, dialog, protocol, net } from 'electron'
+import { initAutoUpdate } from './autoUpdate'
 import { join } from 'path'
 import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises'
 import { pathToFileURL } from 'url'
@@ -514,6 +515,7 @@ app.whenReady().then(() => {
   registerIpc()
   void initBroadcast((s) => controlWindow?.webContents.send(IPC.broadcastStatus, s))
   createControlWindow()
+  initAutoUpdate()
 
   const onDisplaysChanged = (): void => {
     pruneOutputs()

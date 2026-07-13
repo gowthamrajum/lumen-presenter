@@ -22,6 +22,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
+    "electron-updater": "^6.3.9",
     "fflate": "^0.8.3",
     "zustand": "^4.5.5"
   },
@@ -63,14 +64,21 @@
     },
     "win": {
       "target": [
-        {
-          "target": "zip",
-          "arch": [
-            "x64"
-          ]
-        }
+        "nsis"
       ]
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "gowthamrajum",
+        "repo": "lumen-presenter"
+      }
+    ],
     "linux": {
       "target": [
         "AppImage"

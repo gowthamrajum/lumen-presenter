@@ -1,0 +1,46 @@
+name: Release
+
+# Cut a release by pushing a tag: `git tag v0.2.0 && git push origin v0.2.0`
+# (or run manually from the Actions tab). Builds run on GitHub's own macOS and
+# Windows runners — $0 for public repos, and Windows gets a real NSIS installer
+# with no Wine needed. electron-builder uploads the artifacts to a GitHub Release
+# (draft by default; publish it with one click). GitHub Releases doubles as the
+# free auto-update feed (electron-updater).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write # create/upload the GitHub Release
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: '--mac' # dmg x64 + arm64 (unsigned — see RELEASING.md)
+          - os: windows-latest
+            target: '--win' # NSIS installer, native (no Wine)
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build & publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No Apple cert in a $0 setup — build unsigned instead of failing on a
+          # missing identity. (Windows signing is opt-in via SignPath, see docs.)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: |
+          npm run build
+          npx electron-builder ${{ matrix.target }} --publish always
