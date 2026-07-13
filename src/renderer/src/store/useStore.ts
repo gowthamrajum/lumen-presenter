@@ -21,10 +21,29 @@ import {
   type ThemeStyle
 } from '@shared/types'
 import { SERVICE_TEMPLATES } from '../control/templates'
+import { loadSessionCache, saveSessionCache } from './sessionCache'
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10)
 }
+
+/** Re-arm countdown slides to a fresh target (relative to `now`) so a restored
+ *  or reopened service doesn't show an expired 0:00; also migrates legacy
+ *  broadcast flags. Shared by openService and the session-cache restore. */
+function reArmItems(items: ServiceItem[], now: number): ServiceItem[] {
+  return items.map((it) => ({
+    ...normalizeBroadcast(it),
+    slides: it.slides.map((sl) =>
+      sl.kind === 'countdown' && sl.countdownMinutes != null
+        ? { ...sl, countdownTo: now + sl.countdownMinutes * 60_000 }
+        : sl
+    )
+  }))
+}
+
+/** Flipped true once init() has restored any cache, so the auto-save
+ *  subscription doesn't fire during startup (or in a non-control window). */
+let cacheReady = false
 
 interface AppState {
   // the current service (working setlist)
@@ -210,6 +229,22 @@ export const useStore = create<AppState>((set, get) => {
         window.lumen.onScreensChanged((s) => set({ screens: s }))
         window.lumen.onDisplaysChanged((d) => set({ displays: d }))
       }
+      // Restore the last working session from cache (unless expired) so an
+      // in-progress setlist survives a restart without an explicit Save.
+      const cached = loadSessionCache()
+      if (cached && Array.isArray(cached.items) && cached.items.length) {
+        const items = reArmItems(cached.items, Date.now())
+        set({
+          serviceId: cached.serviceId ?? null,
+          serviceName: cached.serviceName || 'Untitled Service',
+          items,
+          selectedItemId: items[0]?.id ?? null,
+          liveId: null,
+          background: cached.background ?? get().background,
+          theme: cached.theme ?? get().theme
+        })
+      }
+      cacheReady = true
       push()
     },
 
@@ -440,15 +475,7 @@ export const useStore = create<AppState>((set, get) => {
       if (!service) return
       // Re-arm countdown slides to a fresh target so a reopened service doesn't
       // show an expired 0:00.
-      const now = Date.now()
-      const items = (service.items ?? []).map((it) => ({
-        ...normalizeBroadcast(it), // migrate legacy single no-broadcast flag
-        slides: it.slides.map((sl) =>
-          sl.kind === 'countdown' && sl.countdownMinutes != null
-            ? { ...sl, countdownTo: now + sl.countdownMinutes * 60_000 }
-            : sl
-        )
-      }))
+      const items = reArmItems(service.items ?? [], Date.now())
       set({
         serviceId: service.id,
         serviceName: service.name,
@@ -559,3 +586,39 @@ export const useStore = create<AppState>((set, get) => {
     }
   }
 })
+
+// Debounced auto-cache of the working session (setlist + look). Restored by
+// init() on the next launch; see sessionCache.ts for the 2-week TTL. Only the
+// control window imports this store, and cacheReady gates out startup writes,
+// so an empty state never clobbers a good cache.
+{
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let last = ''
+  useStore.subscribe((s) => {
+    if (!cacheReady) return
+    const snap = JSON.stringify({
+      serviceId: s.serviceId,
+      serviceName: s.serviceName,
+      items: s.items,
+      background: s.background,
+      theme: s.theme
+    })
+    if (snap === last) return
+    last = snap
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => saveSessionCache(JSON.parse(snap)), 700)
+  })
+  // Flush the latest snapshot on close so a change in the last debounce window
+  // isn't lost.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+      if (cacheReady && last) {
+        try {
+          saveSessionCache(JSON.parse(last))
+        } catch {
+          /* ignore */
+        }
+      }
+    })
+  }
+}
