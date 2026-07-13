@@ -1,17 +1,26 @@
-import type { Background, PptxImport, SlideContent } from '@shared/types'
+import type { Background, PptxImport, SlideContent, Song, SongSection } from '@shared/types'
 import type { BibleVerse } from '@shared/bible'
 import { referenceOf } from '@shared/bible'
 import { uid } from '../store/useStore'
 
-/** One slide per verse, with the reference as the caption. */
-export function scriptureSlides(verses: BibleVerse[]): SlideContent[] {
-  return verses.map((v) => ({
-    id: uid(),
-    kind: 'scripture',
-    label: referenceOf(v),
-    lines: [v.text],
-    caption: referenceOf(v)
-  }))
+/**
+ * One slide per verse, with the reference as the caption. `refOf` builds the
+ * (optionally localized) reference; defaults to the English "Book c:v".
+ */
+export function scriptureSlides(
+  verses: BibleVerse[],
+  refOf: (v: BibleVerse) => string = referenceOf
+): SlideContent[] {
+  return verses.map((v) => {
+    const ref = refOf(v)
+    return {
+      id: uid(),
+      kind: 'scripture',
+      label: ref,
+      lines: [v.text],
+      caption: ref
+    }
+  })
 }
 
 /**
@@ -61,6 +70,57 @@ export function pptxSlides(imp: PptxImport): SlideContent[] {
       overlays: s.overlayUrls
     }
   })
+}
+
+/**
+ * Song -> slides. Sections are emitted in arrangement order (or section order),
+ * each section's lyric lines split into slides of `linesPerSlide` lines.
+ */
+export function songSlides(song: Song): SlideContent[] {
+  const lpp = Math.max(1, song.linesPerSlide ?? 2)
+  const byId = new Map(song.sections.map((s) => [s.id, s]))
+  const order: SongSection[] =
+    song.arrangement && song.arrangement.length
+      ? song.arrangement.map((id) => byId.get(id)).filter((s): s is SongSection => !!s)
+      : song.sections
+
+  const slides: SlideContent[] = []
+  for (const sec of order) {
+    // Drop blank lines (stray trailing Enter, separators) so they don't create
+    // half-empty slides or shift the lines-per-slide pagination.
+    const lines = sec.lines.filter((l) => l.trim().length > 0)
+    if (lines.length === 0) continue
+    const chunks: string[][] = []
+    for (let i = 0; i < lines.length; i += lpp) chunks.push(lines.slice(i, i + lpp))
+    chunks.forEach((chunk, i) => {
+      slides.push({
+        id: uid(),
+        kind: 'text',
+        label: chunks.length > 1 ? `${sec.label} (${i + 1})` : sec.label,
+        lines: chunk
+      })
+    })
+  }
+  return slides
+}
+
+/** A countdown slide targeting `minutes` from now (ticks in the output). */
+export function countdownSlide(minutes: number, message?: string): SlideContent {
+  const m = Math.max(0, minutes)
+  return {
+    id: uid(),
+    kind: 'countdown',
+    label: 'Countdown',
+    lines: [],
+    countdownTo: Date.now() + m * 60_000,
+    countdownMinutes: m,
+    message: message?.trim() || undefined
+  }
+}
+
+/** A live clock slide. */
+export function clockSlide(message?: string): SlideContent {
+  return { id: uid(), kind: 'clock', label: 'Clock', lines: [], message: message?.trim() || undefined }
 }
 
 /** A blank slide with a solid color (useful as an intentional interstitial). */
