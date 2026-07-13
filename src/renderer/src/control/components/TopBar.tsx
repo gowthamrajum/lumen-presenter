@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../../store/useStore'
+import { BroadcastMenu } from './BroadcastMenu'
 import type { ScreenRole } from '@shared/types'
 
 export function TopBar(): JSX.Element {
@@ -83,6 +84,7 @@ export function TopBar(): JSX.Element {
             </>
           )}
         </div>
+        <BroadcastMenu />
       </div>
 
       <div className="quick-controls">

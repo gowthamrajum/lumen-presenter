@@ -18,11 +18,15 @@ export const IPC = {
   songLoad: 'songs:load',
   songDelete: 'songs:delete',
   songsRemote: 'songs:remote',
+  broadcastGet: 'broadcast:get',
+  broadcastSet: 'broadcast:set',
+  broadcastStatusGet: 'broadcast:statusGet',
 
   // main -> renderers (send)
   liveState: 'live:state',
   screensChanged: 'screens:changed',
   displaysChanged: 'displays:changed',
+  broadcastStatus: 'broadcast:status',
   // output window -> control (forwarded key presses)
   outputKey: 'output:key'
 } as const

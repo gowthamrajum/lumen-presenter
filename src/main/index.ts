@@ -16,6 +16,14 @@ import {
   type SongMeta
 } from '../shared/types'
 import { importPptxFiles } from './pptx'
+import {
+  initBroadcast,
+  publishBroadcast,
+  getBroadcastConfig,
+  setBroadcastConfig,
+  getBroadcastStatus
+} from './broadcast'
+import type { BroadcastConfig } from '../shared/types'
 
 // ---- app state -------------------------------------------------------------
 type OutputWindow = BrowserWindow & { _displayId?: number; _windowed?: boolean; _kind?: 'audience' | 'stage' }
@@ -279,8 +287,13 @@ function registerIpc(): void {
   ipcMain.handle(IPC.liveSet, (_e, patch: Partial<LiveState>) => {
     liveState = { ...liveState, ...patch }
     broadcastLive()
+    publishBroadcast(liveState)
     return liveState
   })
+
+  ipcMain.handle(IPC.broadcastGet, () => getBroadcastConfig())
+  ipcMain.handle(IPC.broadcastStatusGet, () => getBroadcastStatus())
+  ipcMain.handle(IPC.broadcastSet, (_e, patch: Partial<BroadcastConfig>) => setBroadcastConfig(patch))
 
   ipcMain.handle(IPC.pickMedia, async () => {
     const res = await dialog.showOpenDialog(controlWindow!, {
@@ -472,6 +485,7 @@ app.whenReady().then(() => {
   })
 
   registerIpc()
+  void initBroadcast((s) => controlWindow?.webContents.send(IPC.broadcastStatus, s))
   createControlWindow()
 
   const onDisplaysChanged = (): void => {

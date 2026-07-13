@@ -11,7 +11,9 @@ import type {
   ServiceMeta,
   Song,
   SongMeta,
-  RemoteSong
+  RemoteSong,
+  BroadcastConfig,
+  BroadcastStatus
 } from '../shared/types'
 import type { Translation } from '../shared/bible/types'
 
@@ -45,6 +47,17 @@ const api = {
   getLive: (): Promise<LiveState> => ipcRenderer.invoke(IPC.liveGet),
   setLive: (patch: Partial<LiveState>): Promise<LiveState> =>
     ipcRenderer.invoke(IPC.liveSet, patch),
+
+  // web broadcast (OBS)
+  getBroadcast: (): Promise<BroadcastConfig> => ipcRenderer.invoke(IPC.broadcastGet),
+  setBroadcast: (patch: Partial<BroadcastConfig>): Promise<BroadcastConfig> =>
+    ipcRenderer.invoke(IPC.broadcastSet, patch),
+  getBroadcastStatus: (): Promise<BroadcastStatus> => ipcRenderer.invoke(IPC.broadcastStatusGet),
+  onBroadcastStatus: (cb: (s: BroadcastStatus) => void): (() => void) => {
+    const h = (_e: unknown, s: BroadcastStatus): void => cb(s)
+    ipcRenderer.on(IPC.broadcastStatus, h)
+    return () => ipcRenderer.removeListener(IPC.broadcastStatus, h)
+  },
 
   // subscriptions
   onLiveState: (cb: (state: LiveState) => void): (() => void) => {
