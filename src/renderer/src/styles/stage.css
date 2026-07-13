@@ -108,6 +108,19 @@
   z-index: 3;
 }
 
+/* freely-positioned composed layout (from the Slide Composer) */
+.stage-composed {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+.stage-cline {
+  position: absolute;
+  white-space: nowrap;
+  line-height: 1;
+  font-weight: 700;
+}
+
 .stage-fitbox {
   flex: 1;
   min-height: 0;

@@ -31,6 +31,26 @@ export interface Background {
 
 export type SlideKind = 'text' | 'scripture' | 'media' | 'blank' | 'countdown' | 'clock'
 
+/**
+ * A freely-positioned text line on the slide composer's 960×540 reference
+ * canvas. x/y are the CENTER of the line; the renderer scales the whole canvas
+ * to any output size. Produced by the composer and by songs "→ Canvas".
+ */
+export interface ComposedLine {
+  id: string
+  text: string
+  /** center x on the 960-wide reference canvas */
+  x: number
+  /** center y on the 540-tall reference canvas */
+  y: number
+  /** font size in reference-canvas pixels (of 540 tall) */
+  fontSize: number
+  color?: string
+  align?: 'left' | 'center' | 'right'
+  /** lines sharing a stanzaId move together in the composer's stanza mode */
+  stanzaId?: string | null
+}
+
 export interface SlideContent {
   id: string
   kind: SlideKind
@@ -49,6 +69,9 @@ export interface SlideContent {
   caption?: string
   /** optional per-slide background overriding the global background */
   background?: Background
+  /** freely-positioned composed layout (from the Slide Composer / songs → Canvas);
+   *  when present, the renderer draws these instead of the auto-fit `lines` */
+  composed?: ComposedLine[]
   /**
    * Full-bleed image layers drawn above the background (in order), below the
    * live text. Used by PowerPoint import for pre-rendered photo + text-PNG
@@ -221,6 +244,29 @@ export interface PptxImport {
   /** source file name without extension, used to label slides */
   name: string
   slides: ImportedSlide[]
+}
+
+// ---- web broadcast (OBS) ----
+/** Operator config for broadcasting live state to the web relay (for OBS). */
+export interface BroadcastConfig {
+  enabled: boolean
+  /** relay base, e.g. https://grey-gratis-ice.onrender.com */
+  base: string
+  /** channel slug (auto-generated once so installs don't collide) */
+  room: string
+}
+
+/** Live status of the broadcast publisher, pushed to the control window. */
+export interface BroadcastStatus {
+  enabled: boolean
+  /** true once the last publish succeeded */
+  ok: boolean
+  /** epoch ms of the last successful publish, or null */
+  lastAt: number | null
+  /** last error message, or null */
+  lastError: string | null
+  /** server revision counter returned by the relay */
+  rev: number
 }
 
 export const DEFAULT_THEME: ThemeStyle = {

@@ -1,23 +1,25 @@
 import { TopBar } from './components/TopBar'
-import { LibraryPanel } from './components/LibraryPanel'
-import { ServiceView } from './components/ServiceView'
+import { LeftColumn } from './components/LeftColumn'
+import { SlidesPanel } from './components/SlidesPanel'
 import { LivePanel } from './components/LivePanel'
+import { SlideComposer } from './components/SlideComposer'
 
 export function App(): JSX.Element {
   return (
     <div className="app">
       <TopBar />
       <div className="app-body">
-        <aside className="col-library">
-          <LibraryPanel />
+        <aside className="col-left">
+          <LeftColumn />
         </aside>
-        <main className="col-deck">
-          <ServiceView />
+        <main className="col-center">
+          <SlidesPanel />
         </main>
-        <aside className="col-live">
+        <aside className="col-right">
           <LivePanel />
         </aside>
       </div>
+      <SlideComposer />
     </div>
   )
 }

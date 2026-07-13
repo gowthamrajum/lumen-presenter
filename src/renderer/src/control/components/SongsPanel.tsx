@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore, uid } from '../../store/useStore'
-import { songSlides } from '../slides'
+import { songSlides, songComposedSlides } from '../slides'
+import { ensureComposerFont } from '../compose'
 import { remoteToSong, type SongLang } from '../songsRemote'
 import { SongEditor } from './SongEditor'
 import type { RemoteSong, Song } from '@shared/types'
@@ -26,7 +27,7 @@ export function SongsPanel(): JSX.Element {
 
   const [mode, setMode] = useState<'library' | 'online'>('library')
   const [query, setQuery] = useState('')
-  const [lang, setLang] = useState<SongLang>('telugu')
+  const [lang, setLang] = useState<SongLang>('both')
   const [editing, setEditing] = useState<Song | null>(null)
   const [note, setNote] = useState('')
 
@@ -67,6 +68,22 @@ export function SongsPanel(): JSX.Element {
     } catch (e) {
       setNote(`Could not import: ${e instanceof Error ? e.message : String(e)}`)
     }
+  }
+
+  // ----- songs → Canvas (composed, editable slides) -----
+  const canvasFromSong = async (song: Song): Promise<void> => {
+    await ensureComposerFont()
+    const slides = songComposedSlides(song)
+    if (!slides.length) {
+      setNote(`No lyrics in the selected language for “${song.title}”.`)
+      return
+    }
+    addItem({ title: song.title, kind: 'song', slides })
+    setNote(`Added “${song.title}” to Canvas (${slides.length} slides). Click ✎ on a slide to edit.`)
+  }
+  const canvasLocal = async (id: string): Promise<void> => {
+    const song = await window.lumen.loadSong(id)
+    if (song) await canvasFromSong(song)
   }
 
   return (
@@ -118,9 +135,9 @@ export function SongsPanel(): JSX.Element {
             }}
             title="Lyric language"
           >
-            <option value="telugu">తెలుగు</option>
-            <option value="english">English (transliteration)</option>
-            <option value="both">Both</option>
+            <option value="both">Both (తెలుగు + English)</option>
+            <option value="telugu">తెలుగు only</option>
+            <option value="english">English only (transliteration)</option>
           </select>
           {remoteState === 'ready' && (
             <button className="btn tiny" onClick={() => void loadRemoteSongs(true)} title="Reload catalog">
@@ -145,6 +162,7 @@ export function SongsPanel(): JSX.Element {
                 </div>
                 <div className="song-actions">
                   <button className="btn tiny" onClick={() => void addLocal(s.id, false)} title="Add to service">Add</button>
+                  <button className="btn tiny" onClick={() => void canvasLocal(s.id)} title="Add as editable Canvas slides">Canvas</button>
                   <button className="btn tiny" onClick={() => void edit(s.id)} title="Edit song">Edit</button>
                   <button className="btn tiny" onClick={() => void deleteSong(s.id)} title="Delete">×</button>
                 </div>
@@ -173,6 +191,7 @@ export function SongsPanel(): JSX.Element {
                 </div>
                 <div className="song-actions">
                   <button className="btn tiny" onClick={() => addRemote(r, false)} title="Add to service">Add</button>
+                  <button className="btn tiny" onClick={() => void canvasFromSong(remoteToSong(r, lang))} title="Add as editable Canvas slides">Canvas</button>
                   <button className="btn tiny" onClick={() => void importRemote(r)} title="Save to your library">Import</button>
                 </div>
               </div>

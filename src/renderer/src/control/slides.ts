@@ -2,6 +2,7 @@ import type { Background, PptxImport, SlideContent, Song, SongSection } from '@s
 import type { BibleVerse } from '@shared/bible'
 import { referenceOf } from '@shared/bible'
 import { uid } from '../store/useStore'
+import { composeFromLines } from './compose'
 
 /**
  * One slide per verse, with the reference as the caption. `refOf` builds the
@@ -102,6 +103,25 @@ export function songSlides(song: Song): SlideContent[] {
     })
   }
   return slides
+}
+
+/**
+ * Song -> composed (canvas) slides. One composed slide per section, each stanza
+ * auto-fit and centred on the 960×540 reference canvas so it can be edited in
+ * the Slide Composer. Call ensureComposerFont() first for correct metrics.
+ */
+export function songComposedSlides(song: Song): SlideContent[] {
+  const byId = new Map(song.sections.map((s) => [s.id, s]))
+  const order: SongSection[] =
+    song.arrangement && song.arrangement.length
+      ? song.arrangement.map((id) => byId.get(id)).filter((s): s is SongSection => !!s)
+      : song.sections
+  return order
+    .map((sec): SlideContent => {
+      const lines = sec.lines.filter((l) => l.trim().length > 0)
+      return { id: uid(), kind: 'text', label: sec.label, lines, composed: composeFromLines(lines) }
+    })
+    .filter((s) => s.lines.length > 0)
 }
 
 /** A countdown slide targeting `minutes` from now (ticks in the output). */

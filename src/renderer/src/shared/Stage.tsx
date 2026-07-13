@@ -98,8 +98,10 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
   // imported PowerPoint) drawn over the background; hidden by blackout.
   const overlays = state.blackout ? [] : slide?.overlays ?? []
   const isTimer = slide?.kind === 'countdown' || slide?.kind === 'clock'
+  const composed = slide?.composed
   const visible = !state.blackout && !state.clearText && !state.showLogo
-  const showText = visible && !isTimer && lines.length > 0
+  const hasComposed = visible && !isTimer && !!composed && composed.length > 0
+  const showText = visible && !isTimer && !hasComposed && lines.length > 0
   const showTimer = visible && isTimer && !!slide
 
   const textStyle: CSSProperties = {
@@ -137,6 +139,30 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
       )}
 
       {showTimer && slide && <TimerDisplay slide={slide} theme={theme} preview={preview} />}
+
+      {hasComposed && composed && (
+        <div className="stage-composed">
+          {composed.map((l) => (
+            <div
+              key={l.id}
+              className="stage-cline"
+              style={{
+                left: `${(l.x / 960) * 100}%`,
+                top: `${(l.y / 540) * 100}%`,
+                transform: 'translate(-50%, -50%)',
+                fontSize: `${(l.fontSize / 540) * 100}cqh`,
+                color: l.color || theme.textColor,
+                fontFamily: theme.fontFamily,
+                textAlign: l.align || 'center',
+                textShadow: theme.shadow ? '0 2px 18px rgba(0,0,0,0.65)' : 'none',
+                textTransform: theme.uppercase ? 'uppercase' : 'none'
+              }}
+            >
+              {l.text}
+            </div>
+          ))}
+        </div>
+      )}
 
       {showText && (
         <div className="stage-textwrap">

@@ -15,6 +15,7 @@ export function SlideThumb({
   const background = useStore((s) => s.background)
   const goLive = useStore((s) => s.goLive)
   const removeSlide = useStore((s) => s.removeSlide)
+  const openComposer = useStore((s) => s.openComposer)
 
   const preview: LiveState = {
     slide,
@@ -32,6 +33,16 @@ export function SlideThumb({
       title={slide.label ?? `Slide ${index + 1}`}
     >
       <div className="thumb-index">{index + 1}</div>
+      <button
+        className="thumb-compose"
+        title="Compose layout"
+        onClick={(e) => {
+          e.stopPropagation()
+          openComposer(slide.id)
+        }}
+      >
+        ✎
+      </button>
       <button
         className="thumb-remove"
         title="Remove slide"

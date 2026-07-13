@@ -3,6 +3,7 @@ import {
   DEFAULT_BACKGROUND,
   DEFAULT_THEME,
   type Background,
+  type ComposedLine,
   type DisplayInfo,
   type ItemKind,
   type LiveState,
@@ -19,6 +20,7 @@ import {
   type RemoteSong,
   type ThemeStyle
 } from '@shared/types'
+import { SERVICE_TEMPLATES } from '../control/templates'
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10)
@@ -29,6 +31,8 @@ interface AppState {
   serviceId: string | null
   serviceName: string
   items: ServiceItem[]
+  /** the item whose slides are shown in the center panel */
+  selectedItemId: string | null
   liveId: string | null
 
   theme: ThemeStyle
@@ -40,6 +44,8 @@ interface AppState {
   media: MediaFile[]
   savedServices: ServiceMeta[]
   songs: SongMeta[]
+  /** slide id currently open in the Slide Composer, or null */
+  composerSlideId: string | null
 
   screens: ScreenInfo[]
   displays: DisplayInfo[]
@@ -58,8 +64,15 @@ interface AppState {
   removeSlide: (id: string) => void
   moveItem: (id: string, dir: -1 | 1) => void
   duplicateItem: (id: string) => void
+  selectItem: (id: string | null) => void
   clearService: () => void
   renameService: (name: string) => void
+
+  // slide composer
+  setComposed: (slideId: string, composed: ComposedLine[]) => void
+  setSlideBackground: (slideId: string, bg: Background | undefined) => void
+  openComposer: (slideId: string) => void
+  closeComposer: () => void
 
   // song library (persisted)
   refreshSongs: () => Promise<void>
@@ -78,6 +91,8 @@ interface AppState {
   openService: (id: string) => Promise<void>
   deleteService: (id: string) => Promise<void>
   newService: () => void
+  /** start a fresh service pre-populated from a named template outline */
+  applyTemplate: (templateId: string) => void
 
   // live control
   goLive: (id: string | null) => void
@@ -126,6 +141,7 @@ export const useStore = create<AppState>((set, get) => {
     serviceId: null,
     serviceName: 'Untitled Service',
     items: [],
+    selectedItemId: null,
     liveId: null,
 
     theme: DEFAULT_THEME,
@@ -137,6 +153,7 @@ export const useStore = create<AppState>((set, get) => {
     media: [],
     savedServices: [],
     songs: [],
+    composerSlideId: null,
 
     remoteSongs: [],
     remoteState: 'idle',
@@ -180,21 +197,51 @@ export const useStore = create<AppState>((set, get) => {
     addItem: ({ title, kind, slides }, goLiveFirst = false) => {
       if (!slides.length) return
       const item: ServiceItem = { id: uid(), title, kind, slides }
-      set((s) => ({ items: [...s.items, item] }))
+      set((s) => ({ items: [...s.items, item], selectedItemId: item.id }))
       if (goLiveFirst) get().goLive(slides[0].id)
     },
 
     removeItem: (id) => {
       set((s) => {
-        const item = s.items.find((it) => it.id === id)
+        const idx = s.items.findIndex((it) => it.id === id)
+        const item = s.items[idx]
         const removedLive = item?.slides.some((sl) => sl.id === s.liveId)
+        const items = s.items.filter((it) => it.id !== id)
+        const selectedItemId =
+          s.selectedItemId === id ? (items[idx] ?? items[idx - 1])?.id ?? null : s.selectedItemId
         return {
-          items: s.items.filter((it) => it.id !== id),
+          items,
+          selectedItemId,
           liveId: removedLive ? null : s.liveId
         }
       })
       push()
     },
+
+    selectItem: (id) => set({ selectedItemId: id }),
+
+    setComposed: (slideId, composed) => {
+      set((s) => ({
+        items: s.items.map((it) => ({
+          ...it,
+          slides: it.slides.map((sl) => (sl.id === slideId ? { ...sl, composed } : sl))
+        }))
+      }))
+      if (get().liveId === slideId) push()
+    },
+
+    setSlideBackground: (slideId, bg) => {
+      set((s) => ({
+        items: s.items.map((it) => ({
+          ...it,
+          slides: it.slides.map((sl) => (sl.id === slideId ? { ...sl, background: bg } : sl))
+        }))
+      }))
+      if (get().liveId === slideId) push()
+    },
+
+    openComposer: (slideId) => set({ composerSlideId: slideId }),
+    closeComposer: () => set({ composerSlideId: null }),
 
     removeSlide: (id) => {
       set((s) => ({
@@ -235,7 +282,7 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     clearService: () => {
-      set({ items: [], liveId: null })
+      set({ items: [], selectedItemId: null, liveId: null })
       push()
     },
 
@@ -306,6 +353,7 @@ export const useStore = create<AppState>((set, get) => {
         serviceId: service.id,
         serviceName: service.name,
         items,
+        selectedItemId: items[0]?.id ?? null,
         liveId: null,
         background: service.background ?? get().background,
         theme: service.theme ?? get().theme,
@@ -326,7 +374,26 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     newService: () => {
-      set({ serviceId: null, serviceName: 'Untitled Service', items: [], liveId: null })
+      set({ serviceId: null, serviceName: 'Untitled Service', items: [], selectedItemId: null, liveId: null })
+      push()
+    },
+
+    applyTemplate: (templateId) => {
+      const tpl = SERVICE_TEMPLATES.find((t) => t.id === templateId)
+      if (!tpl) return
+      // Countdown slides carry an absolute target; build fresh so the outline
+      // starts from "now" every time it's applied.
+      const items = tpl.build()
+      set({
+        serviceId: null,
+        serviceName: tpl.name,
+        items,
+        selectedItemId: items[0]?.id ?? null,
+        liveId: null,
+        blackout: false,
+        clearText: false,
+        showLogo: false
+      })
       push()
     },
 

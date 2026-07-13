@@ -1,24 +1,17 @@
 import { useState } from 'react'
-import { ServicesPanel } from './ServicesPanel'
 import { SongsPanel } from './SongsPanel'
 import { BibleSource } from './BibleSource'
 import { MediaSource } from './MediaSource'
 import { TextSource } from './TextSource'
 
-type Tab = 'services' | 'songs' | 'bible' | 'media' | 'text'
+type Tab = 'songs' | 'bible' | 'media' | 'text'
 
 export function LibraryPanel(): JSX.Element {
-  const [tab, setTab] = useState<Tab>('bible')
+  const [tab, setTab] = useState<Tab>('songs')
 
   return (
     <div className="library">
       <div className="tabs">
-        <button
-          className={`tab ${tab === 'services' ? 'active' : ''}`}
-          onClick={() => setTab('services')}
-        >
-          Services
-        </button>
         <button className={`tab ${tab === 'songs' ? 'active' : ''}`} onClick={() => setTab('songs')}>
           Songs
         </button>
@@ -33,7 +26,6 @@ export function LibraryPanel(): JSX.Element {
         </button>
       </div>
       <div className="tab-body">
-        {tab === 'services' && <ServicesPanel />}
         {tab === 'songs' && <SongsPanel />}
         {tab === 'bible' && <BibleSource />}
         {tab === 'media' && <MediaSource />}
