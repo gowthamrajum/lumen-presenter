@@ -154,7 +154,10 @@
    card so it scans on any background. */
 .stage.has-qr .stage-textwrap {
   flex-direction: row;
-  align-items: center;
+  /* stretch (not center) so the text's fit-box fills the full height — otherwise
+     its height collapses to the current text height and useFitText's cap shrinks
+     the font to almost nothing. The fit-box + QR each center their own content. */
+  align-items: stretch;
   justify-content: center;
   gap: 5cqw;
 }

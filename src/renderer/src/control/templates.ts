@@ -1,5 +1,5 @@
 import type { ItemKind, ServiceItem, SlideContent } from '@shared/types'
-import { uid } from '../store/useStore'
+import { uid, broadcastDefaults } from '../store/useStore'
 import { blankSlide, countdownSlide } from './slides'
 import { QR_DONATIONS } from './assets/qrDonations'
 
@@ -29,17 +29,23 @@ function section(title: string, kind: ItemKind, telugu: string, english: string)
     lines: [telugu, english].filter((s) => s.trim()),
     singleLine: true
   }
-  return { id: uid(), title, kind, slides: [slide] }
+  return { id: uid(), title, kind, slides: [slide], ...broadcastDefaults(kind) }
 }
 
 /** A pre-service countdown item. */
 function countdown(minutes: number, message: string): ServiceItem {
-  return { id: uid(), title: 'Pre-Service Countdown', kind: 'countdown', slides: [countdownSlide(minutes, message)] }
+  return {
+    id: uid(),
+    title: 'Pre-Service Countdown',
+    kind: 'countdown',
+    slides: [countdownSlide(minutes, message)],
+    ...broadcastDefaults('countdown')
+  }
 }
 
 /** A trailing blank so the service ends on a clean screen. */
 function blank(): ServiceItem {
-  return { id: uid(), title: 'Blank', kind: 'blank', slides: [blankSlide('#000000')] }
+  return { id: uid(), title: 'Blank', kind: 'blank', slides: [blankSlide('#000000')], ...broadcastDefaults('blank') }
 }
 
 /** Welcome title card, reused across templates. */
@@ -51,26 +57,24 @@ function welcome(english: string): ServiceItem {
  *  the "Add media" button on the Slides panel. */
 function welcomeVideo(): ServiceItem {
   // A visible placeholder word until the operator attaches the real clip with
-  // "Add media" (which clears the text and sets the video background).
+  // "Add media" (which clears the text and sets the video background). Broadcasts
+  // by default (video kind).
   return {
     id: uid(),
     title: 'Welcome Video',
     kind: 'video',
-    slides: [{ id: uid(), kind: 'text', label: 'Welcome Video', lines: ['Welcome'] }]
+    slides: [{ id: uid(), kind: 'text', label: 'Welcome Video', lines: ['Welcome'] }],
+    ...broadcastDefaults('video')
   }
 }
 
-/** A live Praise & Worship section — off the web broadcast by default (both
- *  channels), since live worship usually isn't streamed. */
+/** A Praise & Worship section — broadcasts by default (song kind). */
 function praiseWorship(): ServiceItem {
-  return {
-    ...section('Praise & Worship', 'song', 'స్తుతి ఆరాధన', 'Praise & Worship'),
-    noBroadcastUsers: true,
-    noBroadcastStream: true
-  }
+  return section('Praise & Worship', 'song', 'స్తుతి ఆరాధన', 'Praise & Worship')
 }
 
-/** Offerings slide with the giving QR (from the worshipReady donations layout). */
+/** Offerings slide with the giving QR (from the worshipReady donations layout).
+ *  Off-air by default (text kind). */
 function offerings(): ServiceItem {
   const slide: SlideContent = {
     id: uid(),
@@ -80,7 +84,7 @@ function offerings(): ServiceItem {
     singleLine: true,
     qr: QR_DONATIONS
   }
-  return { id: uid(), title: 'Offerings', kind: 'text', slides: [slide] }
+  return { id: uid(), title: 'Offerings', kind: 'text', slides: [slide], ...broadcastDefaults('text') }
 }
 
 export const SERVICE_TEMPLATES: ServiceTemplate[] = [

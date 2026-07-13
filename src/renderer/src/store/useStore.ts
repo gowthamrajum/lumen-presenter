@@ -189,6 +189,17 @@ export function suppressedOn(it: ServiceItem | undefined, channel: 'users' | 'st
   return chan ?? it.noBroadcast ?? false
 }
 
+/** Item kinds that broadcast to the web by default: the welcome video, songs, and
+ *  scripture (psalms / passages). Everything else — countdown, plain text
+ *  (announcements, sermon, offerings, benediction), media, imported PowerPoint,
+ *  blanks — is OFF-air by default. The operator can flip any item in the schedule. */
+export const BROADCASTABLE_KINDS = new Set<ItemKind>(['video', 'song', 'scripture'])
+
+/** Default per-channel broadcast flags for a new item, by kind. */
+export function broadcastDefaults(kind: ItemKind): Pick<ServiceItem, 'noBroadcastUsers' | 'noBroadcastStream'> {
+  return BROADCASTABLE_KINDS.has(kind) ? {} : { noBroadcastUsers: true, noBroadcastStream: true }
+}
+
 /** Materialize the legacy `noBroadcast` flag into the two channel flags and drop
  *  it, so items carry an unambiguous per-channel state. */
 export function normalizeBroadcast(it: ServiceItem): ServiceItem {
@@ -311,7 +322,7 @@ export const useStore = create<AppState>((set, get) => {
 
     addItem: ({ title, kind, slides }, goLiveFirst = false) => {
       if (!slides.length) return
-      const item: ServiceItem = { id: uid(), title, kind, slides }
+      const item: ServiceItem = { id: uid(), title, kind, slides, ...broadcastDefaults(kind) }
       set((s) => ({ items: [...s.items, item], selectedItemId: item.id }))
       if (goLiveFirst) get().goLive(slides[0].id)
     },
