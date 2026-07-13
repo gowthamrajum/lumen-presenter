@@ -102,34 +102,31 @@ public-domain Bibles ship in the box:
 
 The **Psalms** tab is bilingual (Telugu OV + English), assembled from the two
 bundled Bibles — so it's offline and public-domain by default. It also offers the
-**ESV** as the English text, fetched on demand from Crossway's API (free for
-non-commercial/church use). To enable it:
+**ESV** as the English text, fetched on demand (free for non-commercial/church
+use). Register your church/ministry at **[api.esv.org](https://api.esv.org)** for
+a free key, then pick **one** way to supply it. **The key is never committed or
+bundled into the public build** — Crossway's terms forbid publishing it.
 
-1. Register your church/ministry at **[api.esv.org](https://api.esv.org)** for a
-   free key.
-2. `cp .env.example .env` and set `ESV_API_KEY=…` in `.env`.
+**Recommended — server-side proxy (zero client setup, key on no client):**
+Set the key **once** as the `ESV_API_KEY` environment variable on the backend
+(`grey-gratis-ice` on Render) and redeploy. The backend (`GET /esv/passage`,
+`GET /esv/status`) holds the key and serves the text; Cantica calls the backend,
+so **no machine ever needs a key**. This is Crossway's intended model (fetch from
+your own server). Every Cantica install just works — nothing to provision.
 
-The app reads the key at **runtime** (env var → gitignored `.env` → app data dir),
-so **the key is never committed or bundled** into the (public) build — which
-Crossway's terms require. ESV text is fetched on demand (never stored beyond a
-small session cache), shows the required attribution, and falls back to WEBBE if
-the key is missing or you're offline, so a live service never breaks.
-
-**Packaged install on a church machine (zero setup for users):** the `.env`
-above is for running from source. For a packaged Cantica, provision the key once
-per machine — it lands in Cantica's app-data dir (read at runtime; still never in
-the public build):
+**Alternative — a local key (direct to Crossway):** if you'd rather not use the
+backend, give a specific machine a key and Cantica goes straight to Crossway:
 
 ```bash
-# macOS / Linux
-scripts/provision-esv.sh <ESV_API_KEY>
-# Windows (PowerShell)
-powershell -ExecutionPolicy Bypass -File scripts\provision-esv.ps1 -Key <ESV_API_KEY>
+# running from source: cp .env.example .env && set ESV_API_KEY=…   (gitignored)
+# a packaged install, per machine (writes to the app data dir, read at runtime):
+scripts/provision-esv.sh <ESV_API_KEY>                              # macOS / Linux
+powershell -ExecutionPolicy Bypass -File scripts\provision-esv.ps1 -Key <ESV_API_KEY>  # Windows
 ```
 
-Copy the matching script to each machine and run it once (or set the key in the
-`ESV_API_KEY` environment variable). After that, whoever uses Cantica has the ESV
-with no in-app setup. Remove it later with `--remove` / `-Remove`.
+Either way: ESV text is fetched on demand (never stored beyond a small session
+cache), the required attribution is shown, and Psalms **falls back to WEBBE** if
+ESV is unavailable/offline — so a live service never breaks.
 
 The Telugu text lives in [`resources/bible/telugu.json`](resources/bible/telugu.json)
 and is read by the **main process** on demand and sent to the renderer over IPC,

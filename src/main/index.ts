@@ -571,9 +571,10 @@ async function psalmsResult(
     const q = s != null && e != null ? `Psalm ${chapter}:${s}-${e}` : `Psalm ${chapter}`
     const esv = await esvPassage(q)
     if ('error' in esv) {
-      if (esv.needKey) return { error: esv.error, needKey: true }
-      // Graceful fallback to the bundled WEBBE so a service never breaks.
-      return pair(webbeMap, 'webbe', `ESV unavailable (${esv.error}) — showing WEBBE instead.`)
+      // The key lives on the server now — nothing for the operator to fix in-app,
+      // so always fall back to WEBBE with a note; a live service never breaks.
+      const why = esv.needKey ? 'not configured on the server' : esv.error
+      return pair(webbeMap, 'webbe', `ESV unavailable (${why}) — showing WEBBE.`)
     }
     return pair(new Map(esv.verses.map((v) => [v.verse, v.text])), 'esv')
   }

@@ -1,11 +1,13 @@
-// ESV API client (Crossway). Fetches ESV passage text ON DEMAND — the ESV may
-// not be bundled/stored as a full Bible, but their API allows free non-commercial
-// (church/ministry) use with attribution. We honour the terms:
-//   • never store more than ~500 verses — the cache is in-memory, session-only,
-//     capped, and cleared on restart;
-//   • the caller must show the ESV copyright notice + an esv.org link wherever
-//     the text appears (the Psalms source does this).
-// Needs a free API key from https://api.esv.org (register the church/ministry).
+// ESV text for Cantica. The ESV can't be bundled (Crossway caps local storage at
+// 500 verses), so it's fetched ON DEMAND. Two routes, chosen automatically:
+//   • if a LOCAL key is present (ESV_API_KEY env / .env / app-data esv.json), go
+//     straight to Crossway's api.esv.org (useful for a single machine / dev);
+//   • otherwise go through the BACKEND PROXY (grey-gratis-ice /esv/*), which holds
+//     the key server-side — so no client needs a key and it never lives in the
+//     public repo or build. The proxy is Crossway's intended model (fetch from
+//     your own server).
+// Either way the client shows the required ESV attribution, and cache stays under
+// Crossway's 500-verse limit (session-only, cleared on restart).
 
 import { join } from 'path'
 import { readFile, writeFile, mkdir } from 'fs/promises'
@@ -18,10 +20,18 @@ function keyFile(): string {
   return join(app.getPath('userData'), 'esv.json')
 }
 
+function backendBase(): string {
+  return (
+    process.env.LUMEN_BROADCAST_API ||
+    process.env.LUMEN_SONGS_API ||
+    'https://grey-gratis-ice.onrender.com'
+  ).replace(/\/$/, '')
+}
+
 /**
- * Resolve the ESV key at runtime, first found wins: the ESV_API_KEY env var
- * (also populated from a gitignored .env in dev) takes priority, then the key
- * saved in the app data dir. Never returned to the renderer.
+ * Resolve a LOCAL ESV key, first found wins: the ESV_API_KEY env var (also from a
+ * gitignored .env in dev) then the app-data file. Empty string means "no local
+ * key — use the backend proxy". Never returned to the renderer.
  */
 async function loadKey(): Promise<string> {
   const envKey = (process.env.ESV_API_KEY || '').trim()
@@ -38,10 +48,32 @@ async function loadKey(): Promise<string> {
   return (cachedKey || '').trim()
 }
 
+/**
+ * Is the ESV available? Either a local key (direct to Crossway) or the backend
+ * proxy reporting the key is configured server-side. Never exposes the key.
+ */
 export async function esvKeyStatus(): Promise<{ hasKey: boolean }> {
-  return { hasKey: !!(await loadKey()) }
+  if (await loadKey()) return { hasKey: true }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 8000)
+  try {
+    const res = await fetch(`${backendBase()}/esv/status`, {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' }
+    })
+    if (res.ok) {
+      const d = (await res.json()) as { available?: boolean }
+      return { hasKey: !!d.available }
+    }
+  } catch {
+    /* backend unreachable → unavailable (Psalms falls back to WEBBE) */
+  } finally {
+    clearTimeout(timer)
+  }
+  return { hasKey: false }
 }
 
+/** Persist a local key to the app-data dir (also written by scripts/provision-esv). */
 export async function esvSetKey(key: string): Promise<{ hasKey: boolean }> {
   cachedKey = (typeof key === 'string' ? key.trim() : '') || null
   keyLoaded = true
@@ -54,9 +86,7 @@ export async function esvSetKey(key: string): Promise<{ hasKey: boolean }> {
   return { hasKey: !!(await loadKey()) }
 }
 
-// Session-only cache, capped well under Crossway's 500-verse ceiling and cleared
-// on restart. When adding a passage would exceed the cap, the whole cache is
-// dropped first (simple + always compliant).
+// Session-only cache, capped under Crossway's 500-verse ceiling, cleared on restart.
 const cache = new Map<string, EsvVerse[]>()
 let cachedVerses = 0
 const CACHE_CAP = 450
@@ -74,6 +104,18 @@ export interface EsvError {
   needKey?: boolean
 }
 
+const DIRECT_PARAMS: Record<string, string> = {
+  'include-passage-references': 'false',
+  'include-verse-numbers': 'true',
+  'include-first-verse-numbers': 'true',
+  'include-footnotes': 'false',
+  'include-headings': 'false',
+  'include-short-copyright': 'false',
+  'include-passage-horizontal-lines': 'false',
+  'include-heading-horizontal-lines': 'false',
+  'indent-poetry': 'false'
+}
+
 /** Split ESV plain text ("[1] … [2] …") into verses. */
 function parseVerses(passage: string): EsvVerse[] {
   const out: EsvVerse[] = []
@@ -88,49 +130,54 @@ function parseVerses(passage: string): EsvVerse[] {
   return out
 }
 
-/** Fetch an ESV passage (e.g. "Psalm 23" or "Psalm 23:1-3"). */
-export async function esvPassage(query: string): Promise<EsvResult | EsvError> {
-  const key = await loadKey()
-  if (!key) return { error: 'No ESV API key set.', needKey: true }
-
-  const hit = cache.get(query)
-  if (hit) return { verses: hit, reference: query }
-
-  const params = new URLSearchParams({
-    q: query,
-    'include-passage-references': 'false',
-    'include-verse-numbers': 'true',
-    'include-first-verse-numbers': 'true',
-    'include-footnotes': 'false',
-    'include-headings': 'false',
-    'include-short-copyright': 'false',
-    'include-passage-horizontal-lines': 'false',
-    'include-heading-horizontal-lines': 'false',
-    'indent-poetry': 'false'
-  })
+/** Fetch the raw {passages} JSON from Crossway or the backend proxy. */
+async function fetchPassages(
+  url: string,
+  headers: Record<string, string>
+): Promise<{ passages: string[]; canonical?: string } | EsvError> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 30_000)
   try {
-    const res = await fetch(`https://api.esv.org/v3/passage/text/?${params.toString()}`, {
-      signal: controller.signal,
-      headers: { Authorization: `Token ${key}`, Accept: 'application/json' }
-    })
-    if (res.status === 401 || res.status === 403) return { error: 'ESV API key was rejected.', needKey: true }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = (await res.json()) as { passages?: string[]; canonical?: string }
-    const verses = parseVerses(data.passages?.[0] ?? '')
-    if (!verses.length) return { error: 'No ESV text for that passage.' }
-
-    if (cachedVerses + verses.length > CACHE_CAP) {
-      cache.clear()
-      cachedVerses = 0
+    const res = await fetch(url, { signal: controller.signal, headers })
+    // 401/403 = key rejected (direct); 503 = proxy not configured — both "needKey".
+    if (res.status === 401 || res.status === 403 || res.status === 503) {
+      return { error: 'ESV key rejected or not configured on the server.', needKey: true }
     }
-    cache.set(query, verses)
-    cachedVerses += verses.length
-    return { verses, reference: data.canonical || query }
+    if (!res.ok) return { error: `HTTP ${res.status}` }
+    const data = (await res.json()) as { passages?: string[]; canonical?: string }
+    return { passages: Array.isArray(data.passages) ? data.passages : [], canonical: data.canonical }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   } finally {
     clearTimeout(timer)
   }
+}
+
+/** Fetch an ESV passage (e.g. "Psalm 23" or "Psalm 23:1-3") — direct if a local
+ *  key is set, otherwise via the backend proxy. */
+export async function esvPassage(query: string): Promise<EsvResult | EsvError> {
+  const hit = cache.get(query)
+  if (hit) return { verses: hit, reference: query }
+
+  const key = await loadKey()
+  const fetched = key
+    ? await fetchPassages(
+        `https://api.esv.org/v3/passage/text/?${new URLSearchParams({ q: query, ...DIRECT_PARAMS }).toString()}`,
+        { Authorization: `Token ${key}`, Accept: 'application/json' }
+      )
+    : await fetchPassages(`${backendBase()}/esv/passage?q=${encodeURIComponent(query)}`, {
+        Accept: 'application/json'
+      })
+
+  if ('error' in fetched) return fetched
+  const verses = parseVerses(fetched.passages[0] ?? '')
+  if (!verses.length) return { error: 'No ESV text for that passage.' }
+
+  if (cachedVerses + verses.length > CACHE_CAP) {
+    cache.clear()
+    cachedVerses = 0
+  }
+  cache.set(query, verses)
+  cachedVerses += verses.length
+  return { verses, reference: fetched.canonical || query }
 }

@@ -33,16 +33,9 @@ export function PsalmsSource(): JSX.Element {
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
-  // ESV API key state.
-  const [hasKey, setHasKey] = useState(false)
-  const [needKey, setNeedKey] = useState(false)
-  const [keyInput, setKeyInput] = useState('')
-  const [savingKey, setSavingKey] = useState(false)
-
-  // Default to ESV once a key is saved; otherwise WEBBE.
+  // Default to ESV when it's available (a local key or the backend proxy).
   useEffect(() => {
     void window.lumen.esvKeyStatus().then((r) => {
-      setHasKey(r.hasKey)
       if (r.hasKey) setVersion('esv')
     })
   }, [])
@@ -61,10 +54,8 @@ export function PsalmsSource(): JSX.Element {
     )
     if ('error' in res) {
       setVerses([])
-      if (res.needKey) setNeedKey(true)
-      else setError(res.error)
+      setError(res.error)
     } else {
-      setNeedKey(false)
       setVerses(res.verses)
       setUsedEnglish(res.english)
       setNotice(res.notice ?? '')
@@ -77,20 +68,6 @@ export function PsalmsSource(): JSX.Element {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter, rangeOn, version])
-
-  const saveKey = async (): Promise<void> => {
-    const k = keyInput.trim()
-    if (!k) return
-    setSavingKey(true)
-    const r = await window.lumen.esvSetKey(k)
-    setSavingKey(false)
-    setHasKey(r.hasKey)
-    setKeyInput('')
-    if (r.hasKey) {
-      setNeedKey(false)
-      await load()
-    }
-  }
 
   const toggle = (id: number): void => {
     setSelected((prev) => {
@@ -192,31 +169,6 @@ export function PsalmsSource(): JSX.Element {
         </div>
       </div>
 
-      {version === 'esv' && (!hasKey || needKey) && (
-        <div className="esv-key">
-          <div className="esv-key-msg">
-            {hasKey ? 'That ESV key was rejected. ' : 'ESV needs a free API key. '}
-            Get one at{' '}
-            <a href="https://api.esv.org" target="_blank" rel="noreferrer">
-              api.esv.org
-            </a>
-            .
-          </div>
-          <div className="esv-key-row">
-            <input
-              className="search"
-              type="password"
-              placeholder="Paste your ESV API key"
-              value={keyInput}
-              onChange={(e) => setKeyInput(e.target.value)}
-            />
-            <button className="btn tiny" onClick={() => void saveKey()} disabled={savingKey || !keyInput.trim()}>
-              Save
-            </button>
-          </div>
-        </div>
-      )}
-
       {notice && <div className="empty-note">{notice}</div>}
 
       <div className="verse-range">
@@ -255,7 +207,7 @@ export function PsalmsSource(): JSX.Element {
             {error} <button className="btn tiny" onClick={() => void load()}>Retry</button>
           </div>
         )}
-        {!loading && !error && verses.length === 0 && !needKey && <div className="empty-note">No verses.</div>}
+        {!loading && !error && verses.length === 0 && <div className="empty-note">No verses.</div>}
         {verses.map((v) => {
           const ref = `Psalm ${v.chapter}:${v.verse}`
           return (
