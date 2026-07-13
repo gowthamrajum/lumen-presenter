@@ -2,8 +2,12 @@ import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { DEFAULT_LIVE, type LiveState } from '@shared/types'
 import { Stage } from '../shared/Stage'
+import { StageDisplay } from './StageDisplay'
+import '../styles/fonts.css'
 import '../styles/stage.css'
 import '../styles/output.css'
+
+const layout = new URLSearchParams(window.location.search).get('layout')
 
 function Output(): JSX.Element {
   const [state, setState] = useState<LiveState>(DEFAULT_LIVE)
@@ -13,7 +17,7 @@ function Output(): JSX.Element {
     return window.lumen.onLiveState(setState)
   }, [])
 
-  return <Stage state={state} />
+  return layout === 'stage' ? <StageDisplay state={state} /> : <Stage state={state} />
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

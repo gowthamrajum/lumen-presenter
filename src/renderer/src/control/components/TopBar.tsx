@@ -1,12 +1,11 @@
+import { useState } from 'react'
 import { useStore } from '../../store/useStore'
+import type { ScreenRole } from '@shared/types'
 
 export function TopBar(): JSX.Element {
   const displays = useStore((s) => s.displays)
-  const selectedDisplayId = useStore((s) => s.selectedDisplayId)
-  const setSelectedDisplay = useStore((s) => s.setSelectedDisplay)
-  const outputStatus = useStore((s) => s.outputStatus)
-  const openOutput = useStore((s) => s.openOutput)
-  const closeOutput = useStore((s) => s.closeOutput)
+  const screens = useStore((s) => s.screens)
+  const setScreen = useStore((s) => s.setScreen)
 
   const blackout = useStore((s) => s.blackout)
   const clearText = useStore((s) => s.clearText)
@@ -14,6 +13,18 @@ export function TopBar(): JSX.Element {
   const toggleBlackout = useStore((s) => s.toggleBlackout)
   const toggleClear = useStore((s) => s.toggleClear)
   const toggleLogo = useStore((s) => s.toggleLogo)
+
+  const [open, setOpen] = useState(false)
+
+  const roleOf = (displayId: number): ScreenRole =>
+    screens.find((s) => s.displayId === displayId)?.role ?? 'off'
+  const activeCount = screens.length
+  const anyAudience = screens.some((s) => s.role === 'audience')
+  const preferred = displays.find((d) => !d.primary) ?? displays[0]
+
+  const goLive = (): void => {
+    if (preferred) void setScreen(preferred.id, 'audience')
+  }
 
   return (
     <header className="topbar">
@@ -26,30 +37,52 @@ export function TopBar(): JSX.Element {
       <div className="topbar-spacer" />
 
       <div className="output-controls">
-        <span className={`status-dot ${outputStatus.open ? 'on' : 'off'}`} />
-        <select
-          className="display-select"
-          value={selectedDisplayId ?? ''}
-          onChange={(e) => setSelectedDisplay(e.target.value ? Number(e.target.value) : null)}
-          title="Audience display"
-        >
-          {displays.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.primary ? '🖥 ' : '📺 '}
-              {d.label}
-              {d.primary ? ' (primary)' : ''}
-            </option>
-          ))}
-        </select>
-        {outputStatus.open ? (
-          <button className="btn btn-danger" onClick={() => void closeOutput()}>
-            Close Output
-          </button>
-        ) : (
-          <button className="btn btn-primary" onClick={() => void openOutput()}>
+        <span className={`status-dot ${activeCount ? 'on' : 'off'}`} />
+        {!anyAudience && preferred && (
+          <button className="btn btn-primary" onClick={goLive} title="Show the audience output on the best screen">
             Go Live
           </button>
         )}
+        <div className="screens-wrap">
+          <button className="btn" onClick={() => setOpen((v) => !v)}>
+            Screens{activeCount ? ` · ${activeCount}` : ''} ▾
+          </button>
+          {open && (
+            <>
+              <div className="dropdown-backdrop" onClick={() => setOpen(false)} />
+              <div className="screens-menu">
+                <div className="screens-title">Output screens</div>
+                {displays.map((d) => {
+                  const role = roleOf(d.id)
+                  return (
+                    <div key={d.id} className="screen-row">
+                      <div className="screen-name" title={d.label}>
+                        {d.primary ? '🖥 ' : '📺 '}
+                        {d.label}
+                        {d.primary ? ' (this screen)' : ''}
+                      </div>
+                      <div className="seg">
+                        {(['off', 'audience', 'stage'] as ScreenRole[]).map((r) => (
+                          <button
+                            key={r}
+                            className={`seg-btn ${role === r ? 'active' : ''}`}
+                            onClick={() => void setScreen(d.id, r)}
+                          >
+                            {r === 'off' ? 'Off' : r === 'audience' ? 'Audience' : 'Stage'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+                <div className="screens-hint">
+                  Audience = lyrics/scripture · Stage = confidence monitor (current + next + clock).
+                  On this screen it opens as a window (press F for fullscreen, Esc to close).
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="quick-controls">
