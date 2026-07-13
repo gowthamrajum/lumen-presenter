@@ -74,6 +74,18 @@ export function pptxSlides(imp: PptxImport): SlideContent[] {
 }
 
 /**
+ * Repeat-marker notation common in Telugu song books, e.g. `||అదే అదే||`
+ * ("repeat this phrase"). The pipes sit cramped against the phrase and, rarely,
+ * against a preceding word. Pad 2 spaces inside the pipes (and off any preceding
+ * word) so the marker reads cleanly on a slide instead of looking estranged.
+ */
+export function formatLyricLine(line: string): string {
+  return line
+    .replace(/\|\|\s*([^|]+?)\s*\|\|/g, '||  $1  ||')
+    .replace(/(\S)\|\|/g, '$1  ||')
+}
+
+/**
  * Song -> slides. Sections are emitted in arrangement order (or section order),
  * each section's lyric lines split into slides of `linesPerSlide` lines.
  */
@@ -89,7 +101,7 @@ export function songSlides(song: Song): SlideContent[] {
   for (const sec of order) {
     // Drop blank lines (stray trailing Enter, separators) so they don't create
     // half-empty slides or shift the lines-per-slide pagination.
-    const lines = sec.lines.filter((l) => l.trim().length > 0)
+    const lines = sec.lines.filter((l) => l.trim().length > 0).map(formatLyricLine)
     if (lines.length === 0) continue
     const chunks: string[][] = []
     for (let i = 0; i < lines.length; i += lpp) chunks.push(lines.slice(i, i + lpp))
@@ -118,7 +130,7 @@ export function songComposedSlides(song: Song): SlideContent[] {
       : song.sections
   return order
     .map((sec): SlideContent => {
-      const lines = sec.lines.filter((l) => l.trim().length > 0)
+      const lines = sec.lines.filter((l) => l.trim().length > 0).map(formatLyricLine)
       return { id: uid(), kind: 'text', label: sec.label, lines, composed: composeFromLines(lines) }
     })
     .filter((s) => s.lines.length > 0)

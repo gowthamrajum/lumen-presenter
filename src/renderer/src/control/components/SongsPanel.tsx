@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react'
 import { useStore, uid } from '../../store/useStore'
 import { songSlides, songComposedSlides } from '../slides'
 import { ensureComposerFont } from '../compose'
+import { buildRepeatArrangement } from '../songArrange'
 import { remoteToSong, type SongLang } from '../songsRemote'
 import { SongEditor } from './SongEditor'
+import { SongStructureDialog } from './SongStructureDialog'
 import type { RemoteSong, Song } from '@shared/types'
+
+type AddMode = 'slides' | 'canvas'
 
 function newSong(): Song {
   return {
@@ -30,6 +34,8 @@ export function SongsPanel(): JSX.Element {
   const [lang, setLang] = useState<SongLang>('both')
   const [editing, setEditing] = useState<Song | null>(null)
   const [note, setNote] = useState('')
+  /** a song awaiting the "which section repeats?" prompt before it's added */
+  const [structure, setStructure] = useState<{ song: Song; mode: AddMode; goLive: boolean } | null>(null)
 
   useEffect(() => {
     if (mode === 'online') void loadRemoteSongs()
@@ -37,11 +43,47 @@ export function SongsPanel(): JSX.Element {
 
   const q = query.trim().toLowerCase()
 
+  // Actually build slides for a song (arrangement already applied) and add it.
+  const doAdd = async (song: Song, mode: AddMode, goLive: boolean): Promise<void> => {
+    setNote('') // start each add from a clean slate
+    if (mode === 'canvas') {
+      await ensureComposerFont()
+      const slides = songComposedSlides(song)
+      if (!slides.length) {
+        setNote(`No lyrics in the selected language for “${song.title}”.`)
+        return
+      }
+      addItem({ title: song.title, kind: 'song', slides })
+      setNote(`Added “${song.title}” to Canvas (${slides.length} slides). Click ✎ on a slide to edit.`)
+    } else {
+      const slides = songSlides(song)
+      if (!slides.length) {
+        setNote(`No lyrics in the selected language for “${song.title}”.`)
+        return
+      }
+      addItem({ title: song.title, kind: 'song', slides }, goLive)
+      setNote(`Added “${song.title}” (${slides.length} slides).`)
+    }
+  }
+
+  // Multi-section songs first ask which part repeats after each stanza.
+  const beginAdd = (song: Song, mode: AddMode, goLive: boolean): void => {
+    if (song.sections.length >= 2) setStructure({ song, mode, goLive })
+    else void doAdd(song, mode, goLive)
+  }
+  const confirmStructure = (recurringId: string | null): void => {
+    if (!structure) return
+    const { song, mode, goLive } = structure
+    const arranged = recurringId ? { ...song, arrangement: buildRepeatArrangement(song, recurringId) } : song
+    setStructure(null)
+    void doAdd(arranged, mode, goLive)
+  }
+
   // ----- local library -----
   const localFiltered = q ? songs.filter((s) => `${s.title} ${s.author ?? ''}`.toLowerCase().includes(q)) : songs
-  const addLocal = async (id: string, goLive: boolean): Promise<void> => {
+  const addLocal = async (id: string, mode: AddMode, goLive: boolean): Promise<void> => {
     const song = await window.lumen.loadSong(id)
-    if (song) addItem({ title: song.title, kind: 'song', slides: songSlides(song) }, goLive)
+    if (song) beginAdd(song, mode, goLive)
   }
   const edit = async (id: string): Promise<void> => {
     const song = await window.lumen.loadSong(id)
@@ -52,14 +94,8 @@ export function SongsPanel(): JSX.Element {
   const remoteFiltered = (
     q ? remoteSongs.filter((r) => String(r.song_name ?? '').toLowerCase().includes(q)) : remoteSongs
   ).slice(0, 400)
-  const addRemote = (r: RemoteSong, goLive: boolean): void => {
-    const song = remoteToSong(r, lang)
-    const slides = songSlides(song)
-    if (!slides.length) {
-      setNote(`No lyrics in the selected language for “${song.title}”.`)
-      return
-    }
-    addItem({ title: song.title, kind: 'song', slides }, goLive)
+  const addRemote = (r: RemoteSong, mode: AddMode, goLive: boolean): void => {
+    beginAdd(remoteToSong(r, lang), mode, goLive)
   }
   const importRemote = async (r: RemoteSong): Promise<void> => {
     try {
@@ -68,22 +104,6 @@ export function SongsPanel(): JSX.Element {
     } catch (e) {
       setNote(`Could not import: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }
-
-  // ----- songs → Canvas (composed, editable slides) -----
-  const canvasFromSong = async (song: Song): Promise<void> => {
-    await ensureComposerFont()
-    const slides = songComposedSlides(song)
-    if (!slides.length) {
-      setNote(`No lyrics in the selected language for “${song.title}”.`)
-      return
-    }
-    addItem({ title: song.title, kind: 'song', slides })
-    setNote(`Added “${song.title}” to Canvas (${slides.length} slides). Click ✎ on a slide to edit.`)
-  }
-  const canvasLocal = async (id: string): Promise<void> => {
-    const song = await window.lumen.loadSong(id)
-    if (song) await canvasFromSong(song)
   }
 
   return (
@@ -147,6 +167,8 @@ export function SongsPanel(): JSX.Element {
         </div>
       )}
 
+      {note && <div className="empty-note">{note}</div>}
+
       {mode === 'library' ? (
         <>
           {songs.length === 0 && (
@@ -156,13 +178,13 @@ export function SongsPanel(): JSX.Element {
           <div className="song-list">
             {localFiltered.map((s) => (
               <div key={s.id} className="song-row">
-                <div className="song-row-main" onDoubleClick={() => void addLocal(s.id, true)} title="Double-click to add & present">
+                <div className="song-row-main" onDoubleClick={() => void addLocal(s.id, 'slides', true)} title="Double-click to add & present">
                   <div className="song-title">{s.title || 'Untitled Song'}</div>
                   {s.author && <div className="song-author">{s.author}</div>}
                 </div>
                 <div className="song-actions">
-                  <button className="btn tiny" onClick={() => void addLocal(s.id, false)} title="Add to service">Add</button>
-                  <button className="btn tiny" onClick={() => void canvasLocal(s.id)} title="Add as editable Canvas slides">Canvas</button>
+                  <button className="btn tiny" onClick={() => void addLocal(s.id, 'slides', false)} title="Add to service">Add</button>
+                  <button className="btn tiny" onClick={() => void addLocal(s.id, 'canvas', false)} title="Add as editable Canvas slides">Canvas</button>
                   <button className="btn tiny" onClick={() => void edit(s.id)} title="Edit song">Edit</button>
                   <button className="btn tiny" onClick={() => void deleteSong(s.id)} title="Delete">×</button>
                 </div>
@@ -180,18 +202,17 @@ export function SongsPanel(): JSX.Element {
               <button className="btn tiny" onClick={() => void loadRemoteSongs(true)}>Retry</button>
             </div>
           )}
-          {note && <div className="empty-note">{note}</div>}
           {remoteState === 'ready' && remoteFiltered.length === 0 && <div className="empty-note">No matches.</div>}
           <div className="song-list">
             {remoteFiltered.map((r) => (
               <div key={r.song_id} className="song-row">
-                <div className="song-row-main" onDoubleClick={() => addRemote(r, true)} title="Double-click to add & present">
+                <div className="song-row-main" onDoubleClick={() => addRemote(r, 'slides', true)} title="Double-click to add & present">
                   <div className="song-title">{r.song_name}</div>
                   <div className="song-author">{(r.stanzas?.length ?? 0) + (r.main_stanza ? 1 : 0)} sections</div>
                 </div>
                 <div className="song-actions">
-                  <button className="btn tiny" onClick={() => addRemote(r, false)} title="Add to service">Add</button>
-                  <button className="btn tiny" onClick={() => void canvasFromSong(remoteToSong(r, lang))} title="Add as editable Canvas slides">Canvas</button>
+                  <button className="btn tiny" onClick={() => addRemote(r, 'slides', false)} title="Add to service">Add</button>
+                  <button className="btn tiny" onClick={() => addRemote(r, 'canvas', false)} title="Add as editable Canvas slides">Canvas</button>
                   <button className="btn tiny" onClick={() => void importRemote(r)} title="Save to your library">Import</button>
                 </div>
               </div>
@@ -206,6 +227,13 @@ export function SongsPanel(): JSX.Element {
       )}
 
       {editing && <SongEditor song={editing} onClose={() => setEditing(null)} />}
+      {structure && (
+        <SongStructureDialog
+          song={structure.song}
+          onCancel={() => setStructure(null)}
+          onConfirm={confirmStructure}
+        />
+      )}
     </div>
   )
 }
