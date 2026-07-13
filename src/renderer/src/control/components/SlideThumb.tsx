@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useStore } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import { Icon } from '../../shared/Icon'
@@ -18,6 +19,17 @@ export function SlideThumb({
   const removeSlide = useStore((s) => s.removeSlide)
   const openComposer = useStore((s) => s.openComposer)
 
+  // Keep the live slide in view: scroll the grid the minimal amount when this
+  // thumb goes live, so stepping through a many-slide section (song, psalm range)
+  // follows the selection down/up instead of leaving it off-screen.
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    // Center the live slide in the panel so it's comfortably in view (with the
+    // upcoming slides visible below), rather than jammed against an edge. No-op
+    // when the section is short enough to fit without scrolling.
+    if (live) ref.current?.scrollIntoView({ block: 'center', inline: 'nearest' })
+  }, [live])
+
   const preview: LiveState = {
     slide,
     background: slide.background ?? background,
@@ -29,6 +41,7 @@ export function SlideThumb({
 
   return (
     <div
+      ref={ref}
       className={`slide-thumb ${live ? 'live' : ''}`}
       onClick={() => goLive(slide.id)}
       title={slide.label ?? `Slide ${index + 1}`}
