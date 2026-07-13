@@ -14,7 +14,7 @@ export function LeftColumn(): JSX.Element {
           className={`seg-btn ${mode === 'schedule' ? 'active' : ''}`}
           onClick={() => setMode('schedule')}
         >
-          Schedule
+          Sessions
         </button>
         <button
           className={`seg-btn ${mode === 'library' ? 'active' : ''}`}

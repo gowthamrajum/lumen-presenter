@@ -150,36 +150,48 @@
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
 }
 
-/* QR code (e.g. giving/offering) on a light card so it scans on any background */
+/* QR code (e.g. giving/offering): text on the left, QR on the right, on a light
+   card so it scans on any background. */
+.stage.has-qr .stage-textwrap {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5cqw;
+}
+.stage.has-qr .stage-fitbox {
+  flex: 1;
+  min-width: 0;
+}
 .stage-qr {
   flex: 0 0 auto;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding-top: 2.5cqh;
 }
 .stage-qr img {
-  width: 30cqh;
-  height: 30cqh;
-  max-width: 46cqw;
+  width: 40cqh;
+  height: 40cqh;
+  max-width: 40cqw;
   object-fit: contain;
   background: #fff;
   padding: 1.6cqh;
   border-radius: 2cqh;
   box-shadow: 0 1cqh 4cqh rgba(0, 0, 0, 0.4);
 }
-.stage-qr.solo {
-  flex: 1;
-  align-items: center;
-  padding-top: 0;
-}
 .stage-qr.solo img {
-  width: 44cqh;
-  height: 44cqh;
+  width: 46cqh;
+  height: 46cqh;
 }
-/* When a QR shares the slide with text, seat the text a touch higher */
-.stage.has-qr .stage-fitbox {
-  align-items: flex-end;
-  padding-bottom: 1.5cqh;
+/* Single-line title cards shrink to fit one line instead of wrapping. The
+   max-width cap is dropped so the element sizes to its (nowrap) content — that
+   keeps scrollWidth honest so useFitText actually shrinks the font to fit. The
+   6% horizontal padding on .stage-textwrap still gives breathing room. */
+.stage-text.oneline,
+.stage-text.oneline > div {
+  white-space: nowrap;
+}
+.stage-text.oneline {
+  max-width: none;
 }
 
 .stage-timerwrap {

@@ -24,7 +24,9 @@ function section(title: string, kind: ItemKind, telugu: string, english: string)
     id: uid(),
     kind: 'text',
     label: title,
-    lines: [[telugu, english].filter((s) => s.trim()).join(' ')]
+    // Telugu first, English next — our house format for bilingual cards.
+    lines: [[telugu, english].filter((s) => s.trim()).join(' ')],
+    singleLine: true
   }
   return { id: uid(), title, kind, slides: [slide] }
 }
@@ -73,7 +75,8 @@ function offerings(): ServiceItem {
     id: uid(),
     kind: 'text',
     label: 'Offerings',
-    lines: ['Offerings కానుకలు'],
+    lines: ['కానుకలు Offerings'], // Telugu first, English next
+    singleLine: true,
     qr: QR_DONATIONS
   }
   return { id: uid(), title: 'Offerings', kind: 'text', slides: [slide] }

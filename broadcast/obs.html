@@ -55,9 +55,15 @@
   #composed { position: absolute; inset: 0; display: none; }
   #composed .cline { position: absolute; transform: translate(-50%, -50%); text-align: center; white-space: pre-wrap; font-weight: 700; }
 
-  /* giving/offering QR — audience mode only, on a light card so it scans */
-  .qr { display: none; margin-top: 3cqh; width: 30cqh; height: 30cqh; object-fit: contain; background: #fff; padding: 1.6cqh; border-radius: 2cqh; box-shadow: 0 1cqh 4cqh rgba(0,0,0,.4); }
+  /* giving/offering QR — audience mode only, to the RIGHT of the text, on a
+     light card so it scans */
+  .qr { display: none; width: 30cqh; height: 30cqh; object-fit: contain; background: #fff; padding: 1.6cqh; border-radius: 2cqh; box-shadow: 0 1cqh 4cqh rgba(0,0,0,.4); }
   html.mode-obs .qr { display: none !important; }
+  html.mode-audience #stage.has-qr { flex-direction: row; justify-content: center; align-items: center; gap: 5cqw; }
+  html.mode-audience #stage.has-qr .qr { width: 40cqh; height: 40cqh; }
+  html.mode-audience #stage.has-qr .lyrics { max-width: 55%; }
+  /* single-line title cards don't wrap */
+  .lyrics.nowrap .line { white-space: nowrap; }
 
   /* ============ OBS mode: transparent alpha, lyrics lower-third ============ */
   html.mode-obs #stage { justify-content: flex-end; align-items: center; }
@@ -196,6 +202,8 @@
   function renderTimer(slide, scale) {
     composedEl.style.display = 'none';
     qrEl.style.display = 'none';
+    stage.classList.remove('has-qr');
+    lyricsEl.classList.remove('nowrap');
     lyricsEl.style.display = '';
     lyricsEl.innerHTML = '';
     var span = document.createElement('span');
@@ -293,16 +301,18 @@
       var lines = textOf(slide).filter(function (t) { return t && t.trim(); });
       if (!lines.length) { stage.classList.remove('show'); return; }
       renderLines(lines, scale);
+      lyricsEl.classList.toggle('nowrap', mode === 'audience' && !!slide.singleLine);
     }
 
     var composedShown = mode === 'audience' && slide.composed && slide.composed.length;
     var cap = slide.caption || '';
     captionEl.textContent = cap;
     captionEl.style.display = cap && !composedShown ? '' : 'none';
-    // giving/offering QR (audience mirror only)
+    // giving/offering QR (audience mirror only), seated to the right of the text
     var qrOn = mode === 'audience' && slide.qr && !composedShown;
     if (qrOn) { if (qrEl.getAttribute('src') !== slide.qr) qrEl.setAttribute('src', slide.qr); qrEl.style.display = 'block'; }
     else { qrEl.style.display = 'none'; }
+    stage.classList.toggle('has-qr', !!qrOn);
     stage.classList.add('show');
   }
 

@@ -116,7 +116,7 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
     fontWeight: 700
   }
 
-  const { ref } = useFitText([lines.join('\n'), theme.fontScale, theme.uppercase], {
+  const { ref } = useFitText([lines.join('\n'), theme.fontScale, theme.uppercase, slide?.singleLine, !!qr], {
     scale: theme.fontScale
   })
 
@@ -171,7 +171,7 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
       {showText && (
         <div className="stage-textwrap">
           <div className="stage-fitbox">
-            <div ref={ref} className="stage-text" style={textStyle}>
+            <div ref={ref} className={`stage-text${slide?.singleLine ? ' oneline' : ''}`} style={textStyle}>
               {lines.map((l, i) => (
                 <div key={i}>{l || ' '}</div>
               ))}

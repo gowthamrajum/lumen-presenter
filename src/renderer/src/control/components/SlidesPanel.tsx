@@ -22,7 +22,7 @@ export function SlidesPanel(): JSX.Element {
           </div>
           <h2>No item selected</h2>
           <p>
-            Pick an item from the <b>Schedule</b>, or open the <b>Library</b> to add songs,
+            Pick an item from <b>Sessions</b>, or open the <b>Library</b> to add songs,
             scripture, media, or text. Click a slide to show it on the audience screen.
           </p>
         </div>

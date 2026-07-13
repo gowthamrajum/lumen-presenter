@@ -79,11 +79,14 @@ export interface SlideContent {
    */
   overlays?: string[]
   /**
-   * Optional QR code (image URL or data-URL) shown below the text — e.g. the
+   * Optional QR code (image URL or data-URL) shown beside the text — e.g. the
    * giving/offering QR. Rendered on a light card so it scans on any background,
    * on both the local output and the web broadcast.
    */
   qr?: string
+  /** render the text on a single line, shrinking to fit width instead of
+   *  wrapping (used by bilingual title cards). */
+  singleLine?: boolean
 }
 
 export interface LiveState {

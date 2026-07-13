@@ -1712,7 +1712,9 @@ select:focus {
   display: flex;
   border: 1px solid var(--line);
   border-radius: 7px;
-  overflow: hidden;
+  /* No overflow:hidden — clipping an opaque child to a rounded parent leaves a
+     square-corner bleed in Chromium. The first/last buttons round their own
+     outer corners instead (below). */
 }
 .seg-btn {
   background: var(--panel-2);
