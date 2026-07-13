@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { psalmSlides, type PsalmLang } from '../slides'
 import { Icon } from '../../shared/Icon'
+import { LangToggle } from './LangToggle'
 import type { PsalmVerse } from '@shared/types'
 
 /**
- * Psalms library source — pulls the bilingual (Telugu + English) psalter from
- * the grey-gratis-ice backend (a whole chapter, or a verse range) and adds the
- * chosen verses to the service as scripture slides.
+ * Psalms library source — bilingual (Telugu OV + WEB English) psalter assembled
+ * from the bundled public-domain Bibles (a whole chapter, or a verse range). The
+ * language toggle picks what lands on the slide: both, Telugu, or English.
  */
 export function PsalmsSource(): JSX.Element {
   const addItem = useStore((s) => s.addItem)
@@ -111,13 +112,12 @@ export function PsalmsSource(): JSX.Element {
             title="Type a psalm number (1–150)"
           />
         </label>
-        <select value={lang} onChange={(e) => setLang(e.target.value as PsalmLang)} title="Language">
-          <option value="both">తెలుగు + English</option>
-          <option value="telugu">తెలుగు only</option>
-          <option value="english">English only</option>
-        </select>
       </div>
       {chapterError && <div className="chapter-error">{chapterError}</div>}
+
+      <div className="lang-row">
+        <LangToggle value={lang} onChange={(l) => setLang(l as PsalmLang)} />
+      </div>
 
       <div className="verse-range">
         <label className="chk">

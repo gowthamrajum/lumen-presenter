@@ -14,7 +14,8 @@ import {
   type Service,
   type ServiceMeta,
   type Song,
-  type SongMeta
+  type SongMeta,
+  type PsalmVerse
 } from '../shared/types'
 import { importPptxFiles } from './pptx'
 import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExport'
@@ -361,19 +362,7 @@ function registerIpc(): void {
   // Read a bundled full Bible translation (resources/bible/<id>.json). Ids are
   // whitelisted so this can never read an arbitrary path; parsed results are
   // cached so re-selecting a translation doesn't re-read the (large) file.
-  ipcMain.handle(IPC.bibleLoad, async (_e, id: string) => {
-    if (!BUNDLED_TRANSLATIONS.has(id)) return null
-    if (translationCache.has(id)) return translationCache.get(id)
-    try {
-      const file = join(app.getAppPath(), 'resources', 'bible', `${id}.json`)
-      const data = JSON.parse(await readFile(file, 'utf8'))
-      translationCache.set(id, data)
-      return data
-    } catch (err) {
-      console.error(`Failed to load translation "${id}":`, err)
-      return null
-    }
-  })
+  ipcMain.handle(IPC.bibleLoad, async (_e, id: string) => loadBundledTranslation(id))
 
   // ---- services (saved setlists) persistence ----
   ipcMain.handle(IPC.servicesList, () => listServices())
@@ -428,22 +417,12 @@ function registerIpc(): void {
     })
   })
 
-  // Psalms (bilingual) from the same backend — a whole chapter, or a verse range
-  // via ?start&end. Cached 24h per chapter/range so repeat lookups are instant.
+  // Psalms (bilingual) assembled from the bundled public-domain Bibles — Telugu
+  // OV + WEB English — paired by verse. Offline, instant, and free of the ESV the
+  // backend used. A whole chapter, or a verse range via start/end.
   ipcMain.handle(IPC.psalmsGet, async (_e, chapter: number, start?: number, end?: number) => {
-    const base = process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com'
     const ch = Math.max(1, Math.min(150, Math.floor(chapter) || 1))
-    let path = `/psalms/${ch}`
-    let key = `psalms-${ch}`
-    if (start != null && end != null) {
-      const s = Math.max(1, Math.floor(Number(start)) || 1)
-      const e = Math.max(s, Math.floor(Number(end)) || s)
-      path = `/psalms/${ch}/range?start=${s}&end=${e}`
-      key = `psalms-${ch}-${s}-${e}`
-    }
-    return cachedFetchJson(key, `${base}${path}`, {
-      validate: (d): d is unknown[] => Array.isArray(d)
-    })
+    return bundledPsalms(ch, start, end)
   })
 }
 
@@ -511,6 +490,56 @@ async function listServices(): Promise<ServiceMeta[]> {
 
 const BUNDLED_TRANSLATIONS = new Set(['telugu', 'web'])
 const translationCache = new Map<string, unknown>()
+
+interface BundledTranslation {
+  verses: { book: string; chapter: number; verse: number; text: string }[]
+  [k: string]: unknown
+}
+
+/** Read + cache a bundled translation JSON (resources/bible/<id>.json). Ids are
+ *  whitelisted so this can never read an arbitrary path; the (large) file is read
+ *  once and the parsed result kept in memory. */
+async function loadBundledTranslation(id: string): Promise<BundledTranslation | null> {
+  if (!BUNDLED_TRANSLATIONS.has(id)) return null
+  if (translationCache.has(id)) return translationCache.get(id) as BundledTranslation
+  try {
+    const file = join(app.getAppPath(), 'resources', 'bible', `${id}.json`)
+    const data = JSON.parse(await readFile(file, 'utf8')) as BundledTranslation
+    translationCache.set(id, data)
+    return data
+  } catch (err) {
+    console.error(`Failed to load translation "${id}":`, err)
+    return null
+  }
+}
+
+/** Bilingual Psalms (Telugu OV + WEB English) built from the two bundled Bibles,
+ *  paired by verse number — public-domain and fully offline. Both translations
+ *  use English versification, so verse numbers line up. */
+async function bundledPsalms(chapter: number, start?: number, end?: number): Promise<PsalmVerse[]> {
+  const [te, en] = await Promise.all([
+    loadBundledTranslation('telugu'),
+    loadBundledTranslation('web')
+  ])
+  const teMap = new Map<number, string>()
+  const enMap = new Map<number, string>()
+  for (const v of te?.verses ?? []) if (v.book === 'Psalms' && v.chapter === chapter) teMap.set(v.verse, v.text)
+  for (const v of en?.verses ?? []) if (v.book === 'Psalms' && v.chapter === chapter) enMap.set(v.verse, v.text)
+
+  let nums = [...new Set([...teMap.keys(), ...enMap.keys()])].sort((a, b) => a - b)
+  if (start != null && end != null) {
+    const s = Math.max(1, Math.floor(Number(start)) || 1)
+    const e = Math.max(s, Math.floor(Number(end)) || s)
+    nums = nums.filter((n) => n >= s && n <= e)
+  }
+  return nums.map((verse) => ({
+    id: chapter * 1000 + verse,
+    chapter,
+    verse,
+    telugu: teMap.get(verse) ?? '',
+    english: enMap.get(verse) ?? ''
+  }))
+}
 
 // ---- lifecycle -------------------------------------------------------------
 app.whenReady().then(() => {

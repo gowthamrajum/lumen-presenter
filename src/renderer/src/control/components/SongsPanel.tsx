@@ -6,6 +6,7 @@ import { buildSongArrangement } from '../songArrange'
 import { remoteToSong, type SongLang } from '../songsRemote'
 import { SongEditor } from './SongEditor'
 import { SongStructureDialog, type AddSongChoice } from './SongStructureDialog'
+import { LangToggle } from './LangToggle'
 import { Icon } from '../../shared/Icon'
 import type { Background, RemoteSong, SlideContent, Song } from '@shared/types'
 
@@ -157,19 +158,15 @@ export function SongsPanel(): JSX.Element {
       />
 
       {mode === 'online' && (
-        <div className="browse-row">
-          <select
+        <div className="lang-row">
+          <LangToggle
             value={lang}
-            onChange={(e) => {
-              setLang(e.target.value as SongLang)
+            onChange={(l) => {
+              setLang(l as SongLang)
               setNote('')
             }}
-            title="Lyric language"
-          >
-            <option value="both">Both (తెలుగు + English)</option>
-            <option value="telugu">తెలుగు only</option>
-            <option value="english">English only (transliteration)</option>
-          </select>
+            title="Lyric language on the slide"
+          />
           {remoteState === 'ready' && (
             <button className="btn tiny icon-btn" onClick={() => void loadRemoteSongs(true)} title="Reload catalog">
               <Icon name="refresh" />
