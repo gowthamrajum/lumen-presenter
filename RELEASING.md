@@ -31,16 +31,34 @@ You can also run it from the **Actions ▸ Release ▸ Run workflow** button.
 
 ## Signing — the honest $0 picture
 
-Builds ship **unsigned** by default. That's fine for you and technical users; for
-wider distribution:
+Builds ship **unsigned**. Here's the no-money plan per platform.
 
-| Platform | Free option | What users see unsigned |
-|---|---|---|
-| **Windows** | [SignPath.io](https://about.signpath.io/product/open-source) free **OSS** code-signing, or an EV cert (~$$) | SmartScreen "unknown publisher" until download reputation builds |
-| **macOS** | No free notarization — needs the $99/yr Apple Developer account | Gatekeeper block → **right-click ▸ Open** once, or `xattr -dr com.apple.quarantine "/Applications/Lumen Presenter.app"` |
+### Windows — fully free ✅
+Use **[SignPath.io](https://about.signpath.io/product/open-source)'s OSS program**:
+a real CA-trusted cert at $0, so SmartScreen goes away. It's the one thing you
+apply for once. Full walkthrough + the exact CI change: **[SIGNING.md](./SIGNING.md)**.
+Until then, unsigned works — users click **More info ▸ Run anyway** once.
 
-To enable free Windows signing later: apply to the SignPath OSS program, then add
-the signing step to the Windows job in `release.yml`.
+### macOS — the $0 reality (no $99 needed for your case)
+There is **no free notarization** — Apple only sells it via the $99/yr Developer
+account. But you almost certainly don't need it:
+
+- The builds are **ad-hoc signed** (electron-builder does this automatically), so
+  they *run* fine — Apple Silicon requires a signature and they have one.
+- The only cost of being unsigned is a **one-time trust step per machine**:
+  **right-click the app ▸ Open ▸ Open**, or once in Terminal:
+  ```
+  xattr -dr com.apple.quarantine "/Applications/Lumen Presenter.app"
+  ```
+- After that, it launches normally forever. Auto-updates aren't self-applying on
+  unsigned macOS, so the app instead nudges you to the Releases page.
+
+**When $99 is actually worth it:** only if you're shipping to *many* non-technical
+Mac users who won't do the one-time right-click. For a few church projection Macs,
+the free path is completely fine — set it up once and forget it.
+
+**Every download already carries these instructions** — they're written into each
+GitHub Release's notes automatically (see the publish step).
 
 ## The broadcast overlay is single-sourced
 
