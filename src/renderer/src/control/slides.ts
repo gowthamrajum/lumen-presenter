@@ -90,15 +90,17 @@ export function pptxSlides(imp: PptxImport): SlideContent[] {
 }
 
 /**
- * Repeat-marker notation common in Telugu song books, e.g. `||అదే అదే||`
- * ("repeat this phrase"). The pipes sit cramped against the phrase and, rarely,
- * against a preceding word. Pad 2 spaces inside the pipes (and off any preceding
- * word) so the marker reads cleanly on a slide instead of looking estranged.
+ * Tidy lyric spacing for display. Song-book text often carries long, ragged runs
+ * of spaces — e.g. `Deevinchave Samrudhigaa          ||Deevinchaave||` — which
+ * look untidy. Collapse any run of 2+ spaces to a single pair and trim the ends,
+ * so lines read cleanly and evenly.
+ *
+ * The `||…||` repeat-marker notation common in Telugu song books (e.g. `||అదే అదే||`,
+ * "repeat this phrase") is left exactly as authored — the pipes and whatever sits
+ * between them are never repadded.
  */
 export function formatLyricLine(line: string): string {
-  return line
-    .replace(/\|\|\s*([^|]+?)\s*\|\|/g, '||  $1  ||')
-    .replace(/(\S)\|\|/g, '$1  ||')
+  return line.replace(/[ \t]{2,}/g, '  ').replace(/^[ \t]+|[ \t]+$/g, '')
 }
 
 /**
