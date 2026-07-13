@@ -7,15 +7,19 @@ import { composeFromLines } from './compose'
 export type PsalmLang = 'both' | 'telugu' | 'english'
 
 /** Psalm verses -> scripture slides, one per verse, in the chosen language(s).
- *  Verses with no text in the chosen language are skipped (no blank slides). */
-export function psalmSlides(verses: PsalmVerse[], lang: PsalmLang = 'both'): SlideContent[] {
+ *  Verses with no text in the chosen language are skipped (no blank slides).
+ *  When the English is the ESV and it's actually shown, the caption carries the
+ *  required "(ESV)" attribution. */
+export function psalmSlides(verses: PsalmVerse[], lang: PsalmLang = 'both', esv = false): SlideContent[] {
+  const showsEnglish = lang !== 'telugu'
   return verses
     .map((v) => {
       const ref = `Psalm ${v.chapter}:${v.verse}`
       const lines = (lang === 'telugu' ? [v.telugu] : lang === 'english' ? [v.english] : [v.telugu, v.english]).filter(
         (l) => l && l.trim()
       )
-      return { id: uid(), kind: 'scripture' as const, label: ref, lines, caption: ref }
+      const caption = esv && showsEnglish ? `${ref} (ESV)` : ref
+      return { id: uid(), kind: 'scripture' as const, label: ref, lines, caption }
     })
     .filter((s) => s.lines.length > 0)
 }

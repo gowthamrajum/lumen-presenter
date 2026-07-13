@@ -15,11 +15,15 @@ import {
   type ServiceMeta,
   type Song,
   type SongMeta,
-  type PsalmVerse
+  type PsalmVerse,
+  type PsalmEnglish,
+  type PsalmsResult,
+  type PsalmsError
 } from '../shared/types'
 import { importPptxFiles } from './pptx'
 import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExport'
 import { cachedFetchJson } from './httpCache'
+import { esvKeyStatus, esvSetKey, esvPassage } from './esv'
 import type { PptxExportRequest } from '../shared/types'
 import {
   initBroadcast,
@@ -417,13 +421,20 @@ function registerIpc(): void {
     })
   })
 
-  // Psalms (bilingual) assembled from the bundled public-domain Bibles — Telugu
-  // OV + WEB English — paired by verse. Offline, instant, and free of the ESV the
-  // backend used. A whole chapter, or a verse range via start/end.
-  ipcMain.handle(IPC.psalmsGet, async (_e, chapter: number, start?: number, end?: number) => {
-    const ch = Math.max(1, Math.min(150, Math.floor(chapter) || 1))
-    return bundledPsalms(ch, start, end)
-  })
+  // Psalms (bilingual): Telugu OV (bundled) + English. The English is either the
+  // bundled WEBBE (offline, public domain) or the ESV fetched on demand from the
+  // Crossway API; an ESV request with no key / a failure falls back to WEBBE.
+  ipcMain.handle(
+    IPC.psalmsGet,
+    async (_e, chapter: number, start?: number, end?: number, english?: PsalmEnglish) => {
+      const ch = Math.max(1, Math.min(150, Math.floor(chapter) || 1))
+      return psalmsResult(ch, start, end, english === 'esv' ? 'esv' : 'webbe')
+    }
+  )
+
+  // ESV API key management (stored in userData, never returned to the renderer).
+  ipcMain.handle(IPC.esvKeyStatus, () => esvKeyStatus())
+  ipcMain.handle(IPC.esvKeySet, (_e, key: string) => esvSetKey(key))
 }
 
 // ---- songs storage helpers ----
@@ -513,32 +524,59 @@ async function loadBundledTranslation(id: string): Promise<BundledTranslation | 
   }
 }
 
-/** Bilingual Psalms (Telugu OV + WEB English) built from the two bundled Bibles,
- *  paired by verse number — public-domain and fully offline. Both translations
- *  use English versification, so verse numbers line up. */
-async function bundledPsalms(chapter: number, start?: number, end?: number): Promise<PsalmVerse[]> {
-  const [te, en] = await Promise.all([
+/** Psalms verse numbers of a chapter from a bundled translation. */
+function psalmMap(t: BundledTranslation | null, chapter: number): Map<number, string> {
+  const m = new Map<number, string>()
+  for (const v of t?.verses ?? []) if (v.book === 'Psalms' && v.chapter === chapter) m.set(v.verse, v.text)
+  return m
+}
+
+/** Bilingual Psalms: Telugu OV (bundled) + English (bundled WEBBE, or ESV via the
+ *  Crossway API). Paired by verse number — both English texts use English
+ *  versification, so the numbers line up with the Telugu. */
+async function psalmsResult(
+  chapter: number,
+  start: number | undefined,
+  end: number | undefined,
+  english: PsalmEnglish
+): Promise<PsalmsResult | PsalmsError> {
+  const [teDoc, webbeDoc] = await Promise.all([
     loadBundledTranslation('telugu'),
     loadBundledTranslation('web')
   ])
-  const teMap = new Map<number, string>()
-  const enMap = new Map<number, string>()
-  for (const v of te?.verses ?? []) if (v.book === 'Psalms' && v.chapter === chapter) teMap.set(v.verse, v.text)
-  for (const v of en?.verses ?? []) if (v.book === 'Psalms' && v.chapter === chapter) enMap.set(v.verse, v.text)
+  const teMap = psalmMap(teDoc, chapter)
+  const webbeMap = psalmMap(webbeDoc, chapter)
 
-  let nums = [...new Set([...teMap.keys(), ...enMap.keys()])].sort((a, b) => a - b)
-  if (start != null && end != null) {
-    const s = Math.max(1, Math.floor(Number(start)) || 1)
-    const e = Math.max(s, Math.floor(Number(end)) || s)
-    nums = nums.filter((n) => n >= s && n <= e)
+  const s = start != null && end != null ? Math.max(1, Math.floor(Number(start)) || 1) : undefined
+  const e = s != null && end != null ? Math.max(s, Math.floor(Number(end)) || s) : undefined
+
+  const pair = (enMap: Map<number, string>, used: PsalmEnglish, notice?: string): PsalmsResult => {
+    let nums = [...new Set([...teMap.keys(), ...enMap.keys()])].sort((a, b) => a - b)
+    if (s != null && e != null) nums = nums.filter((n) => n >= s && n <= e)
+    return {
+      english: used,
+      notice,
+      verses: nums.map((verse) => ({
+        id: chapter * 1000 + verse,
+        chapter,
+        verse,
+        telugu: teMap.get(verse) ?? '',
+        english: enMap.get(verse) ?? ''
+      }))
+    }
   }
-  return nums.map((verse) => ({
-    id: chapter * 1000 + verse,
-    chapter,
-    verse,
-    telugu: teMap.get(verse) ?? '',
-    english: enMap.get(verse) ?? ''
-  }))
+
+  if (english === 'esv') {
+    const q = s != null && e != null ? `Psalm ${chapter}:${s}-${e}` : `Psalm ${chapter}`
+    const esv = await esvPassage(q)
+    if ('error' in esv) {
+      if (esv.needKey) return { error: esv.error, needKey: true }
+      // Graceful fallback to the bundled WEBBE so a service never breaks.
+      return pair(webbeMap, 'webbe', `ESV unavailable (${esv.error}) — showing WEBBE instead.`)
+    }
+    return pair(new Map(esv.verses.map((v) => [v.verse, v.text])), 'esv')
+  }
+  return pair(webbeMap, 'webbe')
 }
 
 // ---- lifecycle -------------------------------------------------------------

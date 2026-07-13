@@ -12,7 +12,9 @@ import type {
   Song,
   SongMeta,
   RemoteSong,
-  PsalmVerse,
+  PsalmEnglish,
+  PsalmsResult,
+  PsalmsError,
   BroadcastConfig,
   BroadcastStatus,
   PptxExportRequest,
@@ -53,8 +55,15 @@ const api = {
   deleteSong: (id: string): Promise<SongMeta[]> => ipcRenderer.invoke(IPC.songDelete, id),
   remoteSongs: (force?: boolean): Promise<RemoteSong[] | { error: string }> =>
     ipcRenderer.invoke(IPC.songsRemote, force),
-  psalms: (chapter: number, start?: number, end?: number): Promise<PsalmVerse[] | { error: string }> =>
-    ipcRenderer.invoke(IPC.psalmsGet, chapter, start, end),
+  psalms: (
+    chapter: number,
+    start?: number,
+    end?: number,
+    english?: PsalmEnglish
+  ): Promise<PsalmsResult | PsalmsError> =>
+    ipcRenderer.invoke(IPC.psalmsGet, chapter, start, end, english),
+  esvKeyStatus: (): Promise<{ hasKey: boolean }> => ipcRenderer.invoke(IPC.esvKeyStatus),
+  esvSetKey: (key: string): Promise<{ hasKey: boolean }> => ipcRenderer.invoke(IPC.esvKeySet, key),
 
   // live state
   getLive: (): Promise<LiveState> => ipcRenderer.invoke(IPC.liveGet),

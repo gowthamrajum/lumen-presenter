@@ -3,12 +3,17 @@ import { useStore } from '../../store/useStore'
 import { psalmSlides, type PsalmLang } from '../slides'
 import { Icon } from '../../shared/Icon'
 import { LangToggle } from './LangToggle'
-import type { PsalmVerse } from '@shared/types'
+import type { PsalmVerse, PsalmEnglish } from '@shared/types'
+
+// Required ESV attribution, shown whenever ESV text is displayed (Crossway terms).
+const ESV_NOTICE =
+  'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway. Used by permission. All rights reserved.'
 
 /**
- * Psalms library source — bilingual (Telugu OV + WEB English) psalter assembled
- * from the bundled public-domain Bibles (a whole chapter, or a verse range). The
- * language toggle picks what lands on the slide: both, Telugu, or English.
+ * Psalms library source — bilingual (Telugu OV + English). The English is the
+ * bundled WEBBE (offline, public domain) or the ESV fetched on demand from the
+ * Crossway API (free for church use, needs a key + attribution). The language
+ * toggle picks what lands on the slide: both, Telugu, or English.
  */
 export function PsalmsSource(): JSX.Element {
   const addItem = useStore((s) => s.addItem)
@@ -20,30 +25,72 @@ export function PsalmsSource(): JSX.Element {
   const [start, setStart] = useState(1)
   const [end, setEnd] = useState(5)
   const [lang, setLang] = useState<PsalmLang>('both')
+  const [version, setVersion] = useState<PsalmEnglish>('webbe')
   const [verses, setVerses] = useState<PsalmVerse[]>([])
+  const [usedEnglish, setUsedEnglish] = useState<PsalmEnglish>('webbe')
+  const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
+  // ESV API key state.
+  const [hasKey, setHasKey] = useState(false)
+  const [needKey, setNeedKey] = useState(false)
+  const [keyInput, setKeyInput] = useState('')
+  const [savingKey, setSavingKey] = useState(false)
+
+  // Default to ESV once a key is saved; otherwise WEBBE.
+  useEffect(() => {
+    void window.lumen.esvKeyStatus().then((r) => {
+      setHasKey(r.hasKey)
+      if (r.hasKey) setVersion('esv')
+    })
+  }, [])
+
   const load = useCallback(async (): Promise<void> => {
     setLoading(true)
     setError('')
+    setNotice('')
     setSelected(new Set())
     const useRange = rangeOn && start <= end
-    const res = await window.lumen.psalms(chapter, useRange ? start : undefined, useRange ? end : undefined)
-    if (Array.isArray(res)) setVerses(res)
-    else {
+    const res = await window.lumen.psalms(
+      chapter,
+      useRange ? start : undefined,
+      useRange ? end : undefined,
+      version
+    )
+    if ('error' in res) {
       setVerses([])
-      setError(res?.error ?? 'Failed to load psalm')
+      if (res.needKey) setNeedKey(true)
+      else setError(res.error)
+    } else {
+      setNeedKey(false)
+      setVerses(res.verses)
+      setUsedEnglish(res.english)
+      setNotice(res.notice ?? '')
     }
     setLoading(false)
-  }, [chapter, rangeOn, start, end])
+  }, [chapter, rangeOn, start, end, version])
 
-  // Auto-load on chapter change or toggling range mode; range edits reload via Go.
+  // Auto-load on chapter / range-toggle / version change; range edits reload via Go.
   useEffect(() => {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapter, rangeOn])
+  }, [chapter, rangeOn, version])
+
+  const saveKey = async (): Promise<void> => {
+    const k = keyInput.trim()
+    if (!k) return
+    setSavingKey(true)
+    const r = await window.lumen.esvSetKey(k)
+    setSavingKey(false)
+    setHasKey(r.hasKey)
+    setKeyInput('')
+    if (r.hasKey) {
+      setNeedKey(false)
+      await load()
+    }
+  }
 
   const toggle = (id: number): void => {
     setSelected((prev) => {
@@ -55,6 +102,7 @@ export function PsalmsSource(): JSX.Element {
   }
 
   const selectedVerses = verses.filter((v) => selected.has(v.id))
+  const esvCaptions = usedEnglish === 'esv'
 
   const add = (goLive: boolean): void => {
     const toAdd = selectedVerses.length ? selectedVerses : verses
@@ -63,19 +111,21 @@ export function PsalmsSource(): JSX.Element {
       toAdd.length === 1
         ? `Psalm ${toAdd[0].chapter}:${toAdd[0].verse}`
         : `Psalm ${toAdd[0].chapter}:${toAdd[0].verse}–${toAdd[toAdd.length - 1].verse}`
-    addItem({ title, kind: 'scripture', slides: psalmSlides(toAdd, lang) }, goLive)
+    addItem({ title, kind: 'scripture', slides: psalmSlides(toAdd, lang, esvCaptions) }, goLive)
     setSelected(new Set())
   }
 
   const presentOne = (v: PsalmVerse): void => {
-    addItem({ title: `Psalm ${v.chapter}:${v.verse}`, kind: 'scripture', slides: psalmSlides([v], lang) }, true)
+    addItem(
+      { title: `Psalm ${v.chapter}:${v.verse}`, kind: 'scripture', slides: psalmSlides([v], lang, esvCaptions) },
+      true
+    )
   }
 
   const textOf = (v: PsalmVerse): string =>
     lang === 'telugu' ? v.telugu : lang === 'english' ? v.english : `${v.telugu}\n${v.english}`
 
   // Free-form chapter box: expect a whole number 1–150, flag out-of-bounds.
-  // Only plain decimal digits count — reject '1e2', '0x10', '5.5', '-3', etc.
   const onChapterText = (raw: string): void => {
     setChapterText(raw)
     const t = raw.trim()
@@ -93,7 +143,7 @@ export function PsalmsSource(): JSX.Element {
       return
     }
     setChapterError('')
-    if (n !== chapter) setChapter(n) // triggers the load effect
+    if (n !== chapter) setChapter(n)
   }
 
   return (
@@ -118,6 +168,56 @@ export function PsalmsSource(): JSX.Element {
       <div className="lang-row">
         <LangToggle value={lang} onChange={(l) => setLang(l as PsalmLang)} />
       </div>
+
+      <div className="lang-row">
+        <div className="seg lang-toggle" role="radiogroup" aria-label="English version" title="English text">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={version === 'webbe'}
+            className={`seg-btn${version === 'webbe' ? ' active' : ''}`}
+            onClick={() => setVersion('webbe')}
+          >
+            WEBBE
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={version === 'esv'}
+            className={`seg-btn${version === 'esv' ? ' active' : ''}`}
+            onClick={() => setVersion('esv')}
+          >
+            ESV
+          </button>
+        </div>
+      </div>
+
+      {version === 'esv' && (!hasKey || needKey) && (
+        <div className="esv-key">
+          <div className="esv-key-msg">
+            {hasKey ? 'That ESV key was rejected. ' : 'ESV needs a free API key. '}
+            Get one at{' '}
+            <a href="https://api.esv.org" target="_blank" rel="noreferrer">
+              api.esv.org
+            </a>
+            .
+          </div>
+          <div className="esv-key-row">
+            <input
+              className="search"
+              type="password"
+              placeholder="Paste your ESV API key"
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+            />
+            <button className="btn tiny" onClick={() => void saveKey()} disabled={savingKey || !keyInput.trim()}>
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+
+      {notice && <div className="empty-note">{notice}</div>}
 
       <div className="verse-range">
         <label className="chk">
@@ -149,13 +249,13 @@ export function PsalmsSource(): JSX.Element {
       </div>
 
       <div className="verse-list">
-        {loading && <div className="empty-note">Loading Psalm {chapter}… (first load can take a moment)</div>}
+        {loading && <div className="empty-note">Loading Psalm {chapter}…</div>}
         {!loading && error && (
           <div className="empty-note">
             {error} <button className="btn tiny" onClick={() => void load()}>Retry</button>
           </div>
         )}
-        {!loading && !error && verses.length === 0 && <div className="empty-note">No verses.</div>}
+        {!loading && !error && verses.length === 0 && !needKey && <div className="empty-note">No verses.</div>}
         {verses.map((v) => {
           const ref = `Psalm ${v.chapter}:${v.verse}`
           return (
@@ -181,10 +281,20 @@ export function PsalmsSource(): JSX.Element {
           Add &amp; Present
         </button>
       </div>
+
       <div className="source-hint">
-        {loading ? 'Loading…' : `Showing Psalm ${chapter}${rangeOn ? ` · verses ${start}–${end}` : ''}`} · double-click a verse
-        to present it instantly
+        {loading ? 'Loading…' : `Showing Psalm ${chapter}${rangeOn ? ` · verses ${start}–${end}` : ''}`} ·
+        double-click a verse to present it instantly
       </div>
+
+      {usedEnglish === 'esv' && verses.length > 0 && (
+        <div className="esv-attribution">
+          {ESV_NOTICE}{' '}
+          <a href="https://www.esv.org" target="_blank" rel="noreferrer">
+            esv.org
+          </a>
+        </div>
+      )}
     </div>
   )
 }

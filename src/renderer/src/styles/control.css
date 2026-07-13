@@ -1828,6 +1828,43 @@ select:focus {
   font-size: 12.5px;
   font-weight: 600;
 }
+
+/* ESV API key entry + required attribution (Psalms source) */
+.esv-key {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+.esv-key-msg {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.esv-key-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.esv-key-row .search {
+  flex: 1;
+  min-width: 0;
+}
+.esv-key-msg a,
+.esv-attribution a {
+  color: var(--accent);
+}
+.esv-attribution {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
 .shortcut-hint {
   border-top: 1px solid var(--line);
   padding-top: 10px;

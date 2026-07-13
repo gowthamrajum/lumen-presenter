@@ -237,13 +237,30 @@ export interface RemoteSong {
   stanzas?: RemoteStanza[]
 }
 
-/** A psalm verse from the grey-gratis-ice `/psalms` backend (bilingual). */
+/** A bilingual psalm verse (Telugu OV + English). */
 export interface PsalmVerse {
   id: number
   chapter: number
   verse: number
   telugu: string
   english: string
+}
+
+/** Which English text is used for the Psalms: bundled WEBBE (offline, public
+ *  domain) or the ESV (fetched on demand via the Crossway API). */
+export type PsalmEnglish = 'webbe' | 'esv'
+
+/** Result of a Psalms lookup. `english` is what actually got used (an ESV
+ *  request can fall back to WEBBE — `notice` explains when it does). */
+export interface PsalmsResult {
+  verses: PsalmVerse[]
+  english: PsalmEnglish
+  notice?: string
+}
+export interface PsalmsError {
+  error: string
+  /** true when the ESV needs an API key to be entered */
+  needKey?: boolean
 }
 
 export interface MediaFile {

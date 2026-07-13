@@ -20,6 +20,8 @@ export const IPC = {
   songDelete: 'songs:delete',
   songsRemote: 'songs:remote',
   psalmsGet: 'psalms:get',
+  esvKeyStatus: 'esv:keyStatus',
+  esvKeySet: 'esv:keySet',
   broadcastGet: 'broadcast:get',
   broadcastSet: 'broadcast:set',
   broadcastStatusGet: 'broadcast:statusGet',
