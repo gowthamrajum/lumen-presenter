@@ -1,8 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain, screen, dialog, protocol, net } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, screen, dialog, protocol } from 'electron'
 import { initAutoUpdate } from './autoUpdate'
 import { join } from 'path'
-import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises'
-import { readFileSync } from 'fs'
+import { readFile, writeFile, readdir, unlink, mkdir, stat } from 'fs/promises'
+import { readFileSync, createReadStream } from 'fs'
+import { Readable } from 'stream'
 import { pathToFileURL } from 'url'
 import { is } from '@electron-toolkit/utils'
 import { IPC } from '../shared/ipc'
@@ -56,6 +57,22 @@ protocol.registerSchemesAsPrivileged([
 /** Build a privileged url the renderer can load directly from an absolute path. */
 function mediaUrl(absPath: string): string {
   return `${MEDIA_SCHEME}://local/${encodeURIComponent(absPath)}`
+}
+
+const MEDIA_MIME: Record<string, string> = {
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+  m4v: 'video/x-m4v',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp'
+}
+function mediaMime(p: string): string {
+  const ext = p.slice(p.lastIndexOf('.') + 1).toLowerCase()
+  return MEDIA_MIME[ext] ?? 'application/octet-stream'
 }
 
 function rendererUrl(page: 'index' | 'output'): string {
@@ -612,11 +629,46 @@ app.whenReady().then(() => {
   loadDotEnv()
 
   // Serve local media files over the privileged scheme.
-  protocol.handle(MEDIA_SCHEME, (request) => {
+  protocol.handle(MEDIA_SCHEME, async (request) => {
     // url shape: lumen-media://local/<encodeURIComponent(absolutePath)>
     const url = new URL(request.url)
     const filePath = decodeURIComponent(url.pathname.replace(/^\//, ''))
-    return net.fetch(pathToFileURL(filePath).toString())
+    try {
+      const size = (await stat(filePath)).size
+      const type = mediaMime(filePath)
+      // <video>/<audio> stream via HTTP Range requests and expect 206 + a range
+      // header; without this a video background loads the whole file at once (or
+      // fails to seek/loop). Images send no Range and get a plain 200.
+      const range = request.headers.get('range')
+      if (range) {
+        const m = /bytes=(\d*)-(\d*)/.exec(range)
+        let start = m && m[1] ? parseInt(m[1], 10) : 0
+        let end = m && m[2] ? parseInt(m[2], 10) : size - 1
+        if (!Number.isFinite(start) || start < 0) start = 0
+        if (!Number.isFinite(end) || end >= size) end = size - 1
+        if (start > end) {
+          start = 0
+          end = size - 1
+        }
+        const body = Readable.toWeb(createReadStream(filePath, { start, end })) as unknown as ReadableStream
+        return new Response(body, {
+          status: 206,
+          headers: {
+            'Content-Type': type,
+            'Content-Length': String(end - start + 1),
+            'Content-Range': `bytes ${start}-${end}/${size}`,
+            'Accept-Ranges': 'bytes'
+          }
+        })
+      }
+      const body = Readable.toWeb(createReadStream(filePath)) as unknown as ReadableStream
+      return new Response(body, {
+        status: 200,
+        headers: { 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes' }
+      })
+    } catch {
+      return new Response('Not found', { status: 404 })
+    }
   })
 
   registerIpc()
