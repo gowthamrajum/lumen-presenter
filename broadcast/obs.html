@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Lumen — Broadcast</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Anek+Telugu:wght@500;700&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --size: 5.2vh;          /* OBS lower-third base size (audience computes its own) */
+    --size: 5.2cqh;         /* OBS lower-third base size (audience computes its own) */
     --text: #ffffff;
     --accent: #ffd27f;
     --scrim: 0;             /* audience: theme dark scrim over the background */
@@ -23,25 +23,36 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ---- shared layers ---- */
-  #bg { position: fixed; inset: 0; display: none; background: #0a0720; }
-  #bgimg, #bgvideo { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
-  #scrim { position: fixed; inset: 0; pointer-events: none; }
+  /* The frame is the layout box + the sizing container for cqh/cqw units.
+     OBS: full viewport (transparent). Audience: a centred 16:9 letterbox so it
+     looks right in any orientation — like a video player — with black bars. */
+  .frame { position: fixed; inset: 0; overflow: hidden; container-type: size; }
+  html.mode-audience { background: #000; }
+  html.mode-audience .frame {
+    inset: auto;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
+  }
+
+  /* ---- shared layers (positioned within the frame) ---- */
+  #bg { position: absolute; inset: 0; display: none; background: #0a0720; }
+  #bgimg, #bgvideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+  #scrim { position: absolute; inset: 0; pointer-events: none; }
   #stage {
-    position: fixed; inset: 0;
+    position: absolute; inset: 0;
     display: flex; flex-direction: column;
-    padding: 4vh 6vw;
+    padding: 4% 6%;
     opacity: 0; transition: opacity .18s ease;
   }
   #stage.show { opacity: 1; }
 
-  .lyrics { text-align: center; color: var(--text); font-weight: 700; font-size: var(--size); line-height: 1.22; max-width: 92vw; text-wrap: balance; }
+  .lyrics { text-align: center; color: var(--text); font-weight: 700; font-size: var(--size); line-height: 1.22; max-width: 92%; text-wrap: balance; }
   .lyrics .line { display: block; }
   .lyrics.upper { text-transform: uppercase; }
-  .caption { margin-top: 1.4vh; text-align: center; color: var(--accent); font-weight: 500; font-size: calc(var(--size) * 0.42); text-shadow: 0 2px 4px rgba(0,0,0,.7); }
+  .caption { margin-top: 1.4cqh; text-align: center; color: var(--accent); font-weight: 500; font-size: calc(var(--size) * 0.42); text-shadow: 0 2px 4px rgba(0,0,0,.7); }
 
-  /* composed (freely-positioned) layer, used in audience mode */
-  #composed { position: fixed; inset: 0; display: none; }
+  #composed { position: absolute; inset: 0; display: none; }
   #composed .cline { position: absolute; transform: translate(-50%, -50%); text-align: center; white-space: pre-wrap; font-weight: 700; }
 
   /* ============ OBS mode: transparent alpha, lyrics lower-third ============ */
@@ -52,7 +63,6 @@
   html.mode-obs.pos-top #scrim { background: linear-gradient(to bottom, rgba(0,0,0,.62), rgba(0,0,0,0) 46%); }
   html.mode-obs.pos-center #scrim { background: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.28), rgba(0,0,0,.5)); }
   html.mode-obs.clean #scrim { display: none; }
-  /* heavy outline so text survives over any footage */
   html.mode-obs .lyrics, html.mode-obs .caption {
     text-shadow:
       0 2px 2px rgba(0,0,0,.65), 0 0 6px rgba(0,0,0,.55),
@@ -60,25 +70,40 @@
       0 2px 0 rgba(0,0,0,.4), 0 -2px 0 rgba(0,0,0,.4);
   }
 
-  /* ============ Audience mode: full background, centered (mirrors projector) ============ */
+  /* ============ Audience mode: full background, centered ============ */
   html.mode-audience #bg { display: block; }
   html.mode-audience #stage { justify-content: center; align-items: center; }
   html.mode-audience #scrim { background: rgba(0,0,0,var(--scrim)); }
   html.mode-audience .lyrics.shadow, html.mode-audience #composed.shadow .cline {
     text-shadow: 0 2px 10px rgba(0,0,0,.55), 0 1px 2px rgba(0,0,0,.6);
   }
+
+  /* ---- video-player-style fullscreen button (audience only, when supported) ---- */
+  .fsbtn {
+    position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 50; width: 52px; height: 52px; border: 0; border-radius: 12px;
+    background: rgba(0,0,0,.42); color: #fff; font-size: 24px; line-height: 1;
+    cursor: pointer; display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px); transition: opacity .3s ease, background .15s ease;
+  }
+  .fsbtn:hover { background: rgba(0,0,0,.66); }
+  html.mode-audience .fsbtn.avail { display: flex; }
+  .fsbtn.idle { opacity: 0; }
 </style>
 </head>
 <body>
-  <div id="bg"></div>
-  <img id="bgimg" alt="" draggable="false" />
-  <video id="bgvideo" muted autoplay loop playsinline></video>
-  <div id="scrim"></div>
-  <div id="stage">
-    <div id="composed"></div>
-    <div class="lyrics" id="lyrics"></div>
-    <div class="caption" id="caption"></div>
+  <div class="frame" id="frame">
+    <div id="bg"></div>
+    <img id="bgimg" alt="" draggable="false" />
+    <video id="bgvideo" muted autoplay loop playsinline></video>
+    <div id="scrim"></div>
+    <div id="stage">
+      <div id="composed"></div>
+      <div class="lyrics" id="lyrics"></div>
+      <div class="caption" id="caption"></div>
+    </div>
   </div>
+  <button id="fs" class="fsbtn" title="Fullscreen (rotate for a bigger view)" aria-label="Toggle fullscreen">⛶</button>
 <script>
 (function () {
   var q = new URLSearchParams(location.search);
@@ -93,7 +118,7 @@
   var root = document.documentElement;
   root.classList.add('mode-' + mode, 'pos-' + pos);
   if (q.get('clean') === '1') root.classList.add('clean');
-  if (mode === 'obs' && q.get('size')) root.style.setProperty('--size', q.get('size') + 'vh');
+  if (mode === 'obs' && q.get('size')) root.style.setProperty('--size', q.get('size') + 'cqh');
 
   var stage = document.getElementById('stage');
   var bgEl = document.getElementById('bg');
@@ -103,21 +128,54 @@
   var lyricsEl = document.getElementById('lyrics');
   var captionEl = document.getElementById('caption');
 
+  // ---- fullscreen (video-player style), audience only ----
+  var fsBtn = document.getElementById('fs');
+  var reqFs = root.requestFullscreen || root.webkitRequestFullscreen;
+  var exitFs = document.exitFullscreen || document.webkitExitFullscreen;
+  function inFs() { return document.fullscreenElement || document.webkitFullscreenElement; }
+  if (mode === 'audience' && reqFs) {
+    fsBtn.classList.add('avail');
+    fsBtn.addEventListener('click', function () {
+      if (!inFs()) {
+        var p = reqFs.call(root);
+        if (p && p.then) p.then(lockLandscape).catch(function () {});
+        else lockLandscape();
+      } else if (exitFs) {
+        exitFs.call(document);
+      }
+    });
+    document.addEventListener('fullscreenchange', function () { fsBtn.textContent = inFs() ? '⤡' : '⛶'; });
+    // auto-hide the button after a moment; reveal on tap/move (like a player)
+    var idle;
+    function poke() {
+      fsBtn.classList.remove('idle');
+      clearTimeout(idle);
+      idle = setTimeout(function () { fsBtn.classList.add('idle'); }, 2600);
+    }
+    ['pointermove', 'pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
+      window.addEventListener(ev, poke, { passive: true });
+    });
+    poke();
+  }
+  function lockLandscape() {
+    try {
+      if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () {});
+    } catch (_) {}
+  }
+
   function textOf(slide) {
     if (!slide) return [];
     if (slide.composed && slide.composed.length) return slide.composed.map(function (l) { return l.text; });
     return slide.lines || [];
   }
 
-  // Audience: paint the slide/global background. Local (lumen-media://) images and
-  // videos can't cross to the web, so those fall back to the worship gradient.
   function applyBackground(bg) {
     bgImg.style.display = 'none'; bgVideo.style.display = 'none';
     if (!bg) { bgEl.style.background = DEFAULT_BG; return; }
     if (bg.type === 'color' || bg.type === 'gradient') { bgEl.style.background = bg.value; return; }
     if (bg.type === 'image' && /^https?:/i.test(bg.value)) { bgImg.src = bg.value; bgImg.style.display = 'block'; bgEl.style.background = '#000'; return; }
     if (bg.type === 'video' && /^https?:/i.test(bg.value)) { if (bgVideo.src !== bg.value) bgVideo.src = bg.value; bgVideo.style.display = 'block'; bgEl.style.background = '#000'; return; }
-    bgEl.style.background = DEFAULT_BG; // local media we can't reach
+    bgEl.style.background = DEFAULT_BG; // local media we can't reach from the web
   }
 
   function applyTheme(t) {
@@ -133,10 +191,10 @@
 
   function sizeFor(n, scale) {
     var s = n <= 1 ? 9 : n <= 2 ? 8 : n <= 3 ? 6.5 : n <= 4 ? 5.5 : n <= 6 ? 4.5 : 3.8;
-    return (s * (scale || 1)) + 'vh';
+    return (s * (scale || 1)) + 'cqh';
   }
 
-  function renderComposed(lines, shadow) {
+  function renderComposed(lines) {
     composedEl.innerHTML = '';
     lines.forEach(function (l) {
       var d = document.createElement('div');
@@ -144,7 +202,7 @@
       d.textContent = l.text;
       d.style.left = (l.x / 960 * 100) + '%';
       d.style.top = (l.y / 540 * 100) + '%';
-      d.style.fontSize = (l.fontSize / 540 * 100) + 'vh';
+      d.style.fontSize = (l.fontSize / 540 * 100) + 'cqh';
       d.style.color = l.color || 'var(--text)';
       d.style.textAlign = l.align || 'center';
       composedEl.appendChild(d);
@@ -175,7 +233,6 @@
 
     var hidden = !state || state.blackout || state.clearText || !slide;
     var scale = (theme && theme.fontScale) || 1;
-
     if (hidden) { stage.classList.remove('show'); return; }
 
     if (mode === 'audience' && slide.composed && slide.composed.length) {
@@ -186,9 +243,10 @@
       renderLines(lines, scale);
     }
 
+    var composedShown = mode === 'audience' && slide.composed && slide.composed.length;
     var cap = slide.caption || '';
     captionEl.textContent = cap;
-    captionEl.style.display = (cap && mode !== 'audience') || (cap && mode === 'audience' && !(slide.composed && slide.composed.length)) ? '' : 'none';
+    captionEl.style.display = cap && !composedShown ? '' : 'none';
     stage.classList.add('show');
   }
 
