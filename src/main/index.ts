@@ -509,7 +509,7 @@ async function listServices(): Promise<ServiceMeta[]> {
   }
 }
 
-const BUNDLED_TRANSLATIONS = new Set(['telugu'])
+const BUNDLED_TRANSLATIONS = new Set(['telugu', 'web'])
 const translationCache = new Map<string, unknown>()
 
 // ---- lifecycle -------------------------------------------------------------

@@ -9,8 +9,10 @@ export interface TranslationMeta {
   load: () => Promise<Translation>
 }
 
-// The Telugu data ships as resources/bible/telugu.json and is read by the main
-// process on demand, so the ~12 MB file never enters the renderer bundle.
+// The Bible data ships as resources/bible/<id>.json and is read by the main
+// process on demand, so the large files never enter the renderer bundle:
+// telugu.json (~12 MB, full Telugu) and web.json (~5.4 MB, full World English
+// Bible, public domain). SAMPLE_TRANSLATION is only a last-resort fallback.
 export const TRANSLATIONS: TranslationMeta[] = [
   {
     id: 'telugu',
@@ -20,9 +22,9 @@ export const TRANSLATIONS: TranslationMeta[] = [
   },
   {
     id: 'web',
-    name: 'WEB (English sample)',
+    name: 'WEB (English)',
     language: 'English',
-    load: async () => SAMPLE_TRANSLATION
+    load: async () => (await window.lumen.loadTranslation('web')) ?? SAMPLE_TRANSLATION
   }
 ]
 
