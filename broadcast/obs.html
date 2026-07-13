@@ -55,6 +55,10 @@
   #composed { position: absolute; inset: 0; display: none; }
   #composed .cline { position: absolute; transform: translate(-50%, -50%); text-align: center; white-space: pre-wrap; font-weight: 700; }
 
+  /* giving/offering QR — audience mode only, on a light card so it scans */
+  .qr { display: none; margin-top: 3cqh; width: 30cqh; height: 30cqh; object-fit: contain; background: #fff; padding: 1.6cqh; border-radius: 2cqh; box-shadow: 0 1cqh 4cqh rgba(0,0,0,.4); }
+  html.mode-obs .qr { display: none !important; }
+
   /* ============ OBS mode: transparent alpha, lyrics lower-third ============ */
   html.mode-obs #stage { justify-content: flex-end; align-items: center; }
   html.mode-obs.pos-center #stage { justify-content: center; }
@@ -101,6 +105,7 @@
       <div id="composed"></div>
       <div class="lyrics" id="lyrics"></div>
       <div class="caption" id="caption"></div>
+      <img id="qr" class="qr" alt="" draggable="false" />
     </div>
   </div>
   <button id="fs" class="fsbtn" title="Fullscreen (rotate for a bigger view)" aria-label="Toggle fullscreen"></button>
@@ -129,6 +134,7 @@
   var composedEl = document.getElementById('composed');
   var lyricsEl = document.getElementById('lyrics');
   var captionEl = document.getElementById('caption');
+  var qrEl = document.getElementById('qr');
 
   // ---- fullscreen (video-player style), audience only ----
   var fsBtn = document.getElementById('fs');
@@ -189,6 +195,7 @@
   function isTimer(slide) { return slide && (slide.kind === 'countdown' || slide.kind === 'clock'); }
   function renderTimer(slide, scale) {
     composedEl.style.display = 'none';
+    qrEl.style.display = 'none';
     lyricsEl.style.display = '';
     lyricsEl.innerHTML = '';
     var span = document.createElement('span');
@@ -292,6 +299,10 @@
     var cap = slide.caption || '';
     captionEl.textContent = cap;
     captionEl.style.display = cap && !composedShown ? '' : 'none';
+    // giving/offering QR (audience mirror only)
+    var qrOn = mode === 'audience' && slide.qr && !composedShown;
+    if (qrOn) { if (qrEl.getAttribute('src') !== slide.qr) qrEl.setAttribute('src', slide.qr); qrEl.style.display = 'block'; }
+    else { qrEl.style.display = 'none'; }
     stage.classList.add('show');
   }
 

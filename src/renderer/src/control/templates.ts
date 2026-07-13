@@ -1,6 +1,7 @@
 import type { ItemKind, ServiceItem, SlideContent } from '@shared/types'
 import { uid } from '../store/useStore'
 import { blankSlide, countdownSlide } from './slides'
+import { QR_DONATIONS } from './assets/qrDonations'
 
 /**
  * A ready-made order of service. Picking a template drops a full outline into
@@ -16,13 +17,14 @@ export interface ServiceTemplate {
   build: () => ServiceItem[]
 }
 
-/** A titled section item holding a single bilingual "title card" placeholder. */
+/** A titled section item holding a single bilingual "title card" placeholder.
+ *  Both languages sit on one line and the audience Stage auto-fits (resizes) it. */
 function section(title: string, kind: ItemKind, telugu: string, english: string): ServiceItem {
   const slide: SlideContent = {
     id: uid(),
     kind: 'text',
     label: title,
-    lines: [telugu, english]
+    lines: [[telugu, english].filter((s) => s.trim()).join(' ')]
   }
   return { id: uid(), title, kind, slides: [slide] }
 }
@@ -65,26 +67,32 @@ function praiseWorship(): ServiceItem {
   }
 }
 
+/** Offerings slide with the giving QR (from the worshipReady donations layout). */
+function offerings(): ServiceItem {
+  const slide: SlideContent = {
+    id: uid(),
+    kind: 'text',
+    label: 'Offerings',
+    lines: ['Offerings Kaanukalu'],
+    qr: QR_DONATIONS
+  }
+  return { id: uid(), title: 'Offerings', kind: 'text', slides: [slide] }
+}
+
 export const SERVICE_TEMPLATES: ServiceTemplate[] = [
   {
     id: 'sunday-worship',
     name: 'Sunday Worship Service',
-    description: 'Full worship gathering — welcome video, countdown, worship, the Word, response and benediction.',
+    description: 'Welcome video, countdown, worship, the Word (Vaakyopadesam), offerings and benediction.',
     build: () => [
       welcomeVideo(),
       countdown(5, 'Service begins soon'),
-      praiseWorship(), // opening worship — before the first content slide
-      welcome('Welcome to Telugu Church'),
-      section('Opening Prayer', 'text', 'ప్రారంభ ప్రార్థన', 'Opening Prayer'),
-      section('Worship', 'song', 'ఆరాధన', 'Worship'),
-      section('Scripture Reading', 'scripture', 'వాక్య పఠనం', 'Scripture Reading'),
-      section('Message', 'text', 'సందేశం', 'Message'),
-      section('Response Song', 'song', 'ప్రతిస్పందన గీతం', 'Response Song'),
-      section('Offering', 'text', 'కానుక', 'Offering'),
+      praiseWorship(), // opening worship
+      section('Sermon', 'text', 'Vaakyopadesam', 'Sermon'),
+      offerings(),
       section('Announcements', 'text', 'ప్రకటనలు', 'Announcements'),
       section('Benediction', 'text', 'దీవెన', 'Go in peace'),
-      praiseWorship(), // closing worship — after the last content slide
-      blank()
+      praiseWorship() // closing worship
     ]
   },
   {

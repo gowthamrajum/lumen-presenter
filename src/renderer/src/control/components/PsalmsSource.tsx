@@ -4,8 +4,6 @@ import { psalmSlides, type PsalmLang } from '../slides'
 import { Icon } from '../../shared/Icon'
 import type { PsalmVerse } from '@shared/types'
 
-const CHAPTERS = Array.from({ length: 150 }, (_, i) => i + 1)
-
 /**
  * Psalms library source — pulls the bilingual (Telugu + English) psalter from
  * the grey-gratis-ice backend (a whole chapter, or a verse range) and adds the
@@ -15,6 +13,8 @@ export function PsalmsSource(): JSX.Element {
   const addItem = useStore((s) => s.addItem)
 
   const [chapter, setChapter] = useState(23)
+  const [chapterText, setChapterText] = useState('23')
+  const [chapterError, setChapterError] = useState('')
   const [rangeOn, setRangeOn] = useState(false)
   const [start, setStart] = useState(1)
   const [end, setEnd] = useState(5)
@@ -73,22 +73,51 @@ export function PsalmsSource(): JSX.Element {
   const textOf = (v: PsalmVerse): string =>
     lang === 'telugu' ? v.telugu : lang === 'english' ? v.english : `${v.telugu}\n${v.english}`
 
+  // Free-form chapter box: expect a whole number 1–150, flag out-of-bounds.
+  // Only plain decimal digits count — reject '1e2', '0x10', '5.5', '-3', etc.
+  const onChapterText = (raw: string): void => {
+    setChapterText(raw)
+    const t = raw.trim()
+    if (t === '') {
+      setChapterError('')
+      return
+    }
+    if (!/^\d+$/.test(t)) {
+      setChapterError('Enter a number')
+      return
+    }
+    const n = Number(t)
+    if (n < 1 || n > 150) {
+      setChapterError('Psalms are 1–150')
+      return
+    }
+    setChapterError('')
+    if (n !== chapter) setChapter(n) // triggers the load effect
+  }
+
   return (
     <div className="source psalms-source">
       <div className="browse-row">
-        <select value={chapter} onChange={(e) => setChapter(Number(e.target.value))} title="Psalm chapter">
-          {CHAPTERS.map((c) => (
-            <option key={c} value={c}>
-              Psalm {c}
-            </option>
-          ))}
-        </select>
+        <label className="psalm-chapter">
+          <span className="psalm-chapter-pre">Psalm</span>
+          <input
+            className="search"
+            type="text"
+            inputMode="numeric"
+            value={chapterText}
+            onChange={(e) => onChapterText(e.target.value)}
+            placeholder="1–150"
+            aria-label="Psalm chapter number"
+            title="Type a psalm number (1–150)"
+          />
+        </label>
         <select value={lang} onChange={(e) => setLang(e.target.value as PsalmLang)} title="Language">
           <option value="both">తెలుగు + English</option>
           <option value="telugu">తెలుగు only</option>
           <option value="english">English only</option>
         </select>
       </div>
+      {chapterError && <div className="psalm-chapter-error">{chapterError}</div>}
 
       <div className="psalm-range">
         <label className="chk">
@@ -152,7 +181,10 @@ export function PsalmsSource(): JSX.Element {
           Add &amp; Present
         </button>
       </div>
-      <div className="source-hint">Bilingual psalter · double-click a verse to present it instantly</div>
+      <div className="source-hint">
+        {loading ? 'Loading…' : `Showing Psalm ${chapter}${rangeOn ? ` · verses ${start}–${end}` : ''}`} · double-click a verse
+        to present it instantly
+      </div>
     </div>
   )
 }

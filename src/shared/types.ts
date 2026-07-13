@@ -78,6 +78,12 @@ export interface SlideContent {
    * slides so the baked-in words are preserved.
    */
   overlays?: string[]
+  /**
+   * Optional QR code (image URL or data-URL) shown below the text — e.g. the
+   * giving/offering QR. Rendered on a light card so it scans on any background,
+   * on both the local output and the web broadcast.
+   */
+  qr?: string
 }
 
 export interface LiveState {

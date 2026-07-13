@@ -104,6 +104,7 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
   const hasComposed = visible && !isTimer && !!composed && composed.length > 0
   const showText = visible && !isTimer && !hasComposed && lines.length > 0
   const showTimer = visible && isTimer && !!slide
+  const qr = visible && !isTimer ? slide?.qr : undefined
 
   const textStyle: CSSProperties = {
     color: theme.textColor,
@@ -120,7 +121,7 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
   })
 
   return (
-    <div className="stage">
+    <div className={`stage${qr ? ' has-qr' : ''}`}>
       <BackgroundLayer bg={bg} />
       {!state.blackout && theme.scrim > 0 && (
         <div className="stage-scrim" style={{ opacity: theme.scrim }} />
@@ -181,6 +182,19 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
               {slide.caption}
             </div>
           )}
+          {qr && (
+            <div className="stage-qr">
+              <img src={qr} alt="QR code" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {qr && !showText && !hasComposed && (
+        <div className="stage-textwrap">
+          <div className="stage-qr solo">
+            <img src={qr} alt="QR code" />
+          </div>
         </div>
       )}
     </div>
