@@ -484,7 +484,8 @@ export const useStore = create<AppState>((set, get) => {
       if (!force && (s.remoteState === 'loading' || s.remoteState === 'ready')) return
       set({ remoteState: 'loading', remoteError: '' })
       try {
-        const res = await window.lumen.remoteSongs()
+        // The manual Refresh (force=true) bypasses the 24h disk cache.
+        const res = await window.lumen.remoteSongs(force)
         if (Array.isArray(res)) {
           set({ remoteSongs: res, remoteState: 'ready' })
         } else {

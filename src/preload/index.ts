@@ -51,8 +51,8 @@ const api = {
   saveSong: (song: Song): Promise<SongMeta[]> => ipcRenderer.invoke(IPC.songSave, song),
   loadSong: (id: string): Promise<Song | null> => ipcRenderer.invoke(IPC.songLoad, id),
   deleteSong: (id: string): Promise<SongMeta[]> => ipcRenderer.invoke(IPC.songDelete, id),
-  remoteSongs: (): Promise<RemoteSong[] | { error: string }> =>
-    ipcRenderer.invoke(IPC.songsRemote),
+  remoteSongs: (force?: boolean): Promise<RemoteSong[] | { error: string }> =>
+    ipcRenderer.invoke(IPC.songsRemote, force),
   psalms: (chapter: number, start?: number, end?: number): Promise<PsalmVerse[] | { error: string }> =>
     ipcRenderer.invoke(IPC.psalmsGet, chapter, start, end),
 

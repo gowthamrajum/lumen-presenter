@@ -107,6 +107,38 @@ body,
   color: var(--gold);
   font-size: 18px;
 }
+/* the flame gently flickers, like a candle */
+@keyframes flame-flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 2px rgba(255, 180, 90, 0.5));
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1.08) rotate(-2deg);
+    filter: drop-shadow(0 0 6px rgba(255, 200, 120, 0.9));
+  }
+  55% {
+    transform: scale(0.96) rotate(1.5deg);
+    filter: drop-shadow(0 0 3px rgba(255, 170, 80, 0.55));
+    opacity: 0.9;
+  }
+  80% {
+    transform: scale(1.05) rotate(-1deg);
+    filter: drop-shadow(0 0 7px rgba(255, 210, 140, 0.95));
+  }
+}
+.brand-mark .icon {
+  animation: flame-flicker 2.8s ease-in-out infinite;
+  transform-origin: 50% 85%;
+  will-change: transform, filter;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark .icon {
+    animation: none;
+  }
+}
 .brand-name {
   font-weight: 800;
   letter-spacing: 0.02em;

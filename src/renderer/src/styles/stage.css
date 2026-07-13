@@ -233,6 +233,37 @@
   font-size: 12cqmin;
   color: #ffd27f;
 }
+/* the audience logo's flame flickers like a candle */
+@keyframes stage-flame-flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 0.4cqmin rgba(255, 180, 90, 0.55));
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1.07) rotate(-2deg);
+    filter: drop-shadow(0 0 1.2cqmin rgba(255, 205, 130, 0.95));
+  }
+  55% {
+    transform: scale(0.97) rotate(1.5deg);
+    filter: drop-shadow(0 0 0.6cqmin rgba(255, 170, 80, 0.6));
+    opacity: 0.92;
+  }
+  80% {
+    transform: scale(1.05) rotate(-1deg);
+    filter: drop-shadow(0 0 1.4cqmin rgba(255, 215, 150, 1));
+  }
+}
+.stage-logo .logo-mark .icon {
+  animation: stage-flame-flicker 2.8s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-logo .logo-mark .icon {
+    animation: none;
+  }
+}
 .stage-logo .logo-word {
   font-size: 9cqmin;
   font-weight: 800;

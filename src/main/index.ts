@@ -18,6 +18,7 @@ import {
 } from '../shared/types'
 import { importPptxFiles } from './pptx'
 import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExport'
+import { cachedFetchJson } from './httpCache'
 import type { PptxExportRequest } from '../shared/types'
 import {
   initBroadcast,
@@ -417,58 +418,34 @@ function registerIpc(): void {
   })
 
   // Remote song catalog (Telugu backend). Fetched in main to avoid renderer
-  // CSP/CORS; cached for the session. Render free tiers cold-start, so allow time.
-  ipcMain.handle(IPC.songsRemote, async () => {
-    if (remoteSongsCache) return remoteSongsCache
+  // CSP/CORS, then served from the on-disk 24h cache so a browse doesn't re-hit
+  // the backend. `force` (the manual Refresh) bypasses the cache.
+  ipcMain.handle(IPC.songsRemote, async (_e, force?: boolean) => {
     const base = process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com'
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 70_000)
-    try {
-      const res = await fetch(`${base}/songs`, {
-        signal: controller.signal,
-        headers: { Accept: 'application/json' }
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      if (!Array.isArray(data)) return { error: 'Unexpected response from songs backend' }
-      remoteSongsCache = data
-      return remoteSongsCache
-    } catch (err) {
-      console.error('Remote songs fetch failed:', err)
-      return { error: err instanceof Error ? err.message : String(err) }
-    } finally {
-      clearTimeout(timer)
-    }
+    return cachedFetchJson('songs', `${base}/songs`, {
+      force: !!force,
+      validate: (d): d is unknown[] => Array.isArray(d)
+    })
   })
 
-  // Psalms (bilingual) from the same backend. Fetched in main to avoid renderer
-  // CORS; a whole chapter, or a verse range via ?start&end.
+  // Psalms (bilingual) from the same backend — a whole chapter, or a verse range
+  // via ?start&end. Cached 24h per chapter/range so repeat lookups are instant.
   ipcMain.handle(IPC.psalmsGet, async (_e, chapter: number, start?: number, end?: number) => {
     const base = process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com'
     const ch = Math.max(1, Math.min(150, Math.floor(chapter) || 1))
     let path = `/psalms/${ch}`
+    let key = `psalms-${ch}`
     if (start != null && end != null) {
       const s = Math.max(1, Math.floor(Number(start)) || 1)
       const e = Math.max(s, Math.floor(Number(end)) || s)
       path = `/psalms/${ch}/range?start=${s}&end=${e}`
+      key = `psalms-${ch}-${s}-${e}`
     }
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 70_000)
-    try {
-      const res = await fetch(`${base}${path}`, { signal: controller.signal, headers: { Accept: 'application/json' } })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      if (!Array.isArray(data)) return { error: 'Unexpected response from psalms backend' }
-      return data
-    } catch (err) {
-      console.error('Psalms fetch failed:', err)
-      return { error: err instanceof Error ? err.message : String(err) }
-    } finally {
-      clearTimeout(timer)
-    }
+    return cachedFetchJson(key, `${base}${path}`, {
+      validate: (d): d is unknown[] => Array.isArray(d)
+    })
   })
 }
-let remoteSongsCache: unknown[] | null = null
 
 // ---- songs storage helpers ----
 function songsDir(): string {
