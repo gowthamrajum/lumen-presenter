@@ -615,7 +615,18 @@ export const useStore = create<AppState>((set, get) => {
 
     // ---- live control (over the flattened slide list) ----
     goLive: (id) => {
-      set({ liveId: id, clearText: false, blackout: false, showLogo: false })
+      set((s) => {
+        // Follow the live slide: highlight the section (item) that owns it, so the
+        // schedule + center Slides panel track what's on screen as you navigate.
+        const owner = id ? s.items.find((it) => it.slides.some((sl) => sl.id === id)) : undefined
+        return {
+          liveId: id,
+          selectedItemId: owner ? owner.id : s.selectedItemId,
+          clearText: false,
+          blackout: false,
+          showLogo: false
+        }
+      })
       push()
     },
 
