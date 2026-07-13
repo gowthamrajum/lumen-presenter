@@ -17,6 +17,7 @@ const ESV_NOTICE =
  */
 export function PsalmsSource(): JSX.Element {
   const addItem = useStore((s) => s.addItem)
+  const addPsalm = useStore((s) => s.addPsalm)
 
   const [chapter, setChapter] = useState(23)
   const [chapterText, setChapterText] = useState('23')
@@ -84,11 +85,17 @@ export function PsalmsSource(): JSX.Element {
   const add = (goLive: boolean): void => {
     const toAdd = selectedVerses.length ? selectedVerses : verses
     if (!toAdd.length) return
+    const first = toAdd[0]
+    const last = toAdd[toAdd.length - 1]
     const title =
-      toAdd.length === 1
-        ? `Psalm ${toAdd[0].chapter}:${toAdd[0].verse}`
-        : `Psalm ${toAdd[0].chapter}:${toAdd[0].verse}–${toAdd[toAdd.length - 1].verse}`
-    addItem({ title, kind: 'scripture', slides: psalmSlides(toAdd, lang, esvCaptions) }, goLive)
+      toAdd.length === 1 ? `Psalm ${first.chapter}:${first.verse}` : `Psalm ${first.chapter}:${first.verse}–${last.verse}`
+    // Reference for the Responsive-Reading heading: whole chapter → "23";
+    // a range/selection → "23:1-6".
+    const wholeChapter = !rangeOn && selectedVerses.length === 0
+    const reference = wholeChapter
+      ? `${first.chapter}`
+      : `${first.chapter}:${first.verse}${toAdd.length > 1 ? `-${last.verse}` : ''}`
+    addPsalm({ title, slides: psalmSlides(toAdd, lang, esvCaptions), reference }, goLive)
     setSelected(new Set())
   }
 

@@ -1,5 +1,5 @@
 import type { ItemKind, ServiceItem, SlideContent } from '@shared/types'
-import { uid, broadcastDefaults } from '../store/useStore'
+import { uid, broadcastDefaults, worshipBookend } from '../store/useStore'
 import { blankSlide, countdownSlide } from './slides'
 import { QR_DONATIONS } from './assets/qrDonations'
 
@@ -68,9 +68,10 @@ function welcomeVideo(): ServiceItem {
   }
 }
 
-/** A Praise & Worship section — broadcasts by default (song kind). */
+/** A Praise & Worship bookend — broadcasts to the audience (Users) only; OBS is
+ *  empty. Same card the Songs source wraps a song with. */
 function praiseWorship(): ServiceItem {
-  return section('Praise & Worship', 'song', 'స్తుతి ఆరాధన', 'Praise & Worship')
+  return worshipBookend()
 }
 
 /** Offerings slide with the giving QR (from the worshipReady donations layout).

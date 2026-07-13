@@ -23,7 +23,7 @@ function newSong(): Song {
 
 export function SongsPanel(): JSX.Element {
   const songs = useStore((s) => s.songs)
-  const addItem = useStore((s) => s.addItem)
+  const addSong = useStore((s) => s.addSong)
   const deleteSong = useStore((s) => s.deleteSong)
   const saveSong = useStore((s) => s.saveSong)
   const remoteSongs = useStore((s) => s.remoteSongs)
@@ -65,16 +65,16 @@ export function SongsPanel(): JSX.Element {
         setNote(`No lyrics in the selected language for “${song.title}”.`)
         return
       }
-      addItem({ title: song.title, kind: 'song', slides })
-      setNote(`Added “${song.title}” to Canvas (${slides.length} slides). Use the edit icon on a slide to compose it.`)
+      addSong({ title: song.title, slides })
+      setNote(`Added “${song.title}” to Canvas (${slides.length} slides), wrapped with Praise & Worship. Use the edit icon on a slide to compose it.`)
     } else {
       const slides = stamp(songSlides(song))
       if (!slides.length) {
         setNote(`No lyrics in the selected language for “${song.title}”.`)
         return
       }
-      addItem({ title: song.title, kind: 'song', slides }, goLive)
-      setNote(`Added “${song.title}” (${slides.length} slides).`)
+      addSong({ title: song.title, slides }, goLive)
+      setNote(`Added “${song.title}” (${slides.length} slides), wrapped with Praise & Worship.`)
     }
   }
 

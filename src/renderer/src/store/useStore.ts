@@ -117,6 +117,10 @@ interface AppState {
 
   // service items
   addItem: (item: { title: string; kind: ItemKind; slides: SlideContent[] }, goLiveFirst?: boolean) => void
+  /** add a song wrapped with Praise & Worship bookends (audience-only broadcast) */
+  addSong: (item: { title: string; slides: SlideContent[] }, goLiveFirst?: boolean) => void
+  /** add a psalm prefixed with a Responsive-Reading heading (broadcast to all) */
+  addPsalm: (item: { title: string; slides: SlideContent[]; reference: string }, goLiveFirst?: boolean) => void
   removeItem: (id: string) => void
   removeSlide: (id: string) => void
   moveItem: (id: string, dir: -1 | 1) => void
@@ -201,6 +205,41 @@ export const BROADCASTABLE_KINDS = new Set<ItemKind>(['video', 'song', 'scriptur
 /** Default per-channel broadcast flags for a new item, by kind. */
 export function broadcastDefaults(kind: ItemKind): Pick<ServiceItem, 'noBroadcastUsers' | 'noBroadcastStream'> {
   return BROADCASTABLE_KINDS.has(kind) ? {} : { noBroadcastUsers: true, noBroadcastStream: true }
+}
+
+/** The bilingual title used to detect / build a Praise & Worship bookend. */
+const WORSHIP_TITLE = 'Praise & Worship'
+
+/** A 'Praise & Worship' title card that bookends songs. Broadcasts to the Users
+ *  (audience mirror) only — the OBS/Stream channel shows empty. */
+export function worshipBookend(): ServiceItem {
+  return {
+    id: uid(),
+    title: WORSHIP_TITLE,
+    kind: 'song',
+    slides: [
+      { id: uid(), kind: 'text', label: WORSHIP_TITLE, lines: ['స్తుతి ఆరాధన', WORSHIP_TITLE], singleLine: true }
+    ],
+    noBroadcastUsers: false, // to the audience (Users)
+    noBroadcastStream: true // OBS / Stream shows empty
+  }
+}
+
+/** The Responsive-Reading heading card that pre-fixes a psalm. Broadcasts to all. */
+export function responsiveReadingHeading(reference: string): ServiceItem {
+  return {
+    id: uid(),
+    title: 'Responsive Reading',
+    kind: 'scripture',
+    slides: [
+      {
+        id: uid(),
+        kind: 'text',
+        label: 'Responsive Reading',
+        lines: ['ఉత్తర ప్రత్యుత్తర వాక్య పఠనం', 'Responsive Reading', `కీర్తనలు ${reference}`, `Psalm ${reference}`]
+      }
+    ]
+  }
 }
 
 /** Materialize the legacy `noBroadcast` flag into the two channel flags and drop
@@ -328,6 +367,31 @@ export const useStore = create<AppState>((set, get) => {
       const item: ServiceItem = { id: uid(), title, kind, slides, ...broadcastDefaults(kind) }
       set((s) => ({ items: [...s.items, item], selectedItemId: item.id }))
       if (goLiveFirst) get().goLive(slides[0].id)
+    },
+
+    addSong: ({ title, slides }, goLiveFirst = false) => {
+      if (!slides.length) return
+      const song: ServiceItem = { id: uid(), title, kind: 'song', slides }
+      set((s) => {
+        const items = s.items.slice()
+        // Bookend the song with Praise & Worship. If the item just before is
+        // already a P&W bookend (e.g. the previous song's closing one), reuse it
+        // as this song's opener so consecutive songs don't stack duplicates.
+        const lastIsBookend = items.length > 0 && items[items.length - 1].title === WORSHIP_TITLE
+        if (!lastIsBookend) items.push(worshipBookend())
+        items.push(song, worshipBookend())
+        return { items, selectedItemId: song.id }
+      })
+      if (goLiveFirst) get().goLive(slides[0].id)
+    },
+
+    addPsalm: ({ title, slides, reference }, goLiveFirst = false) => {
+      if (!slides.length) return
+      const heading = responsiveReadingHeading(reference)
+      const psalm: ServiceItem = { id: uid(), title, kind: 'scripture', slides }
+      set((s) => ({ items: [...s.items, heading, psalm], selectedItemId: psalm.id }))
+      // Present starts at the Responsive-Reading heading, then Next into the verses.
+      if (goLiveFirst) get().goLive(heading.slides[0].id)
     },
 
     removeItem: (id) => {
