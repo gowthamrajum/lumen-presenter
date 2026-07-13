@@ -1708,32 +1708,26 @@ select:focus {
 .chk input {
   accent-color: var(--accent);
 }
+/* Padded "track" segmented control: each button is its own rounded pill sitting
+   inside the track with a gap, so the active pill's corners are always cleanly
+   rounded (no dependence on overflow-clipping an opaque child, which bleeds a
+   square corner in Chromium). */
 .seg {
   display: flex;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--line);
-  border-radius: 7px;
-  /* No overflow:hidden — clipping an opaque child to a rounded parent leaves a
-     square-corner bleed in Chromium. The first/last buttons round their own
-     outer corners instead (below). */
+  border-radius: 10px;
+  background: var(--panel-2);
 }
 .seg-btn {
-  background: var(--panel-2);
+  background: transparent;
   border: 0;
+  border-radius: 7px;
   color: var(--muted);
   padding: 5px 12px;
   cursor: pointer;
   font-size: 13px;
-}
-/* Round the outer button corners to match the container — otherwise an opaque
-   active button bleeds a square corner past the parent's rounded overflow clip
-   (a Chromium anti-aliasing quirk). */
-.seg-btn:first-child {
-  border-top-left-radius: 6px;
-  border-bottom-left-radius: 6px;
-}
-.seg-btn:last-child {
-  border-top-right-radius: 6px;
-  border-bottom-right-radius: 6px;
 }
 .seg-btn.active {
   background: var(--accent);
