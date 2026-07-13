@@ -60,6 +60,28 @@ the free path is completely fine — set it up once and forget it.
 **Every download already carries these instructions** — they're written into each
 GitHub Release's notes automatically (see the publish step).
 
+### macOS via Homebrew — one command, no right-click ✨
+For anyone comfortable with a terminal, the **Homebrew tap** is the smoothest $0
+path — the cask's `postflight` clears the quarantine, so it opens with **no
+Gatekeeper prompt at all**:
+
+```sh
+brew install --cask gowthamrajum/lumen/lumen-presenter   # install
+brew upgrade --cask lumen-presenter                       # update
+```
+
+Tap repo: [`gowthamrajum/homebrew-lumen`](https://github.com/gowthamrajum/homebrew-lumen).
+
+**Keeping the cask current:** every release must update the cask's version +
+sha256. That's automated by the `homebrew` job in `release.yml` once you add a
+**`HOMEBREW_TAP_TOKEN`** secret — a PAT (or fine-grained token) with **write access
+to `homebrew-lumen`**. Add it under Settings ▸ Secrets ▸ Actions. Until then, bump
+it by hand after a release:
+
+```sh
+HOMEBREW_TAP_TOKEN=<pat> scripts/bump-cask.sh v0.1.2
+```
+
 ## The broadcast overlay is single-sourced
 
 `broadcast/obs.html` is the one source of truth. The relay (grey-gratis-ice)
