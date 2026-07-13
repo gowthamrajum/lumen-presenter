@@ -3,10 +3,11 @@ import type { BroadcastConfig, BroadcastStatus } from '@shared/types'
 
 const EMPTY: BroadcastConfig = { enabled: false, base: '', room: '' }
 
-/** The public web page (also the OBS browser-source URL) for this broadcast. */
-function pageUrl(c: BroadcastConfig): string {
+/** The base /view URL; `mode` picks the audience mirror or the OBS lower-third. */
+function viewUrl(c: BroadcastConfig, mode: 'audience' | 'obs'): string {
   if (!c.base || !c.room) return ''
-  return `${c.base.replace(/\/$/, '')}/broadcast/${encodeURIComponent(c.room)}/view`
+  const u = `${c.base.replace(/\/$/, '')}/broadcast/${encodeURIComponent(c.room)}/view`
+  return mode === 'audience' ? `${u}?mode=audience` : u
 }
 
 function ago(ts: number | null): string {
@@ -22,7 +23,7 @@ export function BroadcastMenu(): JSX.Element {
   const [adv, setAdv] = useState(false)
   const [cfg, setCfg] = useState<BroadcastConfig>(EMPTY)
   const [status, setStatus] = useState<BroadcastStatus | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<'audience' | 'obs' | null>(null)
 
   useEffect(() => {
     void window.lumen.getBroadcast().then(setCfg)
@@ -34,18 +35,19 @@ export function BroadcastMenu(): JSX.Element {
     setCfg(await window.lumen.setBroadcast(p))
   }
 
-  const url = pageUrl(cfg)
+  const audienceUrl = viewUrl(cfg, 'audience')
+  const obsUrl = viewUrl(cfg, 'obs')
   const live = cfg.enabled && status?.ok
   const dotClass = !cfg.enabled ? 'off' : status?.ok ? 'on' : 'warn'
 
-  const copy = (): void => {
+  const copy = (which: 'audience' | 'obs', url: string): void => {
     if (!url) return
     void navigator.clipboard.writeText(url).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      setCopied(which)
+      setTimeout(() => setCopied(null), 1500)
     })
   }
-  const openPage = (): void => {
+  const openPage = (url: string): void => {
     if (url) window.open(url, '_blank')
   }
 
@@ -82,13 +84,25 @@ export function BroadcastMenu(): JSX.Element {
             </div>
 
             <div className="bc-field">
-              <span>Web page (open in a browser or add to OBS)</span>
+              <span>User view — full audience screen (open in a browser)</span>
               <div className="bc-url">
-                <input readOnly value={url} placeholder="…" spellCheck={false} />
-                <button className="btn tiny" onClick={copy} disabled={!url}>
-                  {copied ? 'Copied' : 'Copy'}
+                <input readOnly value={audienceUrl} placeholder="…" spellCheck={false} />
+                <button className="btn tiny" onClick={() => copy('audience', audienceUrl)} disabled={!audienceUrl}>
+                  {copied === 'audience' ? 'Copied' : 'Copy'}
                 </button>
-                <button className="btn tiny" onClick={openPage} disabled={!url}>
+                <button className="btn tiny" onClick={() => openPage(audienceUrl)} disabled={!audienceUrl}>
+                  Open
+                </button>
+              </div>
+            </div>
+            <div className="bc-field">
+              <span>OBS view — transparent lyrics lower-third (Browser source)</span>
+              <div className="bc-url">
+                <input readOnly value={obsUrl} placeholder="…" spellCheck={false} />
+                <button className="btn tiny" onClick={() => copy('obs', obsUrl)} disabled={!obsUrl}>
+                  {copied === 'obs' ? 'Copied' : 'Copy'}
+                </button>
+                <button className="btn tiny" onClick={() => openPage(obsUrl)} disabled={!obsUrl}>
                   Open
                 </button>
               </div>
@@ -121,8 +135,8 @@ export function BroadcastMenu(): JSX.Element {
             )}
 
             <div className="screens-hint">
-              Add the web page as a <b>Browser source</b> in OBS (transparent background). Anyone with the
-              link can watch the lyrics live.
+              <b>User view</b> mirrors the full audience screen for anyone watching in a browser.{' '}
+              <b>OBS view</b> is a transparent lyrics lower-third — add it as a <b>Browser source</b> in OBS.
             </div>
           </div>
         </>
