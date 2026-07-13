@@ -1,5 +1,6 @@
 import { useStore } from '../../store/useStore'
 import { SlideThumb } from './SlideThumb'
+import { Icon } from '../../shared/Icon'
 
 /** Center panel — the slides of the currently-selected schedule item. Clicking
  *  a slide shows it live. */
@@ -14,7 +15,9 @@ export function SlidesPanel(): JSX.Element {
     return (
       <div className="slides-panel">
         <div className="slides-empty">
-          <div className="slides-empty-icon">✦</div>
+          <div className="slides-empty-icon">
+            <Icon name="spark" />
+          </div>
           <h2>No item selected</h2>
           <p>
             Pick an item from the <b>Schedule</b>, or open the <b>Library</b> to add songs,

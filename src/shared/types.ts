@@ -34,7 +34,7 @@ export type SlideKind = 'text' | 'scripture' | 'media' | 'blank' | 'countdown' |
 /**
  * A freely-positioned text line on the slide composer's 960×540 reference
  * canvas. x/y are the CENTER of the line; the renderer scales the whole canvas
- * to any output size. Produced by the composer and by songs "→ Canvas".
+ * to any output size. Produced by the composer and by songs sent to Canvas.
  */
 export interface ComposedLine {
   id: string
@@ -69,7 +69,7 @@ export interface SlideContent {
   caption?: string
   /** optional per-slide background overriding the global background */
   background?: Background
-  /** freely-positioned composed layout (from the Slide Composer / songs → Canvas);
+  /** freely-positioned composed layout (from the Slide Composer / songs to Canvas);
    *  when present, the renderer draws these instead of the auto-fit `lines` */
   composed?: ComposedLine[]
   /**

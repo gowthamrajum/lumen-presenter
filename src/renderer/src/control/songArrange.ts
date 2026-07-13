@@ -39,35 +39,40 @@ export function detectRecurringSection(song: Song): string | null {
 }
 
 /**
- * Build the play order for a song the presenter is adding. Only the `included`
- * sections are used, in written order. If a `recurringId` is chosen (and included
- * and non-empty) it plays after every other included section — leading too when it
- * opens the song, for the worship-standard order Pallavi, V1, Pallavi, V2, Pallavi.
- * Sections that merely duplicate the refrain's lyrics are collapsed into it so it
- * never plays back-to-back. Returns [] if nothing is included.
+ * Build the play order for a song the presenter is adding. `includedIds` is the
+ * presenter's chosen sections in the order they arranged them — that order is
+ * respected verbatim. If a `recurringId` is chosen (and included and non-empty)
+ * it plays after every other included section — leading too when it's first in
+ * the arrangement, for the worship-standard order Pallavi, V1, Pallavi, V2,
+ * Pallavi. Sections that merely duplicate the refrain's lyrics are collapsed into
+ * it so it never plays back-to-back. Returns [] if nothing is included.
  */
 export function buildSongArrangement(
   song: Song,
   includedIds: string[],
   recurringId: string | null
 ): string[] {
-  const included = song.sections.filter((s) => includedIds.includes(s.id))
+  const byId = new Map(song.sections.map((s) => [s.id, s]))
+  // Preserve the arranged order; drop ids that no longer exist.
+  const included = includedIds.map((id) => byId.get(id)).filter((s): s is SongSection => Boolean(s))
   if (!included.length) return []
 
-  const rec = recurringId ? song.sections.find((s) => s.id === recurringId) : undefined
+  const rec = recurringId ? byId.get(recurringId) : undefined
   if (rec && includedIds.includes(rec.id) && hasContent(rec)) {
     const recKey = blockKey(rec)
-    const others = included.filter((s) => s.id !== rec.id && blockKey(s) !== recKey)
-    if (others.length) {
-      const recIdx = song.sections.findIndex((s) => s.id === rec.id)
-      const firstOtherIdx = song.sections.findIndex((s) => others.some((o) => o.id === s.id))
-      const arr: string[] = recIdx < firstOtherIdx ? [rec.id] : [] // lead if it opens the song
-      for (const s of others) {
-        arr.push(s.id)
-        arr.push(rec.id)
-      }
-      return arr
+    // "Is this slide the refrain?" is decided by lyric block, not id — a second
+    // chorus/refrain copy counts as the refrain too. Those collapse into it (so
+    // it never plays back-to-back); everything else is a distinct stanza.
+    const isRefrain = (s: SongSection): boolean => blockKey(s) === recKey
+    const others = included.filter((s) => !isRefrain(s))
+    if (!others.length) return [rec.id] // the whole selection is the refrain — play it once
+    // Lead with the refrain when the presenter placed a refrain slide first.
+    const arr: string[] = isRefrain(included[0]) ? [rec.id] : []
+    for (const s of others) {
+      arr.push(s.id)
+      arr.push(rec.id)
     }
+    return arr
   }
   // no repeat (or nothing to interleave with): just the included sections, in order
   return included.map((s) => s.id)

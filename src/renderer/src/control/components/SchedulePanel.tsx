@@ -2,17 +2,18 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { SERVICE_TEMPLATES } from '../templates'
 import { ConfirmDialog } from './ConfirmDialog'
+import { Icon, type IconName } from '../../shared/Icon'
 import type { ItemKind } from '@shared/types'
 
-const KIND_ICON: Record<ItemKind, string> = {
-  scripture: '✝',
-  song: '♪',
-  text: '¶',
-  media: '🖼',
-  video: '▶',
-  ppt: '▤',
-  blank: '⬛',
-  countdown: '⏱'
+const KIND_ICON: Record<ItemKind, IconName> = {
+  scripture: 'cross',
+  song: 'music',
+  text: 'type',
+  media: 'image',
+  video: 'play',
+  ppt: 'slides',
+  blank: 'square',
+  countdown: 'timer'
 }
 
 export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Element {
@@ -71,15 +72,15 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
           {saving ? '…' : 'Save'}
         </button>
         <div className="menu-wrap">
-          <button className="btn tiny" onClick={() => setMenu((v) => !v)} title="Service menu">
-            ⋯
+          <button className="btn tiny icon-btn" onClick={() => setMenu((v) => !v)} title="Service menu">
+            <Icon name="dots" />
           </button>
           {menu && (
             <>
               <div className="dropdown-backdrop" onClick={() => setMenu(false)} />
               <div className="service-menu">
                 <button className="menu-item" onClick={() => { newService(); setMenu(false) }}>
-                  ✦ New service
+                  <span className="mi-row"><Icon name="spark" /> New service</span>
                 </button>
                 <div className="menu-label">Start from a template</div>
                 {SERVICE_TEMPLATES.map((t) => (
@@ -107,7 +108,7 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                       title="Delete"
                       onClick={(e) => { e.stopPropagation(); void deleteService(s.id) }}
                     >
-                      ×
+                      <Icon name="close" />
                     </button>
                   </div>
                 ))}
@@ -127,7 +128,9 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
             className={`sched-item ${it.id === selectedItemId ? 'active' : ''} ${it.noBroadcast ? 'no-broadcast' : ''}`}
             onClick={() => selectItem(it.id)}
           >
-            <span className={`sched-icon kind-${it.kind}`}>{KIND_ICON[it.kind]}</span>
+            <span className={`sched-icon kind-${it.kind}`}>
+              <Icon name={KIND_ICON[it.kind]} />
+            </span>
             <span className="sched-title" title={it.title}>
               {it.title}
             </span>
@@ -136,7 +139,7 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
               title={it.noBroadcast ? 'Off the web broadcast — click to include' : 'On the web broadcast — click to exclude'}
               onClick={(e) => { e.stopPropagation(); toggleItemBroadcast(it.id) }}
             >
-              {it.noBroadcast ? '⊘' : '📡'}
+              <Icon name={it.noBroadcast ? 'broadcast-off' : 'broadcast'} />
             </button>
             <span className="sched-count">{it.slides.length}</span>
             <div className="sched-actions">
@@ -146,7 +149,7 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                 onClick={(e) => { e.stopPropagation(); moveItem(it.id, -1) }}
                 disabled={idx === 0}
               >
-                ↑
+                <Icon name="chevron-up" />
               </button>
               <button
                 className="item-btn"
@@ -154,14 +157,14 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                 onClick={(e) => { e.stopPropagation(); moveItem(it.id, 1) }}
                 disabled={idx === items.length - 1}
               >
-                ↓
+                <Icon name="chevron-down" />
               </button>
               <button
                 className="item-btn"
                 title="Remove"
                 onClick={(e) => { e.stopPropagation(); removeItem(it.id) }}
               >
-                ×
+                <Icon name="close" />
               </button>
             </div>
           </div>

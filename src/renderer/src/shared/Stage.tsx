@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { Background, LiveState, SlideContent, ThemeStyle } from '@shared/types'
 import { useFitText } from './useFitText'
+import { Icon } from './Icon'
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`
@@ -133,7 +134,9 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
 
       {state.showLogo && !state.blackout && (
         <div className="stage-logo">
-          <span className="logo-mark">✦</span>
+          <span className="logo-mark">
+            <Icon name="spark" />
+          </span>
           <span className="logo-word">LUMEN</span>
         </div>
       )}

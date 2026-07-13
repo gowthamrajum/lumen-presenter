@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { detectRecurringSection } from '../songArrange'
 import { BACKGROUND_PRESETS } from '../presets'
+import { Icon } from '../../shared/Icon'
 import type { Background, Song } from '@shared/types'
 
 export interface AddSongChoice {
+  /** included section ids, in the presenter's chosen play order */
   includedIds: string[]
   recurringId: string | null
   /** null = keep the current/global background */
@@ -16,8 +18,9 @@ function swatchStyle(bg: Background): CSSProperties {
 }
 
 /**
- * Shown when adding a song: choose which stanzas to present, which part recurs
- * after each stanza (auto-detected), and a background (default = the current one).
+ * Shown when adding a song: choose which stanzas to present, reorder them, pick
+ * which part recurs after each stanza (auto-detected), and a background (default
+ * = the current one). The order the presenter arranges here is the play order.
  */
 export function SongStructureDialog({
   song,
@@ -30,18 +33,24 @@ export function SongStructureDialog({
   onCancel: () => void
   onConfirm: (choice: AddSongChoice) => void
 }): JSX.Element {
+  // The full section order (reorderable). `included` decides which of these play.
+  const [order, setOrder] = useState<string[]>(() => song.sections.map((s) => s.id))
   const [included, setIncluded] = useState<Set<string>>(() => new Set(song.sections.map((s) => s.id)))
   const [recurring, setRecurring] = useState<string | null>(null)
   const [bgId, setBgId] = useState<string>('default') // 'default' | preset id
 
   useEffect(() => {
+    setOrder(song.sections.map((s) => s.id))
     setIncluded(new Set(song.sections.map((s) => s.id)))
     setRecurring(detectRecurringSection(song))
     setBgId('default')
   }, [song])
 
-  const firstLine = (s: Song['sections'][number]): string => {
-    const l = s.lines.find((x) => x.trim().length > 0) ?? ''
+  const byId = useMemo(() => new Map(song.sections.map((s) => [s.id, s])), [song])
+
+  const firstLine = (id: string): string => {
+    const sec = byId.get(id)
+    const l = sec?.lines.find((x) => x.trim().length > 0) ?? ''
     return l.length > 40 ? `${l.slice(0, 40)}…` : l
   }
 
@@ -58,12 +67,24 @@ export function SongStructureDialog({
     })
   }
 
+  const move = (id: string, dir: -1 | 1): void =>
+    setOrder((prev) => {
+      const i = prev.indexOf(id)
+      const j = i + dir
+      if (i < 0 || j < 0 || j >= prev.length) return prev
+      const next = prev.slice()
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
+
   const background = useMemo<Background | null>(
     () => (bgId === 'default' ? null : BACKGROUND_PRESETS.find((p) => p.id === bgId)?.background ?? null),
     [bgId]
   )
 
-  const canAdd = included.size > 0
+  // Included sections in the arranged order — this is what gets played.
+  const includedInOrder = order.filter((id) => included.has(id))
+  const canAdd = includedInOrder.length > 0
 
   return (
     <div className="modal-backdrop" onClick={onCancel}>
@@ -71,12 +92,13 @@ export function SongStructureDialog({
         <div className="modal-head">
           <h2>Add “{song.title || 'Song'}”</h2>
           <button className="modal-close" onClick={onCancel} title="Cancel">
-            ×
+            <Icon name="close" />
           </button>
         </div>
         <div className="modal-body">
-          <div className="ss-sub">Stanzas — tick to include, ↻ to repeat after each stanza</div>
+          <div className="ss-sub">Stanzas — reorder and tick to include; pick one to repeat after each stanza</div>
           <label className={`ss-row norepeat ${recurring === null ? 'active' : ''}`}>
+            <span className="ss-reorder-spacer" />
             <span className="ss-inc-spacer" />
             <div className="ss-text">
               <div className="ss-label">Don’t repeat any section</div>
@@ -91,22 +113,42 @@ export function SongStructureDialog({
             />
           </label>
 
-          {song.sections.map((s) => {
-            const inc = included.has(s.id)
+          {order.map((id, idx) => {
+            const sec = byId.get(id)
+            if (!sec) return null
+            const inc = included.has(id)
             return (
-              <div key={s.id} className={`ss-row ${recurring === s.id ? 'active' : ''} ${inc ? '' : 'off'}`}>
-                <input type="checkbox" className="ss-inc" checked={inc} onChange={() => toggleInclude(s.id)} title="Include this stanza" />
+              <div key={id} className={`ss-row ${recurring === id ? 'active' : ''} ${inc ? '' : 'off'}`}>
+                <span className="ss-reorder">
+                  <button
+                    className="ss-move icon-btn"
+                    onClick={() => move(id, -1)}
+                    disabled={idx === 0}
+                    title="Move up"
+                  >
+                    <Icon name="chevron-up" />
+                  </button>
+                  <button
+                    className="ss-move icon-btn"
+                    onClick={() => move(id, 1)}
+                    disabled={idx === order.length - 1}
+                    title="Move down"
+                  >
+                    <Icon name="chevron-down" />
+                  </button>
+                </span>
+                <input type="checkbox" className="ss-inc" checked={inc} onChange={() => toggleInclude(id)} title="Include this stanza" />
                 <div className="ss-text">
-                  <div className="ss-label">{s.label}</div>
-                  <div className="ss-preview">{firstLine(s) || '—'}</div>
+                  <div className="ss-label">{sec.label}</div>
+                  <div className="ss-preview">{firstLine(id) || '—'}</div>
                 </div>
                 <input
                   type="radio"
                   name="recurring"
                   className="ss-repeat"
-                  checked={recurring === s.id}
+                  checked={recurring === id}
                   disabled={!inc}
-                  onChange={() => setRecurring(s.id)}
+                  onChange={() => setRecurring(id)}
                   title="Repeat this after each stanza"
                 />
               </div>
@@ -148,7 +190,7 @@ export function SongStructureDialog({
           <button
             className="btn btn-primary"
             disabled={!canAdd}
-            onClick={() => onConfirm({ includedIds: [...included], recurringId: recurring, background })}
+            onClick={() => onConfirm({ includedIds: includedInOrder, recurringId: recurring, background })}
           >
             Add song
           </button>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore, uid } from '../../store/useStore'
+import { Icon } from '../../shared/Icon'
 import type { Song, SongSection, SongSectionKind } from '@shared/types'
 
 const KIND_LABEL: Record<SongSectionKind, string> = {
@@ -64,7 +65,7 @@ export function SongEditor({ song, onClose }: { song: Song; onClose: () => void 
         <div className="modal-head">
           <h2>Song</h2>
           <button className="modal-close" onClick={onClose} title="Close">
-            ×
+            <Icon name="close" />
           </button>
         </div>
 
@@ -120,18 +121,19 @@ export function SongEditor({ song, onClose }: { song: Song; onClose: () => void 
                   value={sec.label}
                   onChange={(e) => setSection(sec.id, { label: e.target.value })}
                 />
-                <button className="btn tiny" onClick={() => moveSection(sec.id, -1)} disabled={i === 0}>
-                  ↑
+                <button className="btn tiny icon-btn" onClick={() => moveSection(sec.id, -1)} disabled={i === 0} title="Move up">
+                  <Icon name="chevron-up" />
                 </button>
                 <button
-                  className="btn tiny"
+                  className="btn tiny icon-btn"
                   onClick={() => moveSection(sec.id, 1)}
                   disabled={i === draft.sections.length - 1}
+                  title="Move down"
                 >
-                  ↓
+                  <Icon name="chevron-down" />
                 </button>
-                <button className="btn tiny" onClick={() => removeSection(sec.id)} title="Remove section">
-                  ×
+                <button className="btn tiny icon-btn" onClick={() => removeSection(sec.id)} title="Remove section">
+                  <Icon name="close" />
                 </button>
               </div>
               <textarea

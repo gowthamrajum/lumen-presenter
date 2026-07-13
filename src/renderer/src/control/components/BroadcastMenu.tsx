@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Icon } from '../../shared/Icon'
 import type { BroadcastConfig, BroadcastStatus } from '@shared/types'
 
 const EMPTY: BroadcastConfig = { enabled: false, base: '', room: '' }
@@ -108,8 +109,8 @@ export function BroadcastMenu(): JSX.Element {
               </div>
             </div>
 
-            <button className="bc-adv-toggle" onClick={() => setAdv((v) => !v)}>
-              {adv ? '▾ Advanced' : '▸ Advanced'}
+            <button className="bc-adv-toggle with-ico" onClick={() => setAdv((v) => !v)}>
+              <Icon name={adv ? 'chevron-down' : 'chevron-right'} /> Advanced
             </button>
             {adv && (
               <>

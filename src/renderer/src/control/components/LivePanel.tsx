@@ -1,8 +1,15 @@
 import { useMemo } from 'react'
 import { useStore } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
+import { Icon, type IconName } from '../../shared/Icon'
 import type { LiveState } from '@shared/types'
 import { THEME_PRESETS } from '../presets'
+
+const ALIGN_ICON: Record<'left' | 'center' | 'right', IconName> = {
+  left: 'align-left',
+  center: 'align-center',
+  right: 'align-right'
+}
 
 export function LivePanel(): JSX.Element {
   const items = useStore((s) => s.items)
@@ -51,14 +58,14 @@ export function LivePanel(): JSX.Element {
           <Stage state={live} />
         </div>
         <div className="nav-row">
-          <button className="btn nav" onClick={goPrev} disabled={deck.length === 0}>
-            ◀ Prev
+          <button className="btn nav with-ico" onClick={goPrev} disabled={deck.length === 0}>
+            <Icon name="chevron-left" /> Prev
           </button>
           <span className="nav-count">
             {liveIndex >= 0 ? liveIndex + 1 : '–'} / {deck.length}
           </span>
-          <button className="btn nav" onClick={goNext} disabled={deck.length === 0}>
-            Next ▶
+          <button className="btn nav with-ico" onClick={goNext} disabled={deck.length === 0}>
+            Next <Icon name="chevron-right" />
           </button>
         </div>
       </div>
@@ -120,10 +127,11 @@ export function LivePanel(): JSX.Element {
             {(['left', 'center', 'right'] as const).map((a) => (
               <button
                 key={a}
-                className={`seg-btn ${theme.textAlign === a ? 'active' : ''}`}
+                className={`seg-btn icon-btn ${theme.textAlign === a ? 'active' : ''}`}
                 onClick={() => setTheme({ textAlign: a })}
+                title={`Align ${a}`}
               >
-                {a === 'left' ? '⯇' : a === 'center' ? '≡' : '⯈'}
+                <Icon name={ALIGN_ICON[a]} />
               </button>
             ))}
           </div>
@@ -156,7 +164,7 @@ export function LivePanel(): JSX.Element {
       </div>
 
       <div className="shortcut-hint">
-        <b>→/Space</b> next · <b>←</b> prev · <b>B</b> black · <b>C</b> clear · <b>L</b> logo
+        <b>Right/Space</b> next · <b>Left</b> prev · <b>B</b> black · <b>C</b> clear · <b>L</b> logo
       </div>
     </div>
   )

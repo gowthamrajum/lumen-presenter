@@ -2,16 +2,58 @@
   --bg: #eef0f3;
   --panel: #ffffff;
   --panel-2: #f5f6f8;
+  --panel-hi: #ffffff;
   --line: #e3e6eb;
+  --line-strong: #aeb6c4;
   --text: #1c2230;
+  --text-2: #3a4356;
   --muted: #737b8a;
   --accent: #2f6bff;
   --accent-2: #7c5bff;
+  --accent-soft: #e7eeff;
+  --btn-hover: #eef0f4;
+  --track: #cdd2db;
   --danger: #e5484d;
+  --danger-soft-bg: #fdecec;
+  --danger-soft-border: #f3c7c9;
+  --danger-strong: #b42318;
   --live: #e5484d;
   --ok: #17a34a;
+  --ok-text: #1c7c43;
+  --warn-text: #a8641a;
+  --gold: #ffd27f;
+  --shadow-strong: rgba(0, 0, 0, 0.5);
   --radius: 10px;
   font-synthesis: none;
+}
+
+/* Dark chrome for the operator UI. Toggled via <html data-theme="dark"> — see
+   appTheme.ts. Only the surface tokens flip; accent/live/danger keep their hue. */
+:root[data-theme='dark'] {
+  --bg: #0e1116;
+  --panel: #161b22;
+  --panel-2: #1d232c;
+  --panel-hi: #232a35;
+  --line: #2a313c;
+  --line-strong: #3a4250;
+  --text: #e7ebf2;
+  --text-2: #c2c9d6;
+  --muted: #8a93a3;
+  --accent: #4f83ff;
+  --accent-2: #9a7bff;
+  --accent-soft: #1b2740;
+  --btn-hover: #232a35;
+  --track: #39414f;
+  --danger: #e5484d;
+  --danger-soft-bg: #3a1d1f;
+  --danger-soft-border: #5c2b2e;
+  --danger-strong: #ff9a90;
+  --live: #f2555b;
+  --ok: #22c55e;
+  --ok-text: #5bd08a;
+  --warn-text: #e0a44a;
+  --gold: #ffd27f;
+  --shadow-strong: rgba(0, 0, 0, 0.65);
 }
 
 * {
@@ -53,7 +95,7 @@ body,
   align-items: center;
   gap: 12px;
   padding: 0 14px;
-  background: linear-gradient(180deg, #ffffff, #f5f6f8);
+  background: linear-gradient(180deg, var(--panel-hi), var(--panel-2));
   border-bottom: 1px solid var(--line);
 }
 .brand {
@@ -62,7 +104,7 @@ body,
   gap: 6px;
 }
 .brand-mark {
-  color: #ffd27f;
+  color: var(--gold);
   font-size: 18px;
 }
 .brand-name {
@@ -100,7 +142,7 @@ body,
   box-shadow: 0 0 8px var(--ok);
 }
 .status-dot.off {
-  background: #c3c9d4;
+  background: var(--track);
 }
 .single-display-hint {
   color: var(--muted);
@@ -244,10 +286,10 @@ body,
   border: 1px solid var(--line);
 }
 .bc-status.on {
-  color: #1c7c43;
+  color: var(--ok-text);
 }
 .bc-status.warn {
-  color: #a8641a;
+  color: var(--warn-text);
 }
 .bc-status.off {
   color: var(--muted);
@@ -280,7 +322,7 @@ body,
   transition: background 0.12s, border-color 0.12s, transform 0.02s;
 }
 .btn:hover {
-  background: #eef0f4;
+  background: var(--btn-hover);
 }
 .btn:active {
   transform: translateY(1px);
@@ -305,9 +347,9 @@ body,
   background: linear-gradient(180deg, #6f9bff, #4675e6);
 }
 .btn-danger {
-  background: #fdecec;
-  border-color: #f3c7c9;
-  color: #b42318;
+  background: var(--danger-soft-bg);
+  border-color: var(--danger-soft-border);
+  color: var(--danger-strong);
 }
 .btn.toggle.active {
   background: var(--accent);
@@ -443,7 +485,7 @@ select,
   background: var(--panel-2);
 }
 .menu-service.active {
-  background: #e7eeff;
+  background: var(--accent-soft);
 }
 .menu-service-name {
   white-space: nowrap;
@@ -513,7 +555,7 @@ select,
   background: var(--panel-2);
 }
 .sched-item.active {
-  background: #e7eeff;
+  background: var(--accent-soft);
   border-color: var(--accent);
 }
 .sched-icon {
@@ -528,7 +570,7 @@ select,
   font-size: 12px;
 }
 .sched-item.active .sched-icon {
-  background: #fff;
+  background: var(--panel-hi);
 }
 .sched-title {
   flex: 1;
@@ -732,7 +774,7 @@ select:focus {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 6px;
-  background: #fbfcfd;
+  background: var(--panel);
 }
 .verse-item {
   padding: 8px 10px;
@@ -741,10 +783,10 @@ select:focus {
   border: 1px solid transparent;
 }
 .verse-item:hover {
-  background: #f0f3f8;
+  background: var(--panel-2);
 }
 .verse-item.selected {
-  background: #e7eeff;
+  background: var(--accent-soft);
   border-color: var(--accent);
 }
 .verse-ref {
@@ -754,7 +796,7 @@ select:focus {
   margin-bottom: 2px;
 }
 .verse-text {
-  color: #3a4356;
+  color: var(--text-2);
   line-height: 1.4;
 }
 .source-actions {
@@ -804,7 +846,7 @@ select:focus {
   position: relative;
 }
 .bg-tile:hover {
-  border-color: #aeb6c4;
+  border-color: var(--line-strong);
 }
 .bg-tile.active {
   border-color: var(--accent);
@@ -821,7 +863,7 @@ select:focus {
 }
 .bg-name {
   font-size: 10.5px;
-  color: #3a4356;
+  color: var(--text-2);
   padding: 0 4px 5px;
   text-align: center;
   white-space: nowrap;
@@ -882,7 +924,7 @@ select:focus {
 .media-name {
   font-size: 11px;
   padding: 5px 7px 0;
-  color: #3a4356;
+  color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -931,7 +973,7 @@ select:focus {
 }
 .deck-empty-icon {
   font-size: 40px;
-  color: #ffd27f;
+  color: var(--gold);
   margin-bottom: 10px;
 }
 .deck-empty h2 {
@@ -956,7 +998,7 @@ select:focus {
   transition: border-color 0.12s, transform 0.05s;
 }
 .slide-thumb:hover {
-  border-color: #aeb6c4;
+  border-color: var(--line-strong);
 }
 .slide-thumb.live {
   border-color: var(--live);
@@ -1013,7 +1055,7 @@ select:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #3a4356;
+  color: var(--text-2);
 }
 .live-tag {
   background: var(--live);
@@ -1054,7 +1096,7 @@ select:focus {
   display: grid;
   place-items: center;
   border-radius: 6px;
-  background: #eef1f6;
+  background: var(--panel-2);
   font-size: 12px;
   flex: 0 0 auto;
 }
@@ -1070,7 +1112,7 @@ select:focus {
   flex: 0 0 auto;
   color: var(--muted);
   font-size: 11px;
-  background: #eef1f6;
+  background: var(--panel-2);
   border-radius: 20px;
   padding: 1px 8px;
 }
@@ -1113,7 +1155,7 @@ select:focus {
   cursor: pointer;
 }
 .service-row:hover {
-  border-color: #aeb6c4;
+  border-color: var(--line-strong);
 }
 .service-row.active {
   border-color: var(--accent);
@@ -1163,7 +1205,7 @@ select:focus {
   border-radius: 5px;
 }
 .item-btn:hover:not(:disabled) {
-  background: #cdd2db;
+  background: var(--track);
   color: var(--text);
 }
 .item-btn:disabled {
@@ -1278,7 +1320,7 @@ select:focus {
   background: var(--panel-2);
 }
 .modal-error {
-  color: #b42318;
+  color: var(--danger-strong);
   font-size: 12px;
   margin-right: auto;
   align-self: center;
@@ -1321,7 +1363,7 @@ select:focus {
 }
 .ss-row.active {
   border-color: var(--accent);
-  background: #eef3ff;
+  background: var(--accent-soft);
 }
 .ss-row.off {
   opacity: 0.5;
@@ -1595,8 +1637,8 @@ select:focus {
   color: #fff;
 }
 .next-badge {
-  background: #e6ecf7;
-  color: #4a5570;
+  background: var(--accent-soft);
+  color: var(--text-2);
 }
 .preview {
   position: relative;
@@ -1607,7 +1649,7 @@ select:focus {
   border: 1px solid var(--line);
 }
 .preview.big {
-  border-color: #cfd4dd;
+  border-color: var(--line-strong);
 }
 .nav-row {
   display: flex;
@@ -1701,13 +1743,76 @@ select:focus {
   color: var(--text);
 }
 
+/* ---------- icons ---------- */
+.icon {
+  display: inline-block;
+}
+/* icon-only buttons: center the glyph */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* buttons that pair a label with an icon */
+.with-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.theme-toggle {
+  padding: 7px 9px;
+  font-size: 14px;
+}
+.mi-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.screen-ico {
+  font-size: 14px;
+  margin-right: 3px;
+  opacity: 0.8;
+}
+
+/* stanza reorder (add-song dialog) */
+.ss-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 0 auto;
+}
+.ss-reorder-spacer {
+  width: 20px;
+  flex: 0 0 auto;
+}
+.ss-move {
+  width: 20px;
+  height: 15px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.ss-move:hover:not(:disabled) {
+  background: var(--btn-hover);
+  color: var(--text);
+}
+.ss-move:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* scrollbars */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cdd2db;
+  background: var(--track);
   border-radius: 6px;
   border: 2px solid var(--panel);
 }

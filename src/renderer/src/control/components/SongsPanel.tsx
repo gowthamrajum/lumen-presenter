@@ -6,6 +6,7 @@ import { buildSongArrangement } from '../songArrange'
 import { remoteToSong, type SongLang } from '../songsRemote'
 import { SongEditor } from './SongEditor'
 import { SongStructureDialog, type AddSongChoice } from './SongStructureDialog'
+import { Icon } from '../../shared/Icon'
 import type { Background, RemoteSong, SlideContent, Song } from '@shared/types'
 
 type AddMode = 'slides' | 'canvas'
@@ -62,7 +63,7 @@ export function SongsPanel(): JSX.Element {
         return
       }
       addItem({ title: song.title, kind: 'song', slides })
-      setNote(`Added “${song.title}” to Canvas (${slides.length} slides). Click ✎ on a slide to edit.`)
+      setNote(`Added “${song.title}” to Canvas (${slides.length} slides). Use the edit icon on a slide to compose it.`)
     } else {
       const slides = stamp(songSlides(song))
       if (!slides.length) {
@@ -168,8 +169,8 @@ export function SongsPanel(): JSX.Element {
             <option value="english">English only (transliteration)</option>
           </select>
           {remoteState === 'ready' && (
-            <button className="btn tiny" onClick={() => void loadRemoteSongs(true)} title="Reload catalog">
-              ⟳
+            <button className="btn tiny icon-btn" onClick={() => void loadRemoteSongs(true)} title="Reload catalog">
+              <Icon name="refresh" />
             </button>
           )}
         </div>
@@ -194,7 +195,9 @@ export function SongsPanel(): JSX.Element {
                   <button className="btn tiny" onClick={() => void openLocal(s.id, 'slides')} title="Add to service">Add</button>
                   <button className="btn tiny" onClick={() => void openLocal(s.id, 'canvas')} title="Add as editable Canvas slides">Canvas</button>
                   <button className="btn tiny" onClick={() => void edit(s.id)} title="Edit song">Edit</button>
-                  <button className="btn tiny" onClick={() => void deleteSong(s.id)} title="Delete">×</button>
+                  <button className="btn tiny icon-btn" onClick={() => void deleteSong(s.id)} title="Delete">
+                    <Icon name="close" />
+                  </button>
                 </div>
               </div>
             ))}

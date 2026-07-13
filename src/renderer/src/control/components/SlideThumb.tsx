@@ -1,5 +1,6 @@
 import { useStore } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
+import { Icon } from '../../shared/Icon'
 import type { LiveState, SlideContent } from '@shared/types'
 
 export function SlideThumb({
@@ -41,7 +42,7 @@ export function SlideThumb({
           openComposer(slide.id)
         }}
       >
-        ✎
+        <Icon name="pencil" />
       </button>
       <button
         className="thumb-remove"
@@ -51,7 +52,7 @@ export function SlideThumb({
           removeSlide(slide.id)
         }}
       >
-        ×
+        <Icon name="close" />
       </button>
       <div className="thumb-stage">
         <Stage state={preview} preview />

@@ -9,8 +9,8 @@ export interface BackgroundPreset {
 // Curated, offline (CSS-gradient) backgrounds suited to worship services and
 // church gatherings. No image assets required. The first two are animated.
 export const BACKGROUND_PRESETS: BackgroundPreset[] = [
-  { id: 'aurora', name: 'Aurora ✦', background: { type: 'gradient', value: 'linear-gradient(120deg, #1b1040, #0a0a1e, #0d3357, #35205f, #0d3357, #0a0a1e, #1b1040)', anim: 'aurora' } },
-  { id: 'flow', name: 'Worship Flow ✦', background: { type: 'gradient', value: 'linear-gradient(120deg, #3a2b6b, #1c1440, #4b2e83, #0d3b66, #1c1440, #3a2b6b)', anim: 'flow' } },
+  { id: 'aurora', name: 'Aurora', background: { type: 'gradient', value: 'linear-gradient(120deg, #1b1040, #0a0a1e, #0d3357, #35205f, #0d3357, #0a0a1e, #1b1040)', anim: 'aurora' } },
+  { id: 'flow', name: 'Worship Flow', background: { type: 'gradient', value: 'linear-gradient(120deg, #3a2b6b, #1c1440, #4b2e83, #0d3b66, #1c1440, #3a2b6b)', anim: 'flow' } },
   { id: 'worship', name: 'Worship', background: { type: 'gradient', value: 'radial-gradient(circle at 50% 28%, #3a2b6b 0%, #1c1440 55%, #0a0720 100%)' } },
   { id: 'sanctuary', name: 'Sanctuary', background: { type: 'gradient', value: 'linear-gradient(160deg, #0d3b66 0%, #0a1f3c 55%, #050d1c 100%)' } },
   { id: 'dawn', name: 'Dawn', background: { type: 'gradient', value: 'linear-gradient(180deg, #2b1e46 0%, #7d3f63 55%, #e2895b 100%)' } },

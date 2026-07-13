@@ -2,9 +2,13 @@ import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import { App } from './App'
 import { useStore } from '../store/useStore'
+import { applyAppTheme, getStoredAppTheme } from './appTheme'
 import '../styles/fonts.css'
 import '../styles/stage.css'
 import '../styles/control.css'
+
+// Paint the saved light/dark chrome before the first render so there's no flash.
+applyAppTheme(getStoredAppTheme())
 
 function isTyping(): boolean {
   const el = document.activeElement

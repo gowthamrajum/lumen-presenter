@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { BroadcastMenu } from './BroadcastMenu'
+import { Icon } from '../../shared/Icon'
+import { useAppTheme } from '../appTheme'
 import type { ScreenRole } from '@shared/types'
 
 export function TopBar(): JSX.Element {
@@ -16,6 +18,7 @@ export function TopBar(): JSX.Element {
   const toggleLogo = useStore((s) => s.toggleLogo)
 
   const [open, setOpen] = useState(false)
+  const [themeMode, toggleTheme] = useAppTheme()
 
   const roleOf = (displayId: number): ScreenRole =>
     screens.find((s) => s.displayId === displayId)?.role ?? 'off'
@@ -30,7 +33,9 @@ export function TopBar(): JSX.Element {
   return (
     <header className="topbar">
       <div className="brand">
-        <span className="brand-mark">✦</span>
+        <span className="brand-mark">
+          <Icon name="spark" />
+        </span>
         <span className="brand-name">Lumen</span>
         <span className="brand-sub">Presenter</span>
       </div>
@@ -45,8 +50,8 @@ export function TopBar(): JSX.Element {
           </button>
         )}
         <div className="screens-wrap">
-          <button className="btn" onClick={() => setOpen((v) => !v)}>
-            Screens{activeCount ? ` · ${activeCount}` : ''} ▾
+          <button className="btn with-ico" onClick={() => setOpen((v) => !v)}>
+            Screens{activeCount ? ` · ${activeCount}` : ''} <Icon name="chevron-down" />
           </button>
           {open && (
             <>
@@ -58,7 +63,7 @@ export function TopBar(): JSX.Element {
                   return (
                     <div key={d.id} className="screen-row">
                       <div className="screen-name" title={d.label}>
-                        {d.primary ? '🖥 ' : '📺 '}
+                        <Icon name={d.primary ? 'monitor' : 'tv'} className="screen-ico" />
                         {d.label}
                         {d.primary ? ' (this screen)' : ''}
                       </div>
@@ -88,6 +93,13 @@ export function TopBar(): JSX.Element {
       </div>
 
       <div className="quick-controls">
+        <button
+          className="btn icon-btn theme-toggle"
+          onClick={toggleTheme}
+          title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
+        </button>
         <button className={`btn toggle ${showLogo ? 'active' : ''}`} onClick={toggleLogo}>
           Logo
         </button>
