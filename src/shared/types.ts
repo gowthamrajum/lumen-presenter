@@ -84,6 +84,12 @@ export interface LiveState {
   slide: SlideContent | null
   /** the following slide, for the stage-display confidence monitor */
   next?: SlideContent | null
+  /** true when the live item is marked no-broadcast: local output shows it, but
+   *  the web relay must suppress it (see the main-process publisher) */
+  noBroadcast?: boolean
+  /** true when the NEXT slide belongs to a no-broadcast item, so the relay drops
+   *  `next` (the local stage monitor still shows it) */
+  nextNoBroadcast?: boolean
   /** global/stage background, used when a slide has no background of its own */
   background: Background
   blackout: boolean
@@ -135,6 +141,9 @@ export interface ServiceItem {
   title: string
   kind: ItemKind
   slides: SlideContent[]
+  /** when true, this item is shown locally but never sent to the web broadcast
+   *  (e.g. a break, or live Praise & Worship you don't want on the stream) */
+  noBroadcast?: boolean
 }
 
 /** A worship service / setlist: an ordered collection of items plus the look

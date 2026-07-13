@@ -64,6 +64,7 @@ interface AppState {
   removeSlide: (id: string) => void
   moveItem: (id: string, dir: -1 | 1) => void
   duplicateItem: (id: string) => void
+  toggleItemBroadcast: (id: string) => void
   selectItem: (id: string | null) => void
   clearService: () => void
   renameService: (name: string) => void
@@ -119,9 +120,14 @@ export function selectSlides(s: AppState): SlideContent[] {
 export function selectLive(s: AppState): LiveState {
   const slides = selectSlides(s)
   const i = slides.findIndex((d) => d.id === s.liveId)
+  const liveItem = i >= 0 ? s.items.find((it) => it.slides.some((sl) => sl.id === s.liveId)) : undefined
+  const nextSlide = i >= 0 ? slides[i + 1] ?? null : null
+  const nextItem = nextSlide ? s.items.find((it) => it.slides.some((sl) => sl.id === nextSlide.id)) : undefined
   return {
     slide: i >= 0 ? slides[i] : null,
-    next: i >= 0 ? slides[i + 1] ?? null : null,
+    next: nextSlide,
+    noBroadcast: liveItem?.noBroadcast === true,
+    nextNoBroadcast: nextItem?.noBroadcast === true,
     background: s.background,
     blackout: s.blackout,
     clearText: s.clearText,
@@ -218,6 +224,15 @@ export const useStore = create<AppState>((set, get) => {
       push()
     },
 
+    toggleItemBroadcast: (id) => {
+      set((s) => ({
+        items: s.items.map((it) => (it.id === id ? { ...it, noBroadcast: !it.noBroadcast } : it))
+      }))
+      // re-push so the relay reflects it now — whether the item is the live slide
+      // or the `next` preview of the live one
+      push()
+    },
+
     selectItem: (id) => set({ selectedItemId: id }),
 
     setComposed: (slideId, composed) => {
@@ -262,6 +277,8 @@ export const useStore = create<AppState>((set, get) => {
         ;[items[i], items[j]] = [items[j], items[i]]
         return { items }
       })
+      // reordering changes which slide is `next` (and its broadcast eligibility)
+      push()
     },
 
     duplicateItem: (id) => {
@@ -279,6 +296,7 @@ export const useStore = create<AppState>((set, get) => {
         items.splice(i + 1, 0, copy)
         return { items }
       })
+      push()
     },
 
     clearService: () => {

@@ -21,6 +21,7 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const selectItem = useStore((s) => s.selectItem)
   const moveItem = useStore((s) => s.moveItem)
   const removeItem = useStore((s) => s.removeItem)
+  const toggleItemBroadcast = useStore((s) => s.toggleItemBroadcast)
 
   const serviceName = useStore((s) => s.serviceName)
   const serviceId = useStore((s) => s.serviceId)
@@ -123,13 +124,20 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
         {items.map((it, idx) => (
           <div
             key={it.id}
-            className={`sched-item ${it.id === selectedItemId ? 'active' : ''}`}
+            className={`sched-item ${it.id === selectedItemId ? 'active' : ''} ${it.noBroadcast ? 'no-broadcast' : ''}`}
             onClick={() => selectItem(it.id)}
           >
             <span className={`sched-icon kind-${it.kind}`}>{KIND_ICON[it.kind]}</span>
             <span className="sched-title" title={it.title}>
               {it.title}
             </span>
+            <button
+              className={`bcast-toggle ${it.noBroadcast ? 'off' : ''}`}
+              title={it.noBroadcast ? 'Off the web broadcast — click to include' : 'On the web broadcast — click to exclude'}
+              onClick={(e) => { e.stopPropagation(); toggleItemBroadcast(it.id) }}
+            >
+              {it.noBroadcast ? '⊘' : '📡'}
+            </button>
             <span className="sched-count">{it.slides.length}</span>
             <div className="sched-actions">
               <button

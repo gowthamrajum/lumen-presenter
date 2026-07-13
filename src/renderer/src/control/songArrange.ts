@@ -39,29 +39,36 @@ export function detectRecurringSection(song: Song): string | null {
 }
 
 /**
- * Build an arrangement that plays the chosen recurring section after every other
- * section. When that section opens the song (a Pallavi written first) it also
- * leads, giving the worship-standard order: Pallavi, V1, Pallavi, V2, Pallavi.
- * Sections that duplicate the refrain's lyrics are collapsed into it so it never
- * plays back-to-back. Returns [] (fall back to written order) if the choice has
- * no lyrics or nothing else to interleave with.
+ * Build the play order for a song the presenter is adding. Only the `included`
+ * sections are used, in written order. If a `recurringId` is chosen (and included
+ * and non-empty) it plays after every other included section — leading too when it
+ * opens the song, for the worship-standard order Pallavi, V1, Pallavi, V2, Pallavi.
+ * Sections that merely duplicate the refrain's lyrics are collapsed into it so it
+ * never plays back-to-back. Returns [] if nothing is included.
  */
-export function buildRepeatArrangement(song: Song, recurringId: string): string[] {
-  const rec = song.sections.find((s) => s.id === recurringId)
-  if (!rec || !hasContent(rec)) return []
-  const recKey = blockKey(rec)
+export function buildSongArrangement(
+  song: Song,
+  includedIds: string[],
+  recurringId: string | null
+): string[] {
+  const included = song.sections.filter((s) => includedIds.includes(s.id))
+  if (!included.length) return []
 
-  // Every non-recurring section, minus any that are just another copy of the refrain.
-  const others = song.sections.filter((s) => s.id !== recurringId && blockKey(s) !== recKey)
-  if (!others.length) return []
-
-  const recIdx = song.sections.findIndex((s) => s.id === recurringId)
-  const firstOtherIdx = song.sections.findIndex((s) => others.some((o) => o.id === s.id))
-  const arr: string[] = recIdx < firstOtherIdx ? [recurringId] : [] // lead if it opens the song
-
-  for (const s of others) {
-    arr.push(s.id)
-    arr.push(recurringId)
+  const rec = recurringId ? song.sections.find((s) => s.id === recurringId) : undefined
+  if (rec && includedIds.includes(rec.id) && hasContent(rec)) {
+    const recKey = blockKey(rec)
+    const others = included.filter((s) => s.id !== rec.id && blockKey(s) !== recKey)
+    if (others.length) {
+      const recIdx = song.sections.findIndex((s) => s.id === rec.id)
+      const firstOtherIdx = song.sections.findIndex((s) => others.some((o) => o.id === s.id))
+      const arr: string[] = recIdx < firstOtherIdx ? [rec.id] : [] // lead if it opens the song
+      for (const s of others) {
+        arr.push(s.id)
+        arr.push(rec.id)
+      }
+      return arr
+    }
   }
-  return arr
+  // no repeat (or nothing to interleave with): just the included sections, in order
+  return included.map((s) => s.id)
 }

@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { useStore, uid } from '../../store/useStore'
 import { songSlides, songComposedSlides } from '../slides'
 import { ensureComposerFont } from '../compose'
-import { buildRepeatArrangement } from '../songArrange'
+import { buildSongArrangement } from '../songArrange'
 import { remoteToSong, type SongLang } from '../songsRemote'
 import { SongEditor } from './SongEditor'
-import { SongStructureDialog } from './SongStructureDialog'
-import type { RemoteSong, Song } from '@shared/types'
+import { SongStructureDialog, type AddSongChoice } from './SongStructureDialog'
+import type { Background, RemoteSong, SlideContent, Song } from '@shared/types'
 
 type AddMode = 'slides' | 'canvas'
 
@@ -28,6 +28,7 @@ export function SongsPanel(): JSX.Element {
   const remoteState = useStore((s) => s.remoteState)
   const remoteError = useStore((s) => s.remoteError)
   const loadRemoteSongs = useStore((s) => s.loadRemoteSongs)
+  const currentBackground = useStore((s) => s.background)
 
   const [mode, setMode] = useState<'library' | 'online'>('library')
   const [query, setQuery] = useState('')
@@ -43,12 +44,19 @@ export function SongsPanel(): JSX.Element {
 
   const q = query.trim().toLowerCase()
 
-  // Actually build slides for a song (arrangement already applied) and add it.
-  const doAdd = async (song: Song, mode: AddMode, goLive: boolean): Promise<void> => {
+  // Build slides (arrangement already applied), optionally stamp a background, add.
+  const doAdd = async (
+    song: Song,
+    mode: AddMode,
+    goLive: boolean,
+    bg: Background | null = null
+  ): Promise<void> => {
     setNote('') // start each add from a clean slate
+    const stamp = (slides: SlideContent[]): SlideContent[] =>
+      bg ? slides.map((s) => ({ ...s, background: bg })) : slides
     if (mode === 'canvas') {
       await ensureComposerFont()
-      const slides = songComposedSlides(song)
+      const slides = stamp(songComposedSlides(song))
       if (!slides.length) {
         setNote(`No lyrics in the selected language for “${song.title}”.`)
         return
@@ -56,7 +64,7 @@ export function SongsPanel(): JSX.Element {
       addItem({ title: song.title, kind: 'song', slides })
       setNote(`Added “${song.title}” to Canvas (${slides.length} slides). Click ✎ on a slide to edit.`)
     } else {
-      const slides = songSlides(song)
+      const slides = stamp(songSlides(song))
       if (!slides.length) {
         setNote(`No lyrics in the selected language for “${song.title}”.`)
         return
@@ -66,24 +74,25 @@ export function SongsPanel(): JSX.Element {
     }
   }
 
-  // Multi-section songs first ask which part repeats after each stanza.
-  const beginAdd = (song: Song, mode: AddMode, goLive: boolean): void => {
-    if (song.sections.length >= 2) setStructure({ song, mode, goLive })
-    else void doAdd(song, mode, goLive)
-  }
-  const confirmStructure = (recurringId: string | null): void => {
+  // Deliberate add via a button -> open the chooser (stanzas / repeat / background).
+  const queueAdd = (song: Song, mode: AddMode): void => setStructure({ song, mode, goLive: false })
+  const confirmStructure = (choice: AddSongChoice): void => {
     if (!structure) return
     const { song, mode, goLive } = structure
-    const arranged = recurringId ? { ...song, arrangement: buildRepeatArrangement(song, recurringId) } : song
+    const arrangement = buildSongArrangement(song, choice.includedIds, choice.recurringId)
     setStructure(null)
-    void doAdd(arranged, mode, goLive)
+    void doAdd({ ...song, arrangement }, mode, goLive, choice.background)
   }
 
   // ----- local library -----
   const localFiltered = q ? songs.filter((s) => `${s.title} ${s.author ?? ''}`.toLowerCase().includes(q)) : songs
-  const addLocal = async (id: string, mode: AddMode, goLive: boolean): Promise<void> => {
+  const openLocal = async (id: string, mode: AddMode): Promise<void> => {
     const song = await window.lumen.loadSong(id)
-    if (song) beginAdd(song, mode, goLive)
+    if (song) queueAdd(song, mode)
+  }
+  const presentLocal = async (id: string): Promise<void> => {
+    const song = await window.lumen.loadSong(id)
+    if (song) void doAdd(song, 'slides', true) // double-click: quick add & present, written order
   }
   const edit = async (id: string): Promise<void> => {
     const song = await window.lumen.loadSong(id)
@@ -94,9 +103,8 @@ export function SongsPanel(): JSX.Element {
   const remoteFiltered = (
     q ? remoteSongs.filter((r) => String(r.song_name ?? '').toLowerCase().includes(q)) : remoteSongs
   ).slice(0, 400)
-  const addRemote = (r: RemoteSong, mode: AddMode, goLive: boolean): void => {
-    beginAdd(remoteToSong(r, lang), mode, goLive)
-  }
+  const openRemote = (r: RemoteSong, mode: AddMode): void => queueAdd(remoteToSong(r, lang), mode)
+  const presentRemote = (r: RemoteSong): void => void doAdd(remoteToSong(r, lang), 'slides', true)
   const importRemote = async (r: RemoteSong): Promise<void> => {
     try {
       await saveSong(remoteToSong(r, lang))
@@ -178,13 +186,13 @@ export function SongsPanel(): JSX.Element {
           <div className="song-list">
             {localFiltered.map((s) => (
               <div key={s.id} className="song-row">
-                <div className="song-row-main" onDoubleClick={() => void addLocal(s.id, 'slides', true)} title="Double-click to add & present">
+                <div className="song-row-main" onDoubleClick={() => void presentLocal(s.id)} title="Double-click to add & present">
                   <div className="song-title">{s.title || 'Untitled Song'}</div>
                   {s.author && <div className="song-author">{s.author}</div>}
                 </div>
                 <div className="song-actions">
-                  <button className="btn tiny" onClick={() => void addLocal(s.id, 'slides', false)} title="Add to service">Add</button>
-                  <button className="btn tiny" onClick={() => void addLocal(s.id, 'canvas', false)} title="Add as editable Canvas slides">Canvas</button>
+                  <button className="btn tiny" onClick={() => void openLocal(s.id, 'slides')} title="Add to service">Add</button>
+                  <button className="btn tiny" onClick={() => void openLocal(s.id, 'canvas')} title="Add as editable Canvas slides">Canvas</button>
                   <button className="btn tiny" onClick={() => void edit(s.id)} title="Edit song">Edit</button>
                   <button className="btn tiny" onClick={() => void deleteSong(s.id)} title="Delete">×</button>
                 </div>
@@ -206,13 +214,13 @@ export function SongsPanel(): JSX.Element {
           <div className="song-list">
             {remoteFiltered.map((r) => (
               <div key={r.song_id} className="song-row">
-                <div className="song-row-main" onDoubleClick={() => addRemote(r, 'slides', true)} title="Double-click to add & present">
+                <div className="song-row-main" onDoubleClick={() => presentRemote(r)} title="Double-click to add & present">
                   <div className="song-title">{r.song_name}</div>
                   <div className="song-author">{(r.stanzas?.length ?? 0) + (r.main_stanza ? 1 : 0)} sections</div>
                 </div>
                 <div className="song-actions">
-                  <button className="btn tiny" onClick={() => addRemote(r, 'slides', false)} title="Add to service">Add</button>
-                  <button className="btn tiny" onClick={() => addRemote(r, 'canvas', false)} title="Add as editable Canvas slides">Canvas</button>
+                  <button className="btn tiny" onClick={() => openRemote(r, 'slides')} title="Add to service">Add</button>
+                  <button className="btn tiny" onClick={() => openRemote(r, 'canvas')} title="Add as editable Canvas slides">Canvas</button>
                   <button className="btn tiny" onClick={() => void importRemote(r)} title="Save to your library">Import</button>
                 </div>
               </div>
@@ -230,6 +238,7 @@ export function SongsPanel(): JSX.Element {
       {structure && (
         <SongStructureDialog
           song={structure.song}
+          currentBackground={currentBackground}
           onCancel={() => setStructure(null)}
           onConfirm={confirmStructure}
         />

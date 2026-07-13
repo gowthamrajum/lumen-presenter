@@ -108,8 +108,17 @@ async function flush(): Promise<void> {
   const t = setTimeout(() => controller.abort(), 10_000)
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (ENV_ADMIN_TOKEN) headers.Authorization = `Bearer ${ENV_ADMIN_TOKEN}`
+  // Items marked no-broadcast still show locally, but the web relay must never
+  // carry their lyrics — not as the live slide, and not as the `next` preview of
+  // the following item. Strip the internal flags from what we publish.
+  const { noBroadcast, nextNoBroadcast, ...rest } = latest
+  const payload = {
+    ...rest,
+    slide: noBroadcast ? null : latest.slide,
+    next: noBroadcast || nextNoBroadcast ? null : latest.next
+  }
   try {
-    const res = await fetch(url, { method: 'POST', signal: controller.signal, headers, body: JSON.stringify(latest) })
+    const res = await fetch(url, { method: 'POST', signal: controller.signal, headers, body: JSON.stringify(payload) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = (await res.json().catch(() => ({}))) as { rev?: number }
     status = { ...status, ok: true, lastAt: Date.now(), lastError: null, rev: data.rev ?? status.rev }

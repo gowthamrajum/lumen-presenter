@@ -548,6 +548,27 @@ select,
   border-radius: 20px;
   padding: 0 7px;
 }
+.bcast-toggle {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  font-size: 12.5px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  opacity: 0.85;
+}
+.bcast-toggle:hover {
+  background: var(--panel-2);
+}
+.bcast-toggle.off {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.sched-item.no-broadcast .sched-title {
+  color: var(--muted);
+}
 .sched-actions {
   flex: 0 0 auto;
   display: flex;
@@ -1274,38 +1295,51 @@ select:focus {
   color: var(--text);
 }
 
-/* ---------- song structure (repeat) dialog ---------- */
-.modal.song-structure {
-  width: min(460px, 100%);
+/* ---------- add-song dialog (stanzas / repeat / background) ---------- */
+.modal.add-song {
+  width: min(480px, 100%);
 }
-.ss-hint {
-  margin: 0 0 4px;
-  font-size: 12.5px;
+.ss-sub {
+  font-size: 11px;
+  font-weight: 700;
   color: var(--muted);
-  line-height: 1.45;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 2px 0;
+}
+.ss-bg-head {
+  margin-top: 10px;
 }
 .ss-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-2);
-  cursor: pointer;
 }
 .ss-row.active {
   border-color: var(--accent);
   background: #eef3ff;
 }
-.ss-row input {
-  width: 15px;
-  height: 15px;
+.ss-row.off {
+  opacity: 0.5;
+}
+.ss-row .ss-inc,
+.ss-row .ss-repeat {
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
   cursor: pointer;
 }
+.ss-inc-spacer {
+  width: 16px;
+  flex: 0 0 auto;
+}
 .ss-text {
   min-width: 0;
+  flex: 1;
 }
 .ss-label {
   font-size: 12.5px;
@@ -1317,6 +1351,41 @@ select:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.ss-swatches {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.ss-swatch {
+  position: relative;
+  height: 40px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+}
+.ss-swatch.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.25);
+}
+.ss-swatch-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ss-swatch-tag {
+  position: absolute;
+  inset: auto 0 0 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 1px 0;
+  text-align: center;
 }
 
 /* ---------- slide composer ---------- */
