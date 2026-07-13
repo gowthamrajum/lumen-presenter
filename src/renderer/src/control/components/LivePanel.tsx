@@ -1,9 +1,12 @@
+import { useMemo } from 'react'
 import { useStore } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import type { LiveState } from '@shared/types'
+import { THEME_PRESETS } from '../presets'
 
 export function LivePanel(): JSX.Element {
-  const deck = useStore((s) => s.deck)
+  const items = useStore((s) => s.items)
+  const deck = useMemo(() => items.flatMap((it) => it.slides), [items])
   const liveId = useStore((s) => s.liveId)
   const theme = useStore((s) => s.theme)
   const background = useStore((s) => s.background)
@@ -11,6 +14,7 @@ export function LivePanel(): JSX.Element {
   const clearText = useStore((s) => s.clearText)
   const showLogo = useStore((s) => s.showLogo)
   const setTheme = useStore((s) => s.setTheme)
+  const applyTheme = useStore((s) => s.applyTheme)
   const goNext = useStore((s) => s.goNext)
   const goPrev = useStore((s) => s.goPrev)
 
@@ -70,6 +74,20 @@ export function LivePanel(): JSX.Element {
       </div>
 
       <div className="look">
+        <div className="section-label">Theme</div>
+        <div className="theme-row">
+          {THEME_PRESETS.map((t) => (
+            <button
+              key={t.id}
+              className="btn tiny theme-btn"
+              onClick={() => applyTheme(t.theme, t.background)}
+              title={`Apply the ${t.name} look`}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+
         <div className="section-label">Look</div>
 
         <label className="look-row">

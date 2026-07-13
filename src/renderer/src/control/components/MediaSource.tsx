@@ -2,18 +2,20 @@ import { useState } from 'react'
 import type { Background, MediaFile } from '@shared/types'
 import { useStore } from '../../store/useStore'
 import { mediaSlide, pptxSlides } from '../slides'
-
-const PRESET_COLORS = ['#0b1020', '#000000', '#101826', '#1b1035', '#0d2818', '#2a0d0d', '#243b53']
+import { BACKGROUND_PRESETS } from '../presets'
 
 export function MediaSource(): JSX.Element {
   const media = useStore((s) => s.media)
   const importMedia = useStore((s) => s.importMedia)
   const importPptx = useStore((s) => s.importPptx)
-  const addSlides = useStore((s) => s.addSlides)
+  const addItem = useStore((s) => s.addItem)
   const setBackground = useStore((s) => s.setBackground)
   const background = useStore((s) => s.background)
 
   const [pptxNote, setPptxNote] = useState('')
+
+  const isActiveBg = (bg: Background): boolean =>
+    background.type === bg.type && background.value === bg.value
 
   const asBackground = (m: MediaFile): void => {
     const bg: Background = { type: m.isVideo ? 'video' : 'image', value: m.url, fit: 'cover' }
@@ -21,18 +23,27 @@ export function MediaSource(): JSX.Element {
   }
 
   const addAsSlide = (m: MediaFile): void => {
-    addSlides([mediaSlide(m.url, m.name, m.isVideo)])
+    addItem({
+      title: m.name,
+      kind: m.isVideo ? 'video' : 'media',
+      slides: [mediaSlide(m.url, m.name, m.isVideo)]
+    })
   }
 
   const importFromPptx = async (): Promise<void> => {
     setPptxNote('Importing…')
     const decks = await importPptx()
     if (!decks.length) return setPptxNote('') // dialog canceled
-    const slides = decks.flatMap(pptxSlides)
-    if (!slides.length) return setPptxNote('No slides found in that file.')
-    addSlides(slides)
+    let total = 0
+    for (const d of decks) {
+      const slides = pptxSlides(d)
+      if (!slides.length) continue
+      addItem({ title: d.name, kind: 'ppt', slides }) // one service item per file
+      total += slides.length
+    }
+    if (!total) return setPptxNote('No slides found in that file.')
     const from = decks.length === 1 ? decks[0].name : `${decks.length} files`
-    setPptxNote(`Added ${slides.length} slide${slides.length === 1 ? '' : 's'} from ${from}.`)
+    setPptxNote(`Added ${total} slide${total === 1 ? '' : 's'} from ${from}.`)
   }
 
   return (
@@ -46,18 +57,22 @@ export function MediaSource(): JSX.Element {
       </button>
       {pptxNote && <div className="empty-note">{pptxNote}</div>}
 
-      <div className="section-label">Stage background color</div>
-      <div className="color-row">
-        {PRESET_COLORS.map((c) => (
+      <div className="section-label">Backgrounds</div>
+      <div className="bg-gallery">
+        {BACKGROUND_PRESETS.map((p) => (
           <button
-            key={c}
-            className={`swatch ${background.type === 'color' && background.value === c ? 'active' : ''}`}
-            style={{ background: c }}
-            title={c}
-            onClick={() => setBackground({ type: 'color', value: c })}
-          />
+            key={p.id}
+            className={`bg-tile ${isActiveBg(p.background) ? 'active' : ''}`}
+            title={p.name}
+            onClick={() => setBackground(p.background)}
+          >
+            <span className="bg-swatch" style={{ background: p.background.value }} />
+            <span className="bg-name">{p.name}</span>
+          </button>
         ))}
-        <label className="swatch custom" title="Custom color">
+        <label className="bg-tile custom" title="Custom color">
+          <span className="bg-swatch rainbow" />
+          <span className="bg-name">Custom</span>
           <input
             type="color"
             value={background.type === 'color' ? background.value : '#000000'}
