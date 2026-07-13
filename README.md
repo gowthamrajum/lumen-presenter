@@ -89,12 +89,31 @@ once connected.
 
 ## Bible data
 
-Pick a translation from the dropdown in the **Bible** tab. Two ship in the box:
+Pick a translation from the dropdown in the **Bible** tab. Two full, offline,
+public-domain Bibles ship in the box:
 
 - **తెలుగు బైబిల్ (Telugu)** — the full 66-book Telugu Bible (31,102 verses).
   Book names and slide captions are shown in Telugu.
-- **WEB (English sample)** — a small public-domain World English Bible subset
-  in `src/shared/bible/sample.ts`, instant and offline.
+- **WEB (English)** — the full World English Bible, British Edition (WEBBE,
+  31,098 verses) in [`resources/bible/web.json`](resources/bible/web.json). It
+  renders the divine name as "the LORD".
+
+### Psalms & the ESV (optional)
+
+The **Psalms** tab is bilingual (Telugu OV + English), assembled from the two
+bundled Bibles — so it's offline and public-domain by default. It also offers the
+**ESV** as the English text, fetched on demand from Crossway's API (free for
+non-commercial/church use). To enable it:
+
+1. Register your church/ministry at **[api.esv.org](https://api.esv.org)** for a
+   free key.
+2. `cp .env.example .env` and set `ESV_API_KEY=…` in `.env`.
+
+The app reads the key at **runtime** (env var → gitignored `.env` → app data dir),
+so **the key is never committed or bundled** into the (public) build — which
+Crossway's terms require. ESV text is fetched on demand (never stored beyond a
+small session cache), shows the required attribution, and falls back to WEBBE if
+the key is missing or you're offline, so a live service never breaks.
 
 The Telugu text lives in [`resources/bible/telugu.json`](resources/bible/telugu.json)
 and is read by the **main process** on demand and sent to the renderer over IPC,

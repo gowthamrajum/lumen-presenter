@@ -18,8 +18,14 @@ function keyFile(): string {
   return join(app.getPath('userData'), 'esv.json')
 }
 
-/** The stored key, else the ESV_API_KEY env var. Never returned to the renderer. */
+/**
+ * Resolve the ESV key at runtime, first found wins: the ESV_API_KEY env var
+ * (also populated from a gitignored .env in dev) takes priority, then the key
+ * saved in the app data dir. Never returned to the renderer.
+ */
 async function loadKey(): Promise<string> {
+  const envKey = (process.env.ESV_API_KEY || '').trim()
+  if (envKey) return envKey
   if (!keyLoaded) {
     keyLoaded = true
     try {
@@ -29,7 +35,7 @@ async function loadKey(): Promise<string> {
       cachedKey = null
     }
   }
-  return (cachedKey || process.env.ESV_API_KEY || '').trim()
+  return (cachedKey || '').trim()
 }
 
 export async function esvKeyStatus(): Promise<{ hasKey: boolean }> {

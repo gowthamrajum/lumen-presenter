@@ -5,3 +5,11 @@ release
 *.log
 .DS_Store
 .vite
+
+# Secrets — never commit. The ESV API key is read at runtime from here (dev) or
+# from the ESV_API_KEY env var / the app's data dir (packaged). Crossway forbids
+# publishing the key, and this repo is public.
+.env
+.env.local
+.env.*.local
+esv.json

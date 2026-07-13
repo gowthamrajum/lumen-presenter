@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, screen, dialog, protocol, net } fro
 import { initAutoUpdate } from './autoUpdate'
 import { join } from 'path'
 import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises'
+import { readFileSync } from 'fs'
 import { pathToFileURL } from 'url'
 import { is } from '@electron-toolkit/utils'
 import { IPC } from '../shared/ipc'
@@ -580,7 +581,35 @@ async function psalmsResult(
 }
 
 // ---- lifecycle -------------------------------------------------------------
+/**
+ * Load a local `.env` into process.env at runtime (dev / running from source),
+ * without a dependency and WITHOUT baking anything into the build. Existing env
+ * vars win. Used to pick up ESV_API_KEY from a gitignored .env — the key is
+ * never committed or shipped. In a packaged app there is no .env here, so this is
+ * a harmless no-op and the key comes from the env var or the app data dir.
+ */
+function loadDotEnv(): void {
+  for (const dir of [process.cwd(), app.getAppPath()]) {
+    let text: string
+    try {
+      text = readFileSync(join(dir, '.env'), 'utf8')
+    } catch {
+      continue
+    }
+    for (const line of text.split('\n')) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/)
+      if (!m || m[1] in process.env) continue
+      let v = m[2]
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1)
+      process.env[m[1]] = v
+    }
+    return
+  }
+}
+
 app.whenReady().then(() => {
+  loadDotEnv()
+
   // Serve local media files over the privileged scheme.
   protocol.handle(MEDIA_SCHEME, (request) => {
     // url shape: lumen-media://local/<encodeURIComponent(absolutePath)>
