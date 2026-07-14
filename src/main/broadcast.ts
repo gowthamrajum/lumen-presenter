@@ -1,7 +1,13 @@
 import { join } from 'path'
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { app } from 'electron'
-import type { BroadcastConfig, BroadcastStatus, LiveState } from '../shared/types'
+import {
+  DEFAULT_BACKGROUND,
+  DEFAULT_THEME,
+  type BroadcastConfig,
+  type BroadcastStatus,
+  type LiveState
+} from '../shared/types'
 
 /**
  * Web broadcast publisher. Pushes the canonical LiveState to a small open relay
@@ -82,10 +88,44 @@ export async function setBroadcastConfig(patch: Partial<BroadcastConfig>): Promi
   emit()
   if (config.enabled && latest) publishBroadcast(latest)
   else if (!config.enabled) {
+    // Stopping: cancel any queued frame and push one final blank so viewers
+    // don't stay frozen on the last slide.
+    if (timer) {
+      clearTimeout(timer)
+      timer = null
+    }
     status = { ...status, ok: false }
     emit()
+    void publishOff()
   }
   return config
+}
+
+/** Push a final blacked-out frame to the relay so both the audience and OBS
+ *  views clear when the operator stops broadcasting (blackout hides both). */
+async function publishOff(): Promise<void> {
+  if (!config.base) return
+  const url = `${config.base.replace(/\/$/, '')}/broadcast/${encodeURIComponent(config.room || 'live')}`
+  const controller = new AbortController()
+  const t = setTimeout(() => controller.abort(), 10_000)
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (ENV_ADMIN_TOKEN) headers.Authorization = `Bearer ${ENV_ADMIN_TOKEN}`
+  const payload = {
+    background: latest?.background ?? DEFAULT_BACKGROUND,
+    blackout: true,
+    clearText: false,
+    showLogo: false,
+    theme: latest?.theme ?? DEFAULT_THEME,
+    users: { slide: null, next: null },
+    stream: { slide: null, next: null }
+  }
+  try {
+    await fetch(url, { method: 'POST', signal: controller.signal, headers, body: JSON.stringify(payload) })
+  } catch {
+    /* best-effort — the app is stopping the broadcast anyway */
+  } finally {
+    clearTimeout(t)
+  }
 }
 
 /** Queue the current live state for publishing (debounced). */
