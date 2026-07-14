@@ -363,14 +363,25 @@
   var captionEl = document.getElementById('caption');
   var qrEl = document.getElementById('qr');
   var standbyEl = document.getElementById('standby');
+  var standbyTagEl = standbyEl && standbyEl.querySelector('.sb-tag');
+  // Once the service has actually started (a slide has gone live), the standby's
+  // sub-line changes from "waiting" to "in progress" for any later off-air gaps.
+  var serviceStarted = false;
   // Branded standby, audience app only; toggled off the moment a slide renders.
   function setStandby(on) {
     if (mode !== 'audience' || !standbyEl) return;
+    if (on && standbyTagEl) {
+      standbyTagEl.textContent = serviceStarted ? 'Service in progress' : 'Waiting for the service to begin…';
+    }
     standbyEl.classList.toggle('show', !!on);
   }
   // Whether a real slide is on screen (vs standby/blackout), so the tab bar only
-  // auto-hides during an immersive live moment.
-  function setLiveShowing(on) { root.classList.toggle('live-showing', !!on); }
+  // auto-hides during an immersive live moment. The first live slide also marks
+  // the service as started.
+  function setLiveShowing(on) {
+    if (on) serviceStarted = true;
+    root.classList.toggle('live-showing', !!on);
+  }
 
   // ---- fullscreen (video-player style), audience only ----
   var fsBtn = document.getElementById('fs');
