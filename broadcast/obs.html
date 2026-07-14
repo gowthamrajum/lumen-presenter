@@ -10,6 +10,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Cantica" />
 <meta name="theme-color" content="#0a0720" />
+<!-- Home-Screen app icon (full-bleed; iOS applies its own rounded mask). Served
+     from the app repo so the relay-hosted page can reference it. -->
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/gowthamrajum/lumen-presenter/main/build/apple-touch-icon.png" />
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/gowthamrajum/lumen-presenter/main/build/apple-touch-icon.png" />
 <title>Cantica — Broadcast</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -28,6 +32,11 @@
     background: transparent;            /* OBS composites over your video */
     font-family: 'Anek Telugu', 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* app feel: no text selection, no long-press callout, no tap flash, no bounce */
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
   }
 
   /* The frame is the layout box + the sizing container for cqh/cqw units.
@@ -84,6 +93,23 @@
     opacity: 0; transition: opacity .18s ease;
   }
   #stage.show { opacity: 1; }
+
+  /* Branded standby — shown in the audience app whenever nothing is live, so
+     opening it never looks like a blank/broken page. Hidden the instant a slide
+     appears, and never shown on the OBS (transparent) overlay. */
+  #standby {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2.4cqh;
+    pointer-events: none; opacity: 0; transition: opacity .45s ease;
+  }
+  html.mode-audience #standby.show { display: flex; opacity: 1; }
+  .sb-flame { width: 15cqh; height: auto; filter: drop-shadow(0 0 4cqh rgba(255,214,140,.5));
+              transform-origin: 50% 72%; animation: sb-flicker 3.4s ease-in-out infinite; }
+  .sb-name { font-family: 'Inter', system-ui, sans-serif; font-weight: 800; font-size: 5.2cqh;
+             letter-spacing: .04em; color: #fff; }
+  .sb-tag { font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 2.1cqh;
+            color: rgba(255,255,255,.62); }
+  @keyframes sb-flicker { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: .9; } }
 
   .lyrics { text-align: center; color: var(--text); font-weight: 700; font-size: var(--size); line-height: 1.22; max-width: 92%; text-wrap: balance; }
   .lyrics .line { display: block; }
@@ -168,6 +194,18 @@
       <div class="caption" id="caption"></div>
       <img id="qr" class="qr" alt="" draggable="false" />
     </div>
+    <div id="standby">
+      <svg class="sb-flame" viewBox="0 0 512 620" width="120" aria-hidden="true">
+        <defs>
+          <radialGradient id="sfo" cx="50%" cy="66%" r="62%"><stop offset="0%" stop-color="#fffaf1"/><stop offset="100%" stop-color="#ffe6cb"/></radialGradient>
+          <radialGradient id="sfi" cx="50%" cy="68%" r="60%"><stop offset="0%" stop-color="#ffdca6"/><stop offset="45%" stop-color="#f4a35a"/><stop offset="100%" stop-color="#ee8a36"/></radialGradient>
+        </defs>
+        <path d="M256 44 C256 44 392 214 392 336 A136 136 0 1 1 120 336 C120 214 256 44 256 44 Z" fill="url(#sfo)"/>
+        <path d="M256 256 C256 256 330 346 330 394 A74 74 0 1 1 182 394 C182 346 256 256 256 256 Z" fill="url(#sfi)"/>
+      </svg>
+      <div class="sb-name">Cantica</div>
+      <div class="sb-tag">Waiting for the service to begin…</div>
+    </div>
   </div>
   <button id="fs" class="fsbtn" title="Full screen" aria-label="Full screen"></button>
   <div id="a2hs" class="a2hs" hidden>
@@ -208,6 +246,12 @@
   var lyricsEl = document.getElementById('lyrics');
   var captionEl = document.getElementById('caption');
   var qrEl = document.getElementById('qr');
+  var standbyEl = document.getElementById('standby');
+  // Branded standby, audience app only; toggled off the moment a slide renders.
+  function setStandby(on) {
+    if (mode !== 'audience' || !standbyEl) return;
+    standbyEl.classList.toggle('show', !!on);
+  }
 
   // ---- fullscreen (video-player style), audience only ----
   var fsBtn = document.getElementById('fs');
@@ -382,14 +426,21 @@
 
     if (mode === 'audience') {
       applyTheme(theme);
-      if (state && state.blackout) { bgEl.style.background = '#000'; bgImg.style.display = 'none'; bgVideo.style.display = 'none'; stage.classList.remove('show'); stopTick(); return; }
+      if (state && state.blackout) { bgEl.style.background = '#000'; bgImg.style.display = 'none'; bgVideo.style.display = 'none'; stage.classList.remove('show'); stopTick(); setStandby(false); return; }
       applyBackground(slide && slide.background ? slide.background : (state && state.background));
     }
 
     // Hide when the operator shows the logo too, matching the native output
     // (otherwise a ticking countdown would stay on air over the logo).
     var hidden = !state || state.blackout || state.clearText || state.showLogo || !slide;
-    if (hidden) { stage.classList.remove('show'); stopTick(); return; }
+    if (hidden) {
+      stage.classList.remove('show'); stopTick();
+      // Idle (nothing live / off-air / not started yet) → branded standby, but
+      // not for the operator's deliberate blackout / clear / logo states.
+      setStandby(!(state && (state.blackout || state.clearText || state.showLogo)));
+      return;
+    }
+    setStandby(false);
 
     // Countdown / clock: render a live-ticking timer (else the web view is blank
     // whenever a countdown is on air, unlike the local audience output).
@@ -447,6 +498,9 @@
     } catch (_) { startPolling(); }
   }
 
+  // Show the branded standby right away so the audience app never opens blank;
+  // the first incoming state replaces it (or keeps it, if nothing is live).
+  setStandby(true);
   if (window.EventSource) startSSE(); else startPolling();
 })();
 </script>
