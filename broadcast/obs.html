@@ -180,6 +180,69 @@
               font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
   .a2hs-ok { margin-top: 18px; width: 100%; border: 0; border-radius: 10px; padding: 12px; font-size: 14px;
              font-weight: 700; background: #4f83ff; color: #fff; cursor: pointer; }
+
+  /* ============ Audience app: bottom-tab sections ============ */
+  /* Only the audience app shows tabs; the OBS overlay never does. Live stays a
+     full-screen slide (its tab bar auto-hides); Order/Info are scroll pages. */
+  .tabbar, .page { display: none; }
+  .page {
+    position: fixed; inset: 0; z-index: 40; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: radial-gradient(circle at 50% -10%, #1c1440 0%, #0c0a1e 60%, #06050f 100%);
+    color: #eef0f6; font-family: 'Inter', system-ui, sans-serif;
+    -webkit-user-select: text; user-select: text;
+    padding: calc(26px + env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom));
+  }
+  html.mode-audience.tab-order #page-order,
+  html.mode-audience.tab-info #page-info { display: block; }
+  /* Live view (and its fullscreen/rotate button) only on the Live tab. */
+  html.mode-audience:not(.tab-live) #frame,
+  html.mode-audience:not(.tab-live) .fsbtn { display: none !important; }
+
+  .page-title { font-size: 22px; font-weight: 800; margin: 2px 0; letter-spacing: .01em; }
+  .page-sub { font-size: 13px; color: #a6accd; margin-bottom: 18px; }
+
+  /* Order of service */
+  .ord { display: flex; flex-direction: column; gap: 8px; }
+  .ord-item { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 12px;
+              background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); }
+  .ord-item.live { background: rgba(79,131,255,.16); border-color: rgba(79,131,255,.55); }
+  .ord-dot { flex: 0 0 9px; width: 9px; height: 9px; border-radius: 50%; background: #6b7099; }
+  .ord-item.live .ord-dot { background: #4f83ff; box-shadow: 0 0 10px #4f83ff; }
+  .ord-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ord-kind { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #9aa0c2; }
+  .ord-now { font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #7ea6ff; }
+  .ord-empty { text-align: center; color: #9aa0c2; padding: 60px 20px; line-height: 1.6; }
+
+  /* Info cards */
+  .info-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09);
+               border-radius: 14px; padding: 15px 16px; margin-bottom: 12px; }
+  .info-card h3 { font-size: 16px; font-weight: 800; margin: 0; }
+  .info-card .te { font-size: 14px; color: #ffd27f; font-family: 'Anek Telugu', system-ui, sans-serif; margin: 1px 0 8px; }
+  .info-row { font-size: 14px; color: #d3d6ea; line-height: 1.55; }
+  .info-row b { color: #fff; }
+  .info-link { display: inline-block; margin-top: 8px; color: #7ea6ff; text-decoration: none; font-weight: 700; font-size: 14px; }
+
+  /* Bottom tab bar */
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; align-items: stretch;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: rgba(10,7,32,.82); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(255,255,255,.08);
+    transition: transform .3s ease, opacity .3s ease;
+  }
+  html.mode-audience .tabbar { display: flex; }
+  /* Immersive Live: while a slide is actually on screen the bar slides away when
+     idle (taps bring it back). On the standby/waiting screen it stays put so the
+     nav is always discoverable. */
+  html.tab-live.chrome-idle.live-showing .tabbar { transform: translateY(150%); opacity: 0; }
+  .tab {
+    flex: 1; border: 0; background: transparent; color: #9aa0c2; cursor: pointer;
+    padding: 9px 0 7px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-family: 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+  }
+  .tab svg { width: 22px; height: 22px; }
+  .tab.active { color: #fff; }
+  .tab.active svg { color: #ffd27f; }
 </style>
 </head>
 <body>
@@ -218,6 +281,56 @@
       <button id="a2hsOk" class="a2hs-ok">Got it</button>
     </div>
   </div>
+
+  <!-- ===== Order of Service tab ===== -->
+  <section id="page-order" class="page">
+    <div class="page-title">Order of Service</div>
+    <div class="page-sub">Today's service — follow along.</div>
+    <div id="ordList" class="ord"></div>
+  </section>
+
+  <!-- ===== Info tab ===== -->
+  <section id="page-info" class="page">
+    <div class="page-title">Telugu Community Church</div>
+    <div class="page-sub">Service times &amp; location</div>
+    <div class="info-card">
+      <h3>Worship Service</h3>
+      <div class="te">ఆరాధన సేవ</div>
+      <div class="info-row"><b>Every Sunday · 11:00 AM</b></div>
+      <div class="info-row">8001 Mustang Drive<br/>Irving, Texas 75038</div>
+      <a class="info-link" href="https://maps.apple.com/?q=8001%20Mustang%20Drive%20Irving%20TX%2075038" target="_blank" rel="noopener">Open in Maps →</a>
+    </div>
+    <div class="info-card">
+      <h3>Bible Study</h3>
+      <div class="te">జూమ్ లో బైబిల్ స్టడీ</div>
+      <div class="info-row"><b>Every Wednesday · 8:00 PM</b> · on Zoom</div>
+    </div>
+    <div class="info-card">
+      <h3>Saturday Prayer</h3>
+      <div class="te">శనివారం ప్రార్థన సభ</div>
+      <div class="info-row"><b>Every Saturday · 8:00 PM</b> · on Zoom</div>
+    </div>
+    <div class="info-card">
+      <h3>Connect</h3>
+      <a class="info-link" href="https://teluguchurchdfw.org" target="_blank" rel="noopener">teluguchurchdfw.org →</a>
+    </div>
+  </section>
+
+  <!-- ===== bottom tab bar ===== -->
+  <nav class="tabbar" id="tabbar">
+    <button class="tab" data-tab="live" aria-label="Live">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><path d="M6.4 6.4a8 8 0 000 11.2M17.6 6.4a8 8 0 010 11.2"/></svg>
+      Live
+    </button>
+    <button class="tab" data-tab="order" aria-label="Order of Service">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.6" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3.6" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3.6" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+      Order
+    </button>
+    <button class="tab" data-tab="info" aria-label="Info">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6h.01"/></svg>
+      Info
+    </button>
+  </nav>
 <script>
   var ICON_EXPAND = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
   var ICON_COMPRESS = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6H3M21 15h-6v6M15 9l6-6M3 21l6-6"/></svg>';
@@ -252,6 +365,9 @@
     if (mode !== 'audience' || !standbyEl) return;
     standbyEl.classList.toggle('show', !!on);
   }
+  // Whether a real slide is on screen (vs standby/blackout), so the tab bar only
+  // auto-hides during an immersive live moment.
+  function setLiveShowing(on) { root.classList.toggle('live-showing', !!on); }
 
   // ---- fullscreen (video-player style), audience only ----
   var fsBtn = document.getElementById('fs');
@@ -262,13 +378,14 @@
   // Already launched from the Home Screen? Then it's already chrome-free — nothing to offer.
   var standalone = window.navigator.standalone === true ||
     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-  // auto-hide the button when idle; reveal on tap/move (like a video player)
+  // auto-hide the button + (on Live) the tab bar when idle; reveal on tap/move.
   function enableIdleHide() {
     var idle;
     function poke() {
       fsBtn.classList.remove('idle');
+      root.classList.remove('chrome-idle');
       clearTimeout(idle);
-      idle = setTimeout(function () { fsBtn.classList.add('idle'); }, 2600);
+      idle = setTimeout(function () { fsBtn.classList.add('idle'); root.classList.add('chrome-idle'); }, 2600);
     }
     ['pointermove', 'pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
       window.addEventListener(ev, poke, { passive: true });
@@ -321,6 +438,60 @@
     try {
       if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () {});
     } catch (_) {}
+  }
+
+  // ---- audience app: bottom-tab sections (Live / Order / Info) ----
+  var orderListEl = document.getElementById('ordList');
+  var lastOrder = null, lastOrderKey = '';
+  var KIND_LABEL = { video: 'Video', song: 'Song', scripture: 'Scripture', text: 'Text',
+    countdown: 'Countdown', clock: 'Clock', media: 'Media', ppt: 'Slides', slides: 'Slides', blank: 'Blank' };
+
+  // The order of service is published by the desktop as state.order — a lyric-free
+  // list of the schedule's items ({title, kind, live}) — so the phone can show
+  // today's plan and highlight what's on screen now.
+  function renderOrder(order) {
+    if (!orderListEl) return;
+    var arr = Array.isArray(order) ? order : [];
+    var key = JSON.stringify(arr);
+    if (key === lastOrderKey) return; // no change → don't thrash / re-scroll
+    lastOrderKey = key;
+    orderListEl.innerHTML = '';
+    if (!arr.length) {
+      var e = document.createElement('div');
+      e.className = 'ord-empty';
+      e.textContent = 'The order of service will appear here once the service is live.';
+      orderListEl.appendChild(e);
+      return;
+    }
+    arr.forEach(function (it) {
+      var row = document.createElement('div');
+      row.className = 'ord-item' + (it.live ? ' live' : '');
+      var dot = document.createElement('span'); dot.className = 'ord-dot';
+      var title = document.createElement('span'); title.className = 'ord-title'; title.textContent = it.title || 'Untitled';
+      var meta = document.createElement('span');
+      if (it.live) { meta.className = 'ord-now'; meta.textContent = 'NOW'; }
+      else { meta.className = 'ord-kind'; meta.textContent = KIND_LABEL[it.kind] || ''; }
+      row.appendChild(dot); row.appendChild(title); row.appendChild(meta);
+      orderListEl.appendChild(row);
+    });
+    var liveRow = orderListEl.querySelector('.ord-item.live');
+    if (liveRow && root.classList.contains('tab-order')) liveRow.scrollIntoView({ block: 'center' });
+  }
+
+  function setTab(name) {
+    root.classList.remove('tab-live', 'tab-order', 'tab-info');
+    root.classList.add('tab-' + name);
+    var btns = document.querySelectorAll('.tab');
+    for (var b = 0; b < btns.length; b++) btns[b].classList.toggle('active', btns[b].getAttribute('data-tab') === name);
+    if (name === 'order') { lastOrderKey = ''; renderOrder(lastOrder); } // re-render + scroll to NOW on entry
+  }
+
+  if (mode === 'audience') {
+    var tabBtns = document.querySelectorAll('.tab');
+    for (var t = 0; t < tabBtns.length; t++) {
+      tabBtns[t].addEventListener('click', function () { setTab(this.getAttribute('data-tab')); });
+    }
+    setTab('live');
   }
 
   function textOf(slide) {
@@ -419,6 +590,9 @@
   }
 
   function render(state) {
+    // Order of service is independent of the live slide — update it first, before
+    // any of the slide-state early returns below.
+    if (mode === 'audience') { lastOrder = state && state.order; renderOrder(lastOrder); }
     var slide = state && state.slide;
     var theme = state && state.theme;
     var scale = (theme && theme.fontScale) || 1;
@@ -426,7 +600,7 @@
 
     if (mode === 'audience') {
       applyTheme(theme);
-      if (state && state.blackout) { bgEl.style.background = '#000'; bgImg.style.display = 'none'; bgVideo.style.display = 'none'; stage.classList.remove('show'); stopTick(); setStandby(false); return; }
+      if (state && state.blackout) { bgEl.style.background = '#000'; bgImg.style.display = 'none'; bgVideo.style.display = 'none'; stage.classList.remove('show'); stopTick(); setStandby(false); setLiveShowing(false); return; }
       applyBackground(slide && slide.background ? slide.background : (state && state.background));
     }
 
@@ -438,9 +612,11 @@
       // Idle (nothing live / off-air / not started yet) → branded standby, but
       // not for the operator's deliberate blackout / clear / logo states.
       setStandby(!(state && (state.blackout || state.clearText || state.showLogo)));
+      setLiveShowing(false);
       return;
     }
     setStandby(false);
+    setLiveShowing(true);
 
     // Countdown / clock: render a live-ticking timer (else the web view is blank
     // whenever a countdown is on air, unlike the local audience output).
@@ -451,7 +627,7 @@
       renderComposed(slide.composed);
     } else {
       var lines = textOf(slide).filter(function (t) { return t && t.trim(); });
-      if (!lines.length) { stage.classList.remove('show'); return; }
+      if (!lines.length) { stage.classList.remove('show'); setLiveShowing(false); return; }
       renderLines(lines, scale);
       lyricsEl.classList.toggle('nowrap', mode === 'audience' && !!slide.singleLine);
     }

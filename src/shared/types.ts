@@ -109,6 +109,9 @@ export interface LiveState {
   clearText: boolean
   showLogo: boolean
   theme: ThemeStyle
+  /** Lyric-free outline of the whole service for the audience app's "Order" tab:
+   *  one entry per schedule item, with the one owning the live slide flagged. */
+  order?: Array<{ id: string; title: string; kind: ItemKind; live: boolean }>
 }
 
 export interface DisplayInfo {

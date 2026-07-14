@@ -284,7 +284,15 @@ export function selectLive(s: AppState): LiveState {
     blackout: s.blackout,
     clearText: s.clearText,
     showLogo: s.showLogo,
-    theme: s.theme
+    theme: s.theme,
+    // Lyric-free service outline for the audience app's "Order" tab. Titles/kinds
+    // only (never slide text), with the item owning the live slide flagged.
+    order: s.items.map((it) => ({
+      id: it.id,
+      title: it.title,
+      kind: it.kind,
+      live: liveItem ? it.id === liveItem.id : false
+    }))
   }
 }
 
