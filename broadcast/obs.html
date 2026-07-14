@@ -62,6 +62,17 @@
     html.mode-audience #stage.has-qr .qr { width: 34cqh; height: 34cqh; }
   }
 
+  /* Manual landscape toggle. iOS Home-Screen (standalone) apps can't lock
+     orientation via the Fullscreen API, so the rotate button flips this class to
+     spin the audience stage 90° — a viewer can watch in landscape even with the
+     device's rotation lock on. Sized to the swapped viewport so it fills. */
+  html.force-landscape.mode-audience .frame {
+    top: 50%; left: 50%;
+    width: 100vh; height: 100vw;
+    width: 100dvh; height: 100dvw;
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
   /* ---- shared layers (positioned within the frame) ---- */
   #bg { position: absolute; inset: 0; display: none; background: #0a0720; }
   #bgimg, #bgvideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
@@ -172,6 +183,8 @@
 <script>
   var ICON_EXPAND = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
   var ICON_COMPRESS = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6H3M21 15h-6v6M15 9l6-6M3 21l6-6"/></svg>';
+  // phone-rotating-to-landscape glyph, used for the manual landscape toggle
+  var ICON_ROTATE = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M8 3.5A9 9 0 0 1 12 2M2.5 12A9 9 0 0 1 4 8"/></svg>';
 (function () {
   var q = new URLSearchParams(location.search);
   var m = location.pathname.match(/\/broadcast\/([^/]+)\/view/);
@@ -205,7 +218,34 @@
   // Already launched from the Home Screen? Then it's already chrome-free — nothing to offer.
   var standalone = window.navigator.standalone === true ||
     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-  if (mode === 'audience' && !standalone) {
+  // auto-hide the button when idle; reveal on tap/move (like a video player)
+  function enableIdleHide() {
+    var idle;
+    function poke() {
+      fsBtn.classList.remove('idle');
+      clearTimeout(idle);
+      idle = setTimeout(function () { fsBtn.classList.add('idle'); }, 2600);
+    }
+    ['pointermove', 'pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
+      window.addEventListener(ev, poke, { passive: true });
+    });
+    poke();
+  }
+
+  if (mode === 'audience' && standalone) {
+    // Launched from the Home Screen: already chrome-free full screen. iOS
+    // standalone apps can't lock orientation via the Fullscreen API, so offer a
+    // manual landscape toggle (works even with the device's rotation lock on).
+    fsBtn.classList.add('avail');
+    fsBtn.innerHTML = ICON_ROTATE;
+    fsBtn.title = 'Rotate to landscape';
+    fsBtn.setAttribute('aria-label', 'Rotate to landscape');
+    fsBtn.addEventListener('click', function () {
+      var on = root.classList.toggle('force-landscape');
+      fsBtn.title = on ? 'Back to portrait' : 'Rotate to landscape';
+    });
+    enableIdleHide();
+  } else if (mode === 'audience') {
     fsBtn.classList.add('avail');
     fsBtn.innerHTML = ICON_EXPAND;
     fsBtn.addEventListener('click', function () {
@@ -219,7 +259,7 @@
           exitFs.call(document);
         }
       } else if (a2hs) {
-        // iPhone Safari: no Fullscreen API — the only chrome-free path is
+        // iPhone Safari tab: no Fullscreen API — the only chrome-free path is
         // "Add to Home Screen", so show how.
         a2hs.hidden = false;
       }
@@ -231,17 +271,7 @@
     if (reqFs) {
       document.addEventListener('fullscreenchange', function () { fsBtn.innerHTML = inFs() ? ICON_COMPRESS : ICON_EXPAND; });
     }
-    // auto-hide the button after a moment; reveal on tap/move (like a player)
-    var idle;
-    function poke() {
-      fsBtn.classList.remove('idle');
-      clearTimeout(idle);
-      idle = setTimeout(function () { fsBtn.classList.add('idle'); }, 2600);
-    }
-    ['pointermove', 'pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
-      window.addEventListener(ev, poke, { passive: true });
-    });
-    poke();
+    enableIdleHide();
   }
   function lockLandscape() {
     try {
