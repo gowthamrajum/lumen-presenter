@@ -1,4 +1,4 @@
-import type { ItemKind, ServiceItem, SlideContent } from '@shared/types'
+import type { ComposedLine, ItemKind, ServiceItem, SlideContent } from '@shared/types'
 import { uid, broadcastDefaults, worshipBookend } from '../store/useStore'
 import { blankSlide, countdownSlide } from './slides'
 import { QR_DONATIONS } from './assets/qrDonations'
@@ -74,6 +74,82 @@ function praiseWorship(): ServiceItem {
   return worshipBookend()
 }
 
+/** A composed (freely-positioned) line on the 960×540 reference canvas — the same
+ *  coordinate space the Slide Composer and the audience Stage use. */
+function cl(text: string, x: number, y: number, fontSize: number, stanza: string): ComposedLine {
+  return { id: uid(), text, x, y, fontSize, align: 'center', stanzaId: stanza }
+}
+
+/** A slide built from composed lines. `lines` is the reading-order fallback used
+ *  by contexts that don't draw the composed layout (OBS lower-third, thumbnails). */
+function composedSlide(label: string, lines: ComposedLine[]): SlideContent {
+  return { id: uid(), kind: 'text', label, lines: lines.map((l) => l.text), composed: lines }
+}
+
+/**
+ * The weekly Announcements — ported verbatim from Worship Ready's
+ * "Add Announcements slides": a title card plus three bilingual, two-column
+ * notices (English on the left, Telugu on the right). Off-air by default (text
+ * kind); the operator edits the specifics each week in the Slide Composer.
+ */
+function announcements(): ServiceItem {
+  const L = 240 // left column centre (English)
+  const R = 720 // right column centre (Telugu)
+
+  // Slide 1 — title card (stacked, centred)
+  const s1 = `stanza-${uid()}`
+  const slide1 = composedSlide('Announcements', [
+    cl('Announcements', 480, 210, 52, s1),
+    cl('ప్రకటనలు', 480, 310, 52, s1)
+  ])
+
+  // Slide 2 — Bible Study
+  const s2 = `stanza-${uid()}`
+  const slide2 = composedSlide('Bible Study', [
+    cl('Bible Study', L, 175, 44, s2),
+    cl('on Zoom', L, 255, 36, s2),
+    cl('Every Wednesday', L, 325, 30, s2),
+    cl('at 8 PM', L, 380, 30, s2),
+    cl('జూమ్ లో బైబిల్ స్టడీ', R, 175, 38, s2),
+    cl('ప్రతి బుధవారం', R, 275, 32, s2),
+    cl('రాత్రి 8 గంటలకు', R, 345, 32, s2)
+  ])
+
+  // Slide 3 — Saturday Prayer Meeting
+  const s3 = `stanza-${uid()}`
+  const slide3 = composedSlide('Saturday Prayer', [
+    cl('Saturday Prayer', L, 175, 42, s3),
+    cl('Meeting on Zoom', L, 245, 36, s3),
+    cl('Every Saturday', L, 315, 30, s3),
+    cl('at 8 PM', L, 370, 30, s3),
+    cl('శనివారం ప్రార్థన సభ', R, 175, 38, s3),
+    cl('జూమ్ లో', R, 260, 32, s3),
+    cl('ప్రతి శనివారం', R, 320, 30, s3),
+    cl('రాత్రి 8 గంటలకు', R, 375, 30, s3)
+  ])
+
+  // Slide 4 — Worship Service (with the church address)
+  const s4 = `stanza-${uid()}`
+  const slide4 = composedSlide('Worship Service', [
+    cl('Worship Service', L, 155, 42, s4),
+    cl('Every Sunday at 11 AM', L, 228, 30, s4),
+    cl('8001 Mustang Drive', L, 290, 26, s4),
+    cl('Irving, Texas 75038', L, 345, 26, s4),
+    cl('ఆరాధన సేవ', R, 155, 42, s4),
+    cl('ప్రతి ఆదివారం ఉ. 11 గంటలకు', R, 228, 27, s4),
+    cl('8001 Mustang Drive', R, 290, 26, s4),
+    cl('Irving, Texas 75038', R, 345, 26, s4)
+  ])
+
+  return {
+    id: uid(),
+    title: 'Announcements',
+    kind: 'text',
+    slides: [slide1, slide2, slide3, slide4],
+    ...broadcastDefaults('text')
+  }
+}
+
 /** Offerings slide with the giving QR (from the worshipReady donations layout).
  *  Off-air by default (text kind). */
 function offerings(): ServiceItem {
@@ -96,12 +172,14 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
     build: () => [
       welcomeVideo(),
       countdown(5, 'Service begins soon'),
-      praiseWorship(), // opening worship
+      // A plain worship *slot* — no pre-baked "Praise & Worship" cards. Those are
+      // added automatically (as bookends) only when the operator adds a song.
+      section('Worship', 'song', 'ఆరాధన', 'Worship'),
       section('Sermon', 'text', 'వాక్యోపదేశం', 'Sermon'),
       offerings(),
-      section('Announcements', 'text', 'ప్రకటనలు', 'Announcements'),
+      announcements(),
       section('Benediction', 'text', 'దీవెన', 'Go in peace'),
-      praiseWorship() // closing worship
+      section('Closing Worship', 'song', 'ముగింపు ఆరాధన', 'Closing Worship')
     ]
   },
   {
