@@ -112,6 +112,9 @@ export interface LiveState {
   /** Lyric-free outline of the whole service for the audience app's "Order" tab:
    *  one entry per schedule item, with the one owning the live slide flagged. */
   order?: Array<{ id: string; title: string; kind: ItemKind; live: boolean }>
+  /** The service's name, so the broadcast directory can label a session by the
+   *  service rather than by whatever slide happens to be live. */
+  name?: string
 }
 
 export interface DisplayInfo {

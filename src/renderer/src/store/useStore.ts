@@ -292,7 +292,9 @@ export function selectLive(s: AppState): LiveState {
       title: it.title,
       kind: it.kind,
       live: liveItem ? it.id === liveItem.id : false
-    }))
+    })),
+    // Service name so the broadcast directory labels the session by the service.
+    name: s.serviceName
   }
 }
 
