@@ -154,8 +154,11 @@
 
   /* ---- video-player-style fullscreen button (audience only, when supported) ---- */
   .fsbtn {
-    position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
-    z-index: 50; width: 52px; height: 52px; border: 0; border-radius: 12px;
+    /* top-right, below the status bar/notch — clear of the bottom tab bar so it's
+       easy to reach (it used to sit behind the tab bar at the bottom). */
+    position: fixed; right: max(16px, env(safe-area-inset-right));
+    top: max(16px, calc(env(safe-area-inset-top) + 8px));
+    z-index: 56; width: 52px; height: 52px; border: 0; border-radius: 12px;
     background: rgba(0,0,0,.42); color: #fff; font-size: 24px; line-height: 1;
     cursor: pointer; display: none; align-items: center; justify-content: center;
     backdrop-filter: blur(4px); transition: opacity .3s ease, background .15s ease;
