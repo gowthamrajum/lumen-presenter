@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useStore, suppressedOn } from '../../store/useStore'
 import { SERVICE_TEMPLATES } from '../templates'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -24,6 +24,13 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const moveItem = useStore((s) => s.moveItem)
   const reorderItems = useStore((s) => s.reorderItems)
   const removeItem = useStore((s) => s.removeItem)
+  const setInsertAt = useStore((s) => s.setInsertAt)
+
+  /** Arm the insertion point and jump to the Library to pick what goes there. */
+  const insertHere = (index: number | null): void => {
+    setInsertAt(index)
+    onBrowse()
+  }
 
   const serviceName = useStore((s) => s.serviceName)
   const serviceId = useStore((s) => s.serviceId)
@@ -185,8 +192,11 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
         {items.map((it, idx) => {
           const offAir = suppressedOn(it, 'users') && suppressedOn(it, 'stream')
           return (
+          <Fragment key={it.id}>
+          <button className="sched-insert" onClick={() => insertHere(idx)} title="Insert an item here">
+            <span className="sched-insert-plus"><Icon name="plus" /></span>
+          </button>
           <div
-            key={it.id}
             className={`sched-item ${it.id === selectedItemId ? 'active' : ''} ${offAir ? 'no-broadcast' : ''} ${dragIndex === idx ? 'dragging' : ''} ${overIndex === idx && dragIndex !== null && dragIndex !== idx ? 'drop-target' : ''}`}
             onClick={() => selectItem(it.id)}
             draggable
@@ -232,11 +242,17 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
               </button>
             </div>
           </div>
+          </Fragment>
           )
         })}
+        {items.length > 0 && (
+          <button className="sched-insert" onClick={() => insertHere(items.length)} title="Insert an item at the end">
+            <span className="sched-insert-plus"><Icon name="plus" /></span>
+          </button>
+        )}
       </div>
 
-      <button className="btn btn-primary full add-items" onClick={onBrowse}>
+      <button className="btn btn-primary full add-items" onClick={() => insertHere(null)}>
         + Add items
       </button>
 

@@ -38,6 +38,7 @@ export type IconName =
   | 'download'
   | 'flame'
   | 'link'
+  | 'plus'
 
 // Each entry draws inside a 24x24 viewBox. Stroked by default (inherits color);
 // icons that read better solid set their own fill/stroke on the element.
@@ -147,7 +148,8 @@ const PATHS: Record<IconName, JSX.Element> = {
   flame: (
     <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z" />
   ),
-  link: <path d="M9 15l6-6M11 6.5l1.6-1.6a4 4 0 015.7 5.7L16.7 12M13 17.5l-1.6 1.6a4 4 0 01-5.7-5.7L7.3 12" />
+  link: <path d="M9 15l6-6M11 6.5l1.6-1.6a4 4 0 015.7 5.7L16.7 12M13 17.5l-1.6 1.6a4 4 0 01-5.7-5.7L7.3 12" />,
+  plus: <path d="M12 5v14M5 12h14" />
 }
 
 export function Icon({

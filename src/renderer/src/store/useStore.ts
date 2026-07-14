@@ -88,6 +88,8 @@ interface AppState {
   items: ServiceItem[]
   /** the item whose slides are shown in the center panel */
   selectedItemId: string | null
+  /** where the next added item(s) land: a schedule index, or null = append */
+  insertAt: number | null
   liveId: string | null
   /** disk auto-save status shown in the Sessions header (no manual Save) */
   autoSaveStatus: 'idle' | 'saving' | 'saved'
@@ -116,6 +118,8 @@ interface AppState {
   importPptx: () => Promise<PptxImport[]>
 
   // service items
+  /** arm the insertion point for the next add ("+ between sections"); null = append */
+  setInsertAt: (index: number | null) => void
   addItem: (item: { title: string; kind: ItemKind; slides: SlideContent[] }, goLiveFirst?: boolean) => void
   /** add a song wrapped with Praise & Worship bookends (audience-only broadcast) */
   addSong: (item: { title: string; slides: SlideContent[] }, goLiveFirst?: boolean) => void
@@ -207,6 +211,15 @@ export function broadcastDefaults(kind: ItemKind): Pick<ServiceItem, 'noBroadcas
   return BROADCASTABLE_KINDS.has(kind) ? {} : { noBroadcastUsers: true, noBroadcastStream: true }
 }
 
+/** Splice new items into the list at `at` (clamped), or append when `at` is null. */
+function insertItems(items: ServiceItem[], at: number | null, add: ServiceItem[]): ServiceItem[] {
+  if (at == null) return [...items, ...add]
+  const i = Math.max(0, Math.min(at, items.length))
+  const copy = items.slice()
+  copy.splice(i, 0, ...add)
+  return copy
+}
+
 /** The bilingual title used to detect / build a Praise & Worship bookend. */
 const WORSHIP_TITLE = 'Praise & Worship'
 
@@ -287,6 +300,7 @@ export const useStore = create<AppState>((set, get) => {
     serviceName: 'Untitled Service',
     items: [],
     selectedItemId: null,
+    insertAt: null,
     liveId: null,
     autoSaveStatus: 'idle',
 
@@ -362,10 +376,12 @@ export const useStore = create<AppState>((set, get) => {
 
     importPptx: () => window.lumen.importPptx(),
 
+    setInsertAt: (index) => set({ insertAt: index }),
+
     addItem: ({ title, kind, slides }, goLiveFirst = false) => {
       if (!slides.length) return
       const item: ServiceItem = { id: uid(), title, kind, slides, ...broadcastDefaults(kind) }
-      set((s) => ({ items: [...s.items, item], selectedItemId: item.id }))
+      set((s) => ({ items: insertItems(s.items, s.insertAt, [item]), selectedItemId: item.id, insertAt: null }))
       if (goLiveFirst) get().goLive(slides[0].id)
     },
 
@@ -373,14 +389,17 @@ export const useStore = create<AppState>((set, get) => {
       if (!slides.length) return
       const song: ServiceItem = { id: uid(), title, kind: 'song', slides }
       set((s) => {
-        const items = s.items.slice()
-        // Bookend the song with Praise & Worship. If the item just before is
-        // already a P&W bookend (e.g. the previous song's closing one), reuse it
-        // as this song's opener so consecutive songs don't stack duplicates.
-        const lastIsBookend = items.length > 0 && items[items.length - 1].title === WORSHIP_TITLE
-        if (!lastIsBookend) items.push(worshipBookend())
-        items.push(song, worshipBookend())
-        return { items, selectedItemId: song.id }
+        const at = s.insertAt
+        // Bookend with Praise & Worship, reusing an adjacent bookend so songs
+        // added back-to-back (or dropped next to one) don't stack duplicates.
+        const pos = at == null ? s.items.length : Math.max(0, Math.min(at, s.items.length))
+        const before = s.items[pos - 1]
+        const after = s.items[pos]
+        const block: ServiceItem[] = []
+        if (!(before && before.title === WORSHIP_TITLE)) block.push(worshipBookend())
+        block.push(song)
+        if (!(after && after.title === WORSHIP_TITLE)) block.push(worshipBookend())
+        return { items: insertItems(s.items, at, block), selectedItemId: song.id, insertAt: null }
       })
       if (goLiveFirst) get().goLive(slides[0].id)
     },
@@ -389,7 +408,11 @@ export const useStore = create<AppState>((set, get) => {
       if (!slides.length) return
       const heading = responsiveReadingHeading(reference)
       const psalm: ServiceItem = { id: uid(), title, kind: 'scripture', slides }
-      set((s) => ({ items: [...s.items, heading, psalm], selectedItemId: psalm.id }))
+      set((s) => ({
+        items: insertItems(s.items, s.insertAt, [heading, psalm]),
+        selectedItemId: psalm.id,
+        insertAt: null
+      }))
       // Present starts at the Responsive-Reading heading, then Next into the verses.
       if (goLiveFirst) get().goLive(heading.slides[0].id)
     },
