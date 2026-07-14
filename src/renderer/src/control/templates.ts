@@ -92,7 +92,7 @@ function composedSlide(label: string, lines: ComposedLine[]): SlideContent {
  * notices (English on the left, Telugu on the right). Off-air by default (text
  * kind); the operator edits the specifics each week in the Slide Composer.
  */
-function announcements(): ServiceItem {
+export function announcements(): ServiceItem {
   const L = 240 // left column centre (English)
   const R = 720 // right column centre (Telugu)
 

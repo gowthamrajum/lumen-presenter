@@ -3,6 +3,7 @@ import type { SlideContent } from '@shared/types'
 import { useStore, uid } from '../../store/useStore'
 import { textSlides, countdownSlide, clockSlide } from '../slides'
 import { SCENES, type Scene } from '../scenes'
+import { announcements } from '../templates'
 
 export function TextSource(): JSX.Element {
   const addItem = useStore((s) => s.addItem)
@@ -23,6 +24,14 @@ export function TextSource(): JSX.Element {
   // One-click starter: adds the scene as an item, sets its animated background
   // + look, and puts it live.
   const addScene = (sc: Scene): void => {
+    // "Announcements" isn't a one-line moment — it's the full weekly deck (the
+    // same bilingual set the Sunday template drops in), so add all its slides
+    // rather than a single title card.
+    if (sc.id === 'announcements') {
+      const set = announcements()
+      addItem({ title: set.title, kind: set.kind, slides: set.slides }, true)
+      return
+    }
     const slide: SlideContent = { id: uid(), kind: 'text', label: sc.name, lines: sc.lines }
     addItem({ title: sc.name, kind: 'text', slides: [slide] }, true)
     applyTheme(sc.theme ?? {}, sc.background)
@@ -45,7 +54,11 @@ export function TextSource(): JSX.Element {
             key={sc.id}
             className="btn tiny"
             onClick={() => addScene(sc)}
-            title={`Add & present the ${sc.name} scene (animated background)`}
+            title={
+              sc.id === 'announcements'
+                ? 'Add the full Announcements set (title + Bible Study, Saturday Prayer, Worship Service)'
+                : `Add & present the ${sc.name} scene (animated background)`
+            }
           >
             {sc.name}
           </button>
