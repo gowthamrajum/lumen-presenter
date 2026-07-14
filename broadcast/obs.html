@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Lumen — Broadcast</title>
+<!-- iPhone Safari has no Fullscreen API; "Add to Home Screen" launches the page
+     standalone (no browser chrome) — true full screen. These enable that. -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Cantica" />
+<meta name="theme-color" content="#0a0720" />
+<title>Cantica — Broadcast</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Anek+Telugu:wght@500;700&display=swap" rel="stylesheet" />
@@ -119,6 +126,23 @@
   .fsbtn:hover { background: rgba(0,0,0,.66); }
   html.mode-audience .fsbtn.avail { display: flex; }
   .fsbtn.idle { opacity: 0; }
+
+  /* iPhone Safari exposes no Fullscreen API, so the button instead opens this
+     short guide to "Add to Home Screen" — which launches the page chrome-free. */
+  .a2hs { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+          padding: 24px; background: rgba(4,3,12,.74); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .a2hs[hidden] { display: none; }
+  .a2hs-card { max-width: 340px; width: 100%; background: #14102b; border: 1px solid rgba(255,255,255,.12);
+               border-radius: 16px; padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
+               color: #eef0f6; font-family: 'Inter', system-ui, sans-serif; box-shadow: 0 24px 70px rgba(0,0,0,.55); }
+  .a2hs-title { font-size: 18px; font-weight: 800; color: #fff; text-align: center; margin-bottom: 4px; }
+  .a2hs-sub { font-size: 13px; color: #a6accd; text-align: center; margin-bottom: 16px; }
+  .a2hs-step { font-size: 14px; line-height: 1.45; color: #d3d6ea; margin: 10px 0; display: flex; gap: 10px; align-items: flex-start; }
+  .a2hs-step b { color: #fff; }
+  .a2hs-num { flex: 0 0 22px; height: 22px; border-radius: 50%; background: #4f83ff; color: #fff;
+              font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+  .a2hs-ok { margin-top: 18px; width: 100%; border: 0; border-radius: 10px; padding: 12px; font-size: 14px;
+             font-weight: 700; background: #4f83ff; color: #fff; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -134,7 +158,17 @@
       <img id="qr" class="qr" alt="" draggable="false" />
     </div>
   </div>
-  <button id="fs" class="fsbtn" title="Fullscreen (rotate for a bigger view)" aria-label="Toggle fullscreen"></button>
+  <button id="fs" class="fsbtn" title="Full screen" aria-label="Full screen"></button>
+  <div id="a2hs" class="a2hs" hidden>
+    <div class="a2hs-card">
+      <div class="a2hs-title">Watch full screen</div>
+      <div class="a2hs-sub">Add this page to your Home Screen — it opens with no browser bars.</div>
+      <div class="a2hs-step"><span class="a2hs-num">1</span><span>Tap the <b>Share</b> button in Safari's toolbar.</span></div>
+      <div class="a2hs-step"><span class="a2hs-num">2</span><span>Scroll down and choose <b>Add to Home Screen</b>.</span></div>
+      <div class="a2hs-step"><span class="a2hs-num">3</span><span>Open <b>Cantica</b> from your Home Screen — full screen, no bars.</span></div>
+      <button id="a2hsOk" class="a2hs-ok">Got it</button>
+    </div>
+  </div>
 <script>
   var ICON_EXPAND = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
   var ICON_COMPRESS = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6H3M21 15h-6v6M15 9l6-6M3 21l6-6"/></svg>';
@@ -164,22 +198,39 @@
 
   // ---- fullscreen (video-player style), audience only ----
   var fsBtn = document.getElementById('fs');
+  var a2hs = document.getElementById('a2hs');
   var reqFs = root.requestFullscreen || root.webkitRequestFullscreen;
   var exitFs = document.exitFullscreen || document.webkitExitFullscreen;
   function inFs() { return document.fullscreenElement || document.webkitFullscreenElement; }
-  if (mode === 'audience' && reqFs) {
+  // Already launched from the Home Screen? Then it's already chrome-free — nothing to offer.
+  var standalone = window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  if (mode === 'audience' && !standalone) {
     fsBtn.classList.add('avail');
     fsBtn.innerHTML = ICON_EXPAND;
     fsBtn.addEventListener('click', function () {
-      if (!inFs()) {
-        var p = reqFs.call(root);
-        if (p && p.then) p.then(lockLandscape).catch(function () {});
-        else lockLandscape();
-      } else if (exitFs) {
-        exitFs.call(document);
+      if (reqFs) {
+        // Desktop / Android / iPad: a real Fullscreen API.
+        if (!inFs()) {
+          var p = reqFs.call(root);
+          if (p && p.then) p.then(lockLandscape).catch(function () {});
+          else lockLandscape();
+        } else if (exitFs) {
+          exitFs.call(document);
+        }
+      } else if (a2hs) {
+        // iPhone Safari: no Fullscreen API — the only chrome-free path is
+        // "Add to Home Screen", so show how.
+        a2hs.hidden = false;
       }
     });
-    document.addEventListener('fullscreenchange', function () { fsBtn.innerHTML = inFs() ? ICON_COMPRESS : ICON_EXPAND; });
+    if (a2hs) {
+      document.getElementById('a2hsOk').addEventListener('click', function () { a2hs.hidden = true; });
+      a2hs.addEventListener('click', function (e) { if (e.target === a2hs) a2hs.hidden = true; });
+    }
+    if (reqFs) {
+      document.addEventListener('fullscreenchange', function () { fsBtn.innerHTML = inFs() ? ICON_COMPRESS : ICON_EXPAND; });
+    }
     // auto-hide the button after a moment; reveal on tap/move (like a player)
     var idle;
     function poke() {
