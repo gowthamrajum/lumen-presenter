@@ -31,8 +31,28 @@
   html.mode-audience .frame {
     inset: auto;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
+    /* dvh/dvw track mobile Safari's collapsing toolbar so the letterbox is sized
+       to the *visible* viewport (plain vh/vw use the taller layout viewport and
+       leave the box mis-centered / clipped). vh/vw first as the fallback. */
     width: min(100vw, calc(100vh * 16 / 9));
     height: min(100vh, calc(100vw * 9 / 16));
+    width: min(100dvw, calc(100dvh * 16 / 9));
+    height: min(100dvh, calc(100dvw * 9 / 16));
+  }
+  /* On a phone held in portrait a 16:9 letterbox collapses to a thin band in the
+     middle of a black screen. Fill the whole visible viewport instead so the
+     words are big and edge-to-edge — like a full-screen player. (Rotate to
+     landscape and it goes back to the true 16:9 screen mirror.) */
+  @media (orientation: portrait) {
+    html.mode-audience .frame {
+      top: 0; left: 0; transform: none;
+      width: 100vw; height: 100vh;
+      width: 100dvw; height: 100dvh;
+    }
+    /* stack the giving QR under the text rather than cramming it beside it */
+    html.mode-audience #stage.has-qr { flex-direction: column; gap: 3cqh; }
+    html.mode-audience #stage.has-qr .lyrics { max-width: 92%; }
+    html.mode-audience #stage.has-qr .qr { width: 34cqh; height: 34cqh; }
   }
 
   /* ---- shared layers (positioned within the frame) ---- */
