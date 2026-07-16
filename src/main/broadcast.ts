@@ -132,7 +132,8 @@ async function publishOff(): Promise<void> {
     showLogo: false,
     theme: latest?.theme ?? DEFAULT_THEME,
     users: { slide: null, next: null },
-    stream: { slide: null, next: null }
+    stream: { slide: null, next: null },
+    operator: { slide: null, next: null }
   }
   try {
     await fetch(url, { method: 'POST', signal: controller.signal, headers, body: JSON.stringify(payload) })
@@ -186,7 +187,11 @@ async function flush(): Promise<void> {
     stream: {
       slide: noBroadcastStream ? null : slide ?? null,
       next: nextNoBroadcastStream ? null : next ?? null
-    }
+    },
+    // Unsuppressed slice for the phone operator — they drive the deck and see
+    // every slide, just like the desktop presenter. Only users/stream inherit
+    // the per-item broadcast restrictions.
+    operator: { slide: slide ?? null, next: next ?? null }
   }
   try {
     const res = await fetch(url, { method: 'POST', signal: controller.signal, headers, body: JSON.stringify(payload) })

@@ -72,13 +72,14 @@ function contentSnapshot(s: AppState): string {
   })
 }
 
-function pad2(n: number): string {
-  return n < 10 ? `0${n}` : `${n}`
-}
-/** "2026-07-13 14:30" for stamping template-created session names. */
+/** "July 13, 2026" for stamping template-created session names with a friendly date. */
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+]
 function stampNow(): string {
   const d = new Date()
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
 }
 
 interface AppState {
