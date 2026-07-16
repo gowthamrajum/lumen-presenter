@@ -18,7 +18,8 @@ export interface AddSongChoice {
 
 function swatchStyle(bg: Background): CSSProperties {
   if (bg.type === 'color' || bg.type === 'gradient') return { background: bg.value }
-  return { background: '#111' } // image/video render a real preview element instead
+  if (bg.type === 'image') return { backgroundImage: `url(${bg.value})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+  return { background: '#111' } // video renders a real preview element instead
 }
 
 /**

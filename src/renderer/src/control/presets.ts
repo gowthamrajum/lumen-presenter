@@ -6,8 +6,19 @@ export interface BackgroundPreset {
   background: Background
 }
 
+// Seasonal photo themes ported from worshipReady (served from its deploy). Used
+// as https image backgrounds so the desktop output, web audience and OBS overlay
+// all render them.
+const WR = 'https://worshipready.onrender.com'
+const wrImage = (id: string, name: string, src: string): BackgroundPreset => ({
+  id,
+  name,
+  background: { type: 'image', value: `${WR}${src}`, fit: 'cover' }
+})
+
 // Curated, offline (CSS-gradient) backgrounds suited to worship services and
-// church gatherings. No image assets required. The first two are animated.
+// church gatherings. The first two are animated; the worshipReady seasonal
+// photo themes follow.
 export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   { id: 'aurora', name: 'Aurora', background: { type: 'gradient', value: 'linear-gradient(120deg, #1b1040, #0a0a1e, #0d3357, #35205f, #0d3357, #0a0a1e, #1b1040)', anim: 'aurora' } },
   { id: 'flow', name: 'Worship Flow', background: { type: 'gradient', value: 'linear-gradient(120deg, #3a2b6b, #1c1440, #4b2e83, #0d3b66, #1c1440, #3a2b6b)', anim: 'flow' } },
@@ -19,6 +30,16 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   { id: 'advent', name: 'Advent', background: { type: 'gradient', value: 'radial-gradient(circle at 50% 18%, #24306b 0%, #101636 55%, #05060f 100%)' } },
   { id: 'crimson', name: 'Crimson', background: { type: 'gradient', value: 'radial-gradient(circle at 50% 20%, #7a1327 0%, #3d0a16 60%, #150307 100%)' } },
   { id: 'grace', name: 'Grace', background: { type: 'gradient', value: 'linear-gradient(160deg, #5a2a63 0%, #33163b 55%, #140a18 100%)' } },
+  // ---- worshipReady seasonal photo themes ----
+  wrImage('wr-easter-green', 'Easter · Green', '/themes/easter/green_easter.jpg'),
+  wrImage('wr-easter-colorful', 'Easter · Colorful', '/themes/easter/colorful_easter.jpg'),
+  wrImage('wr-easter-communion', 'Easter · Communion', '/themes/easter/communion_easter.jpg'),
+  wrImage('wr-easter-neon', 'Easter · Neon', '/themes/easter/neon_blank_easter.jpg'),
+  wrImage('wr-easter-vibrant', 'Easter · Vibrant', '/themes/easter/vibrant_easter.jpg'),
+  wrImage('wr-palm-leafy', 'Palm Sunday · Leafy', '/themes/palm-sunday/leafy-leaf.jpg'),
+  wrImage('wr-palm-darky', 'Palm Sunday · Dark', '/themes/palm-sunday/darky-leaf.jpg'),
+  wrImage('wr-palm-greeny', 'Palm Sunday · Green', '/themes/palm-sunday/greeny-leaf.jpg'),
+  wrImage('wr-goodfriday-crown', 'Good Friday · Crown', '/themes/good-friday/dark-crown.jpg'),
   { id: 'midnight', name: 'Midnight', background: { type: 'gradient', value: 'linear-gradient(180deg, #0a1024 0%, #060a17 100%)' } },
   { id: 'charcoal', name: 'Charcoal', background: { type: 'gradient', value: 'linear-gradient(180deg, #2a2f3a 0%, #14171f 100%)' } },
   { id: 'black', name: 'Black', background: { type: 'color', value: '#000000' } },

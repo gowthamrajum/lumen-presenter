@@ -67,7 +67,14 @@ export function MediaSource(): JSX.Element {
             title={p.name}
             onClick={() => setBackground(p.background)}
           >
-            <span className="bg-swatch" style={{ background: p.background.value }} />
+            <span
+              className="bg-swatch"
+              style={
+                p.background.type === 'image'
+                  ? { backgroundImage: `url(${p.background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : { background: p.background.value }
+              }
+            />
             <span className="bg-name">{p.name}</span>
           </button>
         ))}
