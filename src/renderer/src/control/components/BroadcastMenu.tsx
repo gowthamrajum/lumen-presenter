@@ -4,11 +4,21 @@ import type { BroadcastConfig, BroadcastStatus } from '@shared/types'
 
 const EMPTY: BroadcastConfig = { enabled: false, base: '', room: '' }
 
+// Where the phone-remote page lives (the Cantica web app — a different origin
+// than the relay, which only serves the OBS/audience /view pages).
+const REMOTE_BASE = 'https://live.teluguchurchdfw.org'
+
 /** The base /view URL; `mode` picks the audience mirror or the OBS lower-third. */
 function viewUrl(c: BroadcastConfig, mode: 'audience' | 'obs'): string {
   if (!c.base || !c.room) return ''
   const u = `${c.base.replace(/\/$/, '')}/broadcast/${encodeURIComponent(c.room)}/view`
   return mode === 'audience' ? `${u}?mode=audience` : u
+}
+
+/** Deep link that opens the phone remote pre-filled with this room + PIN. */
+function remoteUrl(c: BroadcastConfig): string {
+  if (!c.room || !c.controlPin) return ''
+  return `${REMOTE_BASE.replace(/\/$/, '')}/remote?room=${encodeURIComponent(c.room)}&pin=${encodeURIComponent(c.controlPin)}`
 }
 
 function ago(ts: number | null): string {
@@ -24,7 +34,7 @@ export function BroadcastMenu(): JSX.Element {
   const [adv, setAdv] = useState(false)
   const [cfg, setCfg] = useState<BroadcastConfig>(EMPTY)
   const [status, setStatus] = useState<BroadcastStatus | null>(null)
-  const [copied, setCopied] = useState<'audience' | 'obs' | null>(null)
+  const [copied, setCopied] = useState<'audience' | 'obs' | 'remote' | null>(null)
 
   useEffect(() => {
     void window.lumen.getBroadcast().then(setCfg)
@@ -38,10 +48,11 @@ export function BroadcastMenu(): JSX.Element {
 
   const audienceUrl = viewUrl(cfg, 'audience')
   const obsUrl = viewUrl(cfg, 'obs')
+  const phoneUrl = remoteUrl(cfg)
   const live = cfg.enabled && status?.ok
   const dotClass = !cfg.enabled ? 'off' : status?.ok ? 'on' : 'warn'
 
-  const copy = (which: 'audience' | 'obs', url: string): void => {
+  const copy = (which: 'audience' | 'obs' | 'remote', url: string): void => {
     if (!url) return
     void navigator.clipboard.writeText(url).then(() => {
       setCopied(which)
@@ -105,6 +116,29 @@ export function BroadcastMenu(): JSX.Element {
                 </button>
                 <button className="btn tiny" onClick={() => openPage(obsUrl)} disabled={!obsUrl}>
                   Open
+                </button>
+              </div>
+            </div>
+
+            <div className="bc-field">
+              <span>Phone remote — a helper can advance slides from their phone</span>
+              <div className="bc-url">
+                <input readOnly value={phoneUrl} placeholder="Start broadcasting to enable" spellCheck={false} />
+                <button className="btn tiny" onClick={() => copy('remote', phoneUrl)} disabled={!phoneUrl}>
+                  {copied === 'remote' ? 'Copied' : 'Copy'}
+                </button>
+                <button className="btn tiny" onClick={() => openPage(phoneUrl)} disabled={!phoneUrl}>
+                  Open
+                </button>
+              </div>
+              <div className="bc-remote-pin">
+                Control PIN: <b>{cfg.controlPin || '—'}</b>
+                <button
+                  className="btn tiny"
+                  title="Generate a new PIN — the old one stops working immediately"
+                  onClick={() => void patch({ controlPin: '' })}
+                >
+                  New PIN
                 </button>
               </div>
             </div>

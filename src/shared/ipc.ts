@@ -34,5 +34,7 @@ export const IPC = {
   // main -> control: progress of a running PowerPoint export
   pptxExportProgress: 'pptx:exportProgress',
   // output window -> control (forwarded key presses)
-  outputKey: 'output:key'
+  outputKey: 'output:key',
+  // main -> control: a command from a phone remote (next/prev/goto/…)
+  remoteCommand: 'remote:command'
 } as const

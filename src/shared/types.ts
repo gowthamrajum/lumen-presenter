@@ -340,6 +340,10 @@ export interface BroadcastConfig {
   base: string
   /** channel slug (auto-generated once so installs don't collide) */
   room: string
+  /** short PIN a phone remote must supply to drive this room's live slides
+   *  (auto-generated once; regenerate to revoke). Paired with the unguessable
+   *  room slug. */
+  controlPin?: string
 }
 
 /** Live status of the broadcast publisher, pushed to the control window. */

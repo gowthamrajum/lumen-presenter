@@ -32,7 +32,8 @@ import {
   publishBroadcast,
   getBroadcastConfig,
   setBroadcastConfig,
-  getBroadcastStatus
+  getBroadcastStatus,
+  initControlListener
 } from './broadcast'
 import type { BroadcastConfig } from '../shared/types'
 
@@ -672,6 +673,10 @@ app.whenReady().then(() => {
   })
 
   registerIpc()
+  // Forward phone-remote commands to the control window (which runs them against
+  // the live deck). Wire the callback before initBroadcast so a listener that
+  // starts as soon as config loads has somewhere to deliver.
+  initControlListener((cmd, arg) => controlWindow?.webContents.send(IPC.remoteCommand, { cmd, arg }))
   void initBroadcast((s) => controlWindow?.webContents.send(IPC.broadcastStatus, s))
   createControlWindow()
   initAutoUpdate()

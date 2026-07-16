@@ -101,6 +101,11 @@ const api = {
     const h = (_e: unknown, key: string): void => cb(key)
     ipcRenderer.on(IPC.outputKey, h)
     return () => ipcRenderer.removeListener(IPC.outputKey, h)
+  },
+  onRemoteCommand: (cb: (msg: { cmd: string; arg: unknown }) => void): (() => void) => {
+    const h = (_e: unknown, msg: { cmd: string; arg: unknown }): void => cb(msg)
+    ipcRenderer.on(IPC.remoteCommand, h)
+    return () => ipcRenderer.removeListener(IPC.remoteCommand, h)
   }
 }
 

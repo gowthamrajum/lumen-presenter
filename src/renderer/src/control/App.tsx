@@ -3,8 +3,10 @@ import { LeftColumn } from './components/LeftColumn'
 import { SlidesPanel } from './components/SlidesPanel'
 import { LivePanel } from './components/LivePanel'
 import { SlideComposer } from './components/SlideComposer'
+import { useRemoteControl } from './useRemoteControl'
 
 export function App(): JSX.Element {
+  useRemoteControl()
   return (
     <div className="app">
       <TopBar />
