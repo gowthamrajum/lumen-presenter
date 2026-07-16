@@ -3,6 +3,7 @@ import { LeftColumn } from './components/LeftColumn'
 import { SlidesPanel } from './components/SlidesPanel'
 import { LivePanel } from './components/LivePanel'
 import { SlideComposer } from './components/SlideComposer'
+import { CountdownDialog } from './components/CountdownDialog'
 import { useRemoteControl } from './useRemoteControl'
 
 export function App(): JSX.Element {
@@ -22,6 +23,7 @@ export function App(): JSX.Element {
         </aside>
       </div>
       <SlideComposer />
+      <CountdownDialog />
     </div>
   )
 }

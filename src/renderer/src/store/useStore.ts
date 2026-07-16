@@ -106,6 +106,8 @@ interface AppState {
   songs: SongMeta[]
   /** slide id currently open in the Slide Composer, or null */
   composerSlideId: string | null
+  /** countdown/clock slide id currently open in the timer settings dialog, or null */
+  timerSlideId: string | null
 
   screens: ScreenInfo[]
   displays: DisplayInfo[]
@@ -150,6 +152,14 @@ interface AppState {
   setSlideBackground: (slideId: string, bg: Background | undefined) => void
   openComposer: (slideId: string) => void
   closeComposer: () => void
+
+  // pre-service timer (countdown / clock) settings
+  openTimerConfig: (slideId: string) => void
+  closeTimerConfig: () => void
+  /** reconfigure a countdown/clock slide: `minutes` re-arms the countdown from now
+   *  (and stores the duration so a reopened service re-arms too); `message` sets
+   *  the caption. Updates the live output immediately when the slide is on air. */
+  setTimer: (slideId: string, cfg: { minutes?: number; message?: string }) => void
 
   // song library (persisted)
   refreshSongs: () => Promise<void>
@@ -325,6 +335,7 @@ export const useStore = create<AppState>((set, get) => {
     savedServices: [],
     songs: [],
     composerSlideId: null,
+    timerSlideId: null,
 
     remoteSongs: [],
     remoteState: 'idle',
@@ -536,6 +547,30 @@ export const useStore = create<AppState>((set, get) => {
 
     openComposer: (slideId) => set({ composerSlideId: slideId }),
     closeComposer: () => set({ composerSlideId: null }),
+
+    openTimerConfig: (slideId) => set({ timerSlideId: slideId }),
+    closeTimerConfig: () => set({ timerSlideId: null }),
+
+    setTimer: (slideId, cfg) => {
+      const now = Date.now()
+      set((s) => ({
+        items: s.items.map((it) => ({
+          ...it,
+          slides: it.slides.map((sl) => {
+            if (sl.id !== slideId) return sl
+            const next = { ...sl }
+            if (cfg.minutes != null) {
+              const m = Math.max(0, Math.min(600, cfg.minutes))
+              next.countdownMinutes = m
+              next.countdownTo = now + m * 60_000
+            }
+            if (cfg.message != null) next.message = cfg.message.trim() || undefined
+            return next
+          })
+        }))
+      }))
+      if (get().liveId === slideId) push()
+    },
 
     removeSlide: (id) => {
       set((s) => ({

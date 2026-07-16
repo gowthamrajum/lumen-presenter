@@ -18,6 +18,11 @@ export function SlideThumb({
   const goLive = useStore((s) => s.goLive)
   const removeSlide = useStore((s) => s.removeSlide)
   const openComposer = useStore((s) => s.openComposer)
+  const openTimerConfig = useStore((s) => s.openTimerConfig)
+
+  // Countdown/clock slides have no text layout to compose — their edit button
+  // opens the timer settings dialog (minutes + message) instead of the composer.
+  const isTimer = slide.kind === 'countdown' || slide.kind === 'clock'
 
   // Keep the live slide in view: scroll the grid the minimal amount when this
   // thumb goes live, so stepping through a many-slide section (song, psalm range)
@@ -49,13 +54,14 @@ export function SlideThumb({
       <div className="thumb-index">{index + 1}</div>
       <button
         className="thumb-compose"
-        title="Compose layout"
+        title={isTimer ? 'Timer settings' : 'Compose layout'}
         onClick={(e) => {
           e.stopPropagation()
-          openComposer(slide.id)
+          if (isTimer) openTimerConfig(slide.id)
+          else openComposer(slide.id)
         }}
       >
-        <Icon name="pencil" />
+        <Icon name={isTimer ? 'timer' : 'pencil'} />
       </button>
       <button
         className="thumb-remove"
