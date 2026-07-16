@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../../shared/Icon'
-import type { BroadcastConfig, BroadcastStatus } from '@shared/types'
+import { DEFAULT_OBS_STYLE, type BroadcastConfig, type BroadcastStatus, type ObsStyle } from '@shared/types'
 
-const EMPTY: BroadcastConfig = { enabled: false, base: '', room: '' }
+const EMPTY: BroadcastConfig = { enabled: false, base: '', room: '', obsStyle: { ...DEFAULT_OBS_STYLE } }
+
+const POSITIONS: Array<{ id: ObsStyle['position']; label: string }> = [
+  { id: 'top', label: 'Top' },
+  { id: 'center', label: 'Center' },
+  { id: 'bottom', label: 'Bottom' }
+]
 
 // Where the phone-remote page lives (the Cantica web app — a different origin
 // than the relay, which only serves the OBS/audience /view pages).
@@ -32,6 +38,7 @@ function ago(ts: number | null): string {
 export function BroadcastMenu(): JSX.Element {
   const [open, setOpen] = useState(false)
   const [adv, setAdv] = useState(false)
+  const [styleOpen, setStyleOpen] = useState(true)
   const [cfg, setCfg] = useState<BroadcastConfig>(EMPTY)
   const [status, setStatus] = useState<BroadcastStatus | null>(null)
   const [copied, setCopied] = useState<'audience' | 'obs' | 'remote' | null>(null)
@@ -45,6 +52,11 @@ export function BroadcastMenu(): JSX.Element {
   const patch = async (p: Partial<BroadcastConfig>): Promise<void> => {
     setCfg(await window.lumen.setBroadcast(p))
   }
+
+  const os = cfg.obsStyle ?? DEFAULT_OBS_STYLE
+  const patchStyle = (p: Partial<ObsStyle>): void => void patch({ obsStyle: { ...os, ...p } })
+  // Present the lower-third size as a friendly % of the default (5.2cqh = 100%).
+  const sizePct = Math.round((os.size / DEFAULT_OBS_STYLE.size) * 100)
 
   const audienceUrl = viewUrl(cfg, 'audience')
   const obsUrl = viewUrl(cfg, 'obs')
@@ -118,6 +130,95 @@ export function BroadcastMenu(): JSX.Element {
                   Open
                 </button>
               </div>
+            </div>
+
+            <div className="bc-obsstyle">
+              <button className="bc-adv-toggle with-ico" onClick={() => setStyleOpen((v) => !v)}>
+                <Icon name={styleOpen ? 'chevron-down' : 'chevron-right'} /> OBS text — size &amp; style
+              </button>
+              {styleOpen && (
+                <div className="bc-style-body">
+                  <div className="bc-field">
+                    <span>
+                      Text size <b className="bc-size-val">{sizePct}%</b>
+                    </span>
+                    <div className="bc-size-row">
+                      <span className="bc-size-a sm">A</span>
+                      <input
+                        type="range"
+                        min={60}
+                        max={170}
+                        step={5}
+                        value={sizePct}
+                        onChange={(e) =>
+                          patchStyle({
+                            size: +((DEFAULT_OBS_STYLE.size * Number(e.target.value)) / 100).toFixed(2)
+                          })
+                        }
+                      />
+                      <span className="bc-size-a lg">A</span>
+                    </div>
+                  </div>
+
+                  <div className="bc-field">
+                    <span>Position</span>
+                    <div className="bc-seg">
+                      {POSITIONS.map((p) => (
+                        <button
+                          key={p.id}
+                          className={`bc-seg-btn ${os.position === p.id ? 'active' : ''}`}
+                          onClick={() => patchStyle({ position: p.id })}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bc-style-colors">
+                    <label className="bc-color">
+                      <input
+                        type="color"
+                        value={os.textColor}
+                        onChange={(e) => patchStyle({ textColor: e.target.value })}
+                      />
+                      <span>Text</span>
+                    </label>
+                    <label className="bc-color">
+                      <input
+                        type="color"
+                        value={os.accentColor}
+                        onChange={(e) => patchStyle({ accentColor: e.target.value })}
+                      />
+                      <span>Caption</span>
+                    </label>
+                  </div>
+
+                  <label className="bc-toggle">
+                    <input
+                      type="checkbox"
+                      checked={os.uppercase}
+                      onChange={(e) => patchStyle({ uppercase: e.target.checked })}
+                    />
+                    ALL CAPS lyrics
+                  </label>
+                  <label className="bc-toggle">
+                    <input
+                      type="checkbox"
+                      checked={os.scrim}
+                      onChange={(e) => patchStyle({ scrim: e.target.checked })}
+                    />
+                    Shaded band behind text
+                  </label>
+
+                  <button
+                    className="bc-adv-toggle bc-style-reset"
+                    onClick={() => void patch({ obsStyle: { ...DEFAULT_OBS_STYLE } })}
+                  >
+                    Reset to default
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="bc-field">

@@ -642,6 +642,21 @@
     composedEl.classList.toggle('shadow', t.shadow !== false);
   }
 
+  // OBS lower-third styling, driven live from the broadcast state (the operator's
+  // "OBS text" panel in the desktop app). Overrides the initial URL-param defaults
+  // so it can be tuned while streaming without re-copying the browser-source URL.
+  function applyObsStyle(os) {
+    if (mode !== 'obs' || !os) return;
+    if (os.size != null && isFinite(os.size)) root.style.setProperty('--size', os.size + 'cqh');
+    if (os.textColor) root.style.setProperty('--text', os.textColor);
+    if (os.accentColor) root.style.setProperty('--accent', os.accentColor);
+    lyricsEl.classList.toggle('upper', !!os.uppercase);
+    var p = os.position === 'top' || os.position === 'center' ? os.position : 'bottom';
+    root.classList.remove('pos-top', 'pos-center', 'pos-bottom');
+    root.classList.add('pos-' + p);
+    root.classList.toggle('clean', os.scrim === false);
+  }
+
   function sizeFor(n, scale) {
     var s = n <= 1 ? 9 : n <= 2 ? 8 : n <= 3 ? 6.5 : n <= 4 ? 5.5 : n <= 6 ? 4.5 : 3.8;
     return (s * (scale || 1)) + 'cqh';
@@ -687,6 +702,9 @@
       applyTheme(theme);
       if (state && state.blackout) { bgEl.style.background = '#000'; bgImg.style.display = 'none'; bgVideo.style.display = 'none'; stage.classList.remove('show'); stopTick(); setStandby(false); setLiveShowing(false); return; }
       applyBackground(slide && slide.background ? slide.background : (state && state.background));
+    } else if (mode === 'obs') {
+      // Live-tunable lower-third size/position/colors from the operator's app.
+      applyObsStyle(state && state.obsStyle);
     }
 
     // Hide when the operator shows the logo too, matching the native output

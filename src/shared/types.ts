@@ -333,6 +333,25 @@ export interface PptxExportResult {
 }
 
 // ---- web broadcast (OBS) ----
+/** How the OBS lower-third lyrics are styled and sized. Flows through the
+ *  broadcast state (as a shared field) so the operator can adjust it live and the
+ *  OBS Browser source updates instantly — it only affects the transparent OBS
+ *  overlay, never the local output or the audience mirror. */
+export interface ObsStyle {
+  /** lower-third base text size in cqh of the 16:9 frame (≈3 small … 9 huge) */
+  size: number
+  /** where the lyrics band sits vertically */
+  position: 'bottom' | 'center' | 'top'
+  /** main lyric text color */
+  textColor: string
+  /** color for the small reference caption (e.g. "John 3:16") */
+  accentColor: string
+  /** render lyrics in ALL CAPS */
+  uppercase: boolean
+  /** dark gradient behind the text for legibility over any video */
+  scrim: boolean
+}
+
 /** Operator config for broadcasting live state to the web relay (for OBS). */
 export interface BroadcastConfig {
   enabled: boolean
@@ -344,6 +363,8 @@ export interface BroadcastConfig {
    *  (auto-generated once; regenerate to revoke). Paired with the unguessable
    *  room slug. */
   controlPin?: string
+  /** styling for the OBS lower-third (size/position/colors); applied live. */
+  obsStyle?: ObsStyle
 }
 
 /** Live status of the broadcast publisher, pushed to the control window. */
@@ -368,6 +389,15 @@ export const DEFAULT_THEME: ThemeStyle = {
   shadow: true,
   uppercase: false,
   scrim: 0.35
+}
+
+export const DEFAULT_OBS_STYLE: ObsStyle = {
+  size: 5.2,
+  position: 'bottom',
+  textColor: '#ffffff',
+  accentColor: '#ffd27f',
+  uppercase: false,
+  scrim: true
 }
 
 export const DEFAULT_BACKGROUND: Background = {

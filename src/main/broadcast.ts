@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir } from 'fs/promises'
 import { app } from 'electron'
 import {
   DEFAULT_BACKGROUND,
+  DEFAULT_OBS_STYLE,
   DEFAULT_THEME,
   type BroadcastConfig,
   type BroadcastStatus,
@@ -36,7 +37,8 @@ function pin(): string {
 const DEFAULT_CONFIG: BroadcastConfig = {
   enabled: false,
   base: process.env.LUMEN_BROADCAST_API || process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com',
-  room: process.env.LUMEN_BROADCAST_ROOM || ''
+  room: process.env.LUMEN_BROADCAST_ROOM || '',
+  obsStyle: { ...DEFAULT_OBS_STYLE }
 }
 
 let config: BroadcastConfig = { ...DEFAULT_CONFIG }
@@ -68,6 +70,8 @@ export async function initBroadcast(onStatus: (s: BroadcastStatus) => void): Pro
   try {
     const saved = JSON.parse(await readFile(configFile(), 'utf8'))
     config = { ...DEFAULT_CONFIG, ...saved }
+    // Backfill any OBS-style fields missing from an older saved config.
+    config.obsStyle = { ...DEFAULT_OBS_STYLE, ...(saved.obsStyle || {}) }
   } catch {
     if (process.env.LUMEN_BROADCAST === '1') config.enabled = true
   }
@@ -131,6 +135,7 @@ async function publishOff(): Promise<void> {
     clearText: false,
     showLogo: false,
     theme: latest?.theme ?? DEFAULT_THEME,
+    obsStyle: config.obsStyle ?? DEFAULT_OBS_STYLE,
     users: { slide: null, next: null },
     stream: { slide: null, next: null },
     operator: { slide: null, next: null }
@@ -180,6 +185,9 @@ async function flush(): Promise<void> {
   } = latest
   const payload = {
     ...rest,
+    // OBS lower-third styling — a shared field the relay passes straight through;
+    // only the OBS overlay reads it (audience/operator ignore it).
+    obsStyle: config.obsStyle ?? DEFAULT_OBS_STYLE,
     users: {
       slide: noBroadcastUsers ? null : slide ?? null,
       next: nextNoBroadcastUsers ? null : next ?? null

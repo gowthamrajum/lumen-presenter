@@ -356,6 +356,100 @@ body,
   color: var(--text);
 }
 
+/* ---- OBS text style panel ---- */
+.bc-obsstyle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel-2);
+}
+.bc-style-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+.bc-size-val {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.bc-size-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bc-size-row input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent, #2f6bff);
+  cursor: pointer;
+}
+.bc-size-a {
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1;
+}
+.bc-size-a.sm {
+  font-size: 11px;
+}
+.bc-size-a.lg {
+  font-size: 18px;
+}
+/* segmented position picker */
+.bc-seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.bc-seg-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.bc-seg-btn:hover {
+  color: var(--text);
+}
+.bc-seg-btn.active {
+  background: var(--accent, #2f6bff);
+  color: #fff;
+}
+.bc-style-colors {
+  display: flex;
+  gap: 16px;
+}
+.bc-color {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.bc-color input[type='color'] {
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.bc-style-reset {
+  align-self: flex-start;
+}
+
 /* ---------- buttons ---------- */
 .btn {
   appearance: none;
@@ -1000,6 +1094,43 @@ select:focus {
 }
 
 /* backgrounds gallery */
+.bg-cat {
+  margin-top: 2px;
+}
+.bg-cat-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.bg-cat-head:hover {
+  background: var(--panel-2);
+}
+.bg-cat-head .icon {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+.bg-cat-name {
+  flex: 1;
+  text-align: left;
+}
+.bg-cat-count {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.bg-cat .bg-gallery {
+  margin: 2px 0 6px;
+}
 .bg-gallery {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

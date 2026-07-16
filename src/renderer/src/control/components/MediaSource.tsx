@@ -2,8 +2,19 @@ import { useState } from 'react'
 import type { Background, MediaFile } from '@shared/types'
 import { useStore } from '../../store/useStore'
 import { mediaSlide, pptxSlides } from '../slides'
-import { BACKGROUND_PRESETS } from '../presets'
+import { BACKGROUND_PRESETS, BACKGROUND_CATEGORIES } from '../presets'
 import { Icon } from '../../shared/Icon'
+
+// Presets grouped into their categories, in display order (empty groups dropped).
+const BG_GROUPS = BACKGROUND_CATEGORIES.map((cat) => ({
+  cat,
+  presets: BACKGROUND_PRESETS.filter((p) => p.category === cat)
+})).filter((g) => g.presets.length > 0)
+
+const swatchBg = (bg: Background): React.CSSProperties =>
+  bg.type === 'image'
+    ? { backgroundImage: `url(${bg.value})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: bg.value }
 
 export function MediaSource(): JSX.Element {
   const media = useStore((s) => s.media)
@@ -14,6 +25,28 @@ export function MediaSource(): JSX.Element {
   const background = useStore((s) => s.background)
 
   const [pptxNote, setPptxNote] = useState('')
+  // Which background categories are collapsed (persisted). All start collapsed.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem('bg-cat-collapsed')
+      if (s) return new Set(JSON.parse(s) as string[])
+    } catch {
+      /* ignore */
+    }
+    return new Set(BACKGROUND_CATEGORIES)
+  })
+  const toggleCat = (c: string): void =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(c)) next.delete(c)
+      else next.add(c)
+      try {
+        localStorage.setItem('bg-cat-collapsed', JSON.stringify([...next]))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
 
   const isActiveBg = (bg: Background): boolean =>
     background.type === bg.type && background.value === bg.value
@@ -59,35 +92,44 @@ export function MediaSource(): JSX.Element {
       {pptxNote && <div className="empty-note">{pptxNote}</div>}
 
       <div className="section-label">Backgrounds</div>
-      <div className="bg-gallery">
-        {BACKGROUND_PRESETS.map((p) => (
-          <button
-            key={p.id}
-            className={`bg-tile ${isActiveBg(p.background) ? 'active' : ''}`}
-            title={p.name}
-            onClick={() => setBackground(p.background)}
-          >
-            <span
-              className="bg-swatch"
-              style={
-                p.background.type === 'image'
-                  ? { backgroundImage: `url(${p.background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : { background: p.background.value }
-              }
-            />
-            <span className="bg-name">{p.name}</span>
-          </button>
-        ))}
-        <label className="bg-tile custom" title="Custom color">
-          <span className="bg-swatch rainbow" />
-          <span className="bg-name">Custom</span>
-          <input
-            type="color"
-            value={background.type === 'color' ? background.value : '#000000'}
-            onChange={(e) => setBackground({ type: 'color', value: e.target.value })}
-          />
-        </label>
-      </div>
+      {BG_GROUPS.map(({ cat, presets }) => {
+        const open = !collapsed.has(cat)
+        return (
+          <div key={cat} className={`bg-cat ${open ? 'open' : ''}`}>
+            <button className="bg-cat-head" onClick={() => toggleCat(cat)} aria-expanded={open}>
+              <Icon name={open ? 'chevron-down' : 'chevron-right'} />
+              <span className="bg-cat-name">{cat}</span>
+              <span className="bg-cat-count">{presets.length}</span>
+            </button>
+            {open && (
+              <div className="bg-gallery">
+                {presets.map((p) => (
+                  <button
+                    key={p.id}
+                    className={`bg-tile ${isActiveBg(p.background) ? 'active' : ''}`}
+                    title={p.name}
+                    onClick={() => setBackground(p.background)}
+                  >
+                    <span className="bg-swatch" style={swatchBg(p.background)} />
+                    <span className="bg-name">{p.name}</span>
+                  </button>
+                ))}
+                {cat === 'Neutral' && (
+                  <label className="bg-tile custom" title="Custom color">
+                    <span className="bg-swatch rainbow" />
+                    <span className="bg-name">Custom</span>
+                    <input
+                      type="color"
+                      value={background.type === 'color' ? background.value : '#000000'}
+                      onChange={(e) => setBackground({ type: 'color', value: e.target.value })}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       <div className="section-label">Library</div>
       {media.length === 0 && <div className="empty-note">No media yet. Add images or videos above.</div>}
