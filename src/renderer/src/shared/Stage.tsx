@@ -7,6 +7,17 @@ function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`
 }
 
+const NBSP = String.fromCharCode(0xa0)
+/** Pin a ||repeat|| marker exactly two non-breaking spaces after the lyric so it
+ *  never collapses, grows a ragged gap, or wraps onto its own line — matching the
+ *  composer's single-line look in the output / OBS / web views. */
+function formatLyric(line: string): string {
+  return line
+    .replace(/[ \t]+/g, ' ')
+    .replace(/^\s+|\s+$/g, '')
+    .replace(/(\S) *(\|\|[^|]+\|\|)/g, '$1' + NBSP + NBSP + '$2')
+}
+
 /** Self-ticking countdown / clock rendered locally in each window. In preview
  *  (thumbnail) mode it renders a static snapshot — no interval. */
 function TimerDisplay({
@@ -162,7 +173,7 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
                 textTransform: theme.uppercase ? 'uppercase' : 'none'
               }}
             >
-              {l.text}
+              {formatLyric(l.text)}
             </div>
           ))}
         </div>
@@ -173,7 +184,7 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
           <div className="stage-fitbox">
             <div ref={ref} className={`stage-text${slide?.singleLine ? ' oneline' : ''}`} style={textStyle}>
               {lines.map((l, i) => (
-                <div key={i}>{l || ' '}</div>
+                <div key={i}>{formatLyric(l) || ' '}</div>
               ))}
             </div>
           </div>

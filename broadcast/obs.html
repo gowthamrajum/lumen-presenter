@@ -569,10 +569,20 @@
     setTab('live');
   }
 
+  // Pin a ||repeat|| marker exactly two NON-BREAKING spaces after the lyric so it
+  // never collapses, grows a ragged gap, or wraps onto its own line (nbsp doesn't
+  // break/collapse) — matches the desktop composer's single-line look.
+  var NBSP = String.fromCharCode(0xa0);
+  function formatLyric(line) {
+    return String(line == null ? '' : line)
+      .replace(/[ \t]+/g, ' ')
+      .replace(/^\s+|\s+$/g, '')
+      .replace(/(\S) *(\|\|[^|]+\|\|)/g, '$1' + NBSP + NBSP + '$2');
+  }
   function textOf(slide) {
     if (!slide) return [];
-    if (slide.composed && slide.composed.length) return slide.composed.map(function (l) { return l.text; });
-    return slide.lines || [];
+    if (slide.composed && slide.composed.length) return slide.composed.map(function (l) { return formatLyric(l.text); });
+    return (slide.lines || []).map(formatLyric);
   }
 
   // ---- countdown / clock (rendered locally so the web view isn't blank while a
@@ -642,7 +652,7 @@
     lines.forEach(function (l) {
       var d = document.createElement('div');
       d.className = 'cline';
-      d.textContent = l.text;
+      d.textContent = formatLyric(l.text);
       d.style.left = (l.x / 960 * 100) + '%';
       d.style.top = (l.y / 540 * 100) + '%';
       d.style.fontSize = (l.fontSize / 540 * 100) + 'cqh';
