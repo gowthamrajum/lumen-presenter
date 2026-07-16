@@ -18,6 +18,13 @@ jobs:
   release:
     strategy:
       fail-fast: false
+      # Serialize the platform builds. Both run `electron-builder --publish always`,
+      # which finds-or-creates the tag's draft release; running them concurrently
+      # races and creates TWO drafts, splitting the mac + win assets across them.
+      # With max-parallel: 1 the first runner creates the draft and the second
+      # reuses it, so one release carries every asset. (Costs ~one extra build's
+      # wall-clock; releases are infrequent, so that's fine.)
+      max-parallel: 1
       matrix:
         include:
           - os: macos-latest
