@@ -146,8 +146,8 @@ export function BroadcastMenu(): JSX.Element {
                       <span className="bc-size-a sm">A</span>
                       <input
                         type="range"
-                        min={60}
-                        max={170}
+                        min={20}
+                        max={200}
                         step={5}
                         value={sizePct}
                         onChange={(e) =>

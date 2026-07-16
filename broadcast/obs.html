@@ -650,7 +650,10 @@
   // so it can be tuned while streaming without re-copying the browser-source URL.
   function applyObsStyle(os) {
     if (mode !== 'obs' || !os) return;
-    if (os.size != null && isFinite(os.size)) root.style.setProperty('--size', os.size + 'cqh');
+    // A ?size=<cqh> in the OBS URL is a manual override that WINS over the panel —
+    // e.g. append ?size=2 to go smaller than the panel slider's floor. Without it,
+    // the panel's size drives.
+    if (!q.get('size') && os.size != null && isFinite(os.size)) root.style.setProperty('--size', os.size + 'cqh');
     if (os.textColor) root.style.setProperty('--text', os.textColor);
     if (os.accentColor) root.style.setProperty('--accent', os.accentColor);
     lyricsEl.classList.toggle('upper', !!os.uppercase);
