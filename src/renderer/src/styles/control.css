@@ -739,6 +739,12 @@ select,
 }
 .sched-count {
   flex: 0 0 auto;
+  /* Fixed width so 1 / 24 / 244 slides all take the same room — otherwise the
+     wider count shoves the broadcast toggle left, so the icons appear to drift
+     per item. Keeps the broadcast toggle + count at a constant position. */
+  min-width: 30px;
+  box-sizing: border-box;
+  text-align: center;
   color: var(--muted);
   font-size: 11px;
   background: var(--panel-2);
@@ -1559,6 +1565,41 @@ select:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* row + its repeat-line picker stack together, spaced apart from other rows */
+.ss-rowgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ss-repeat-lines {
+  margin-left: 34px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ss-repeat-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 1px;
+}
+.ss-repeat-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ss-repeat-line input {
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+.ss-repeat-line span {
+  line-height: 1.3;
 }
 .ss-swatches {
   display: grid;

@@ -8,6 +8,10 @@ export interface AddSongChoice {
   /** included section ids, in the presenter's chosen play order */
   includedIds: string[]
   recurringId: string | null
+  /** Line indices (into the recurring section's lines) that repeat AFTER each
+   *  stanza. The FIRST occurrence always plays the whole section; the repeats use
+   *  only these lines. null = repeat the whole section (or no recurring section). */
+  repeatLineIndices: number[] | null
   /** null = keep the current/global background */
   background: Background | null
 }
@@ -37,6 +41,8 @@ export function SongStructureDialog({
   const [order, setOrder] = useState<string[]>(() => song.sections.map((s) => s.id))
   const [included, setIncluded] = useState<Set<string>>(() => new Set(song.sections.map((s) => s.id)))
   const [recurring, setRecurring] = useState<string | null>(null)
+  // Which of the recurring section's lines repeat after each stanza (by index).
+  const [repeatLines, setRepeatLines] = useState<Set<number>>(new Set())
   const [bgId, setBgId] = useState<string>('default') // 'default' | preset id
 
   useEffect(() => {
@@ -47,6 +53,25 @@ export function SongStructureDialog({
   }, [song])
 
   const byId = useMemo(() => new Map(song.sections.map((s) => [s.id, s])), [song])
+
+  // Non-blank line indices of a section.
+  const contentIdx = (id: string | null): number[] =>
+    !id ? [] : (byId.get(id)?.lines ?? []).map((l, i) => (l.trim() ? i : -1)).filter((i) => i >= 0)
+
+  // Default to repeating the WHOLE recurring section (all lines ticked); the user
+  // unticks lines to shorten the repeat. Reset whenever the repeat section changes.
+  useEffect(() => {
+    setRepeatLines(new Set(contentIdx(recurring)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recurring, song])
+
+  const toggleRepeatLine = (i: number): void =>
+    setRepeatLines((prev) => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i)
+      else next.add(i)
+      return next
+    })
 
   const firstLine = (id: string): string => {
     const sec = byId.get(id)
@@ -86,6 +111,12 @@ export function SongStructureDialog({
   const includedInOrder = order.filter((id) => included.has(id))
   const canAdd = includedInOrder.length > 0
 
+  // Repeats use only the ticked lines; null when the WHOLE section repeats (all
+  // lines ticked) or there's no recurring section — then the play order is unchanged.
+  const allRepeatIdx = contentIdx(recurring)
+  const tickedRepeat = allRepeatIdx.filter((i) => repeatLines.has(i))
+  const repeatLineIndices = recurring && tickedRepeat.length < allRepeatIdx.length ? tickedRepeat : null
+
   return (
     <div className="modal-backdrop" onClick={onCancel}>
       <div className="modal add-song" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
@@ -118,7 +149,8 @@ export function SongStructureDialog({
             if (!sec) return null
             const inc = included.has(id)
             return (
-              <div key={id} className={`ss-row ${recurring === id ? 'active' : ''} ${inc ? '' : 'off'}`}>
+              <div key={id} className="ss-rowgroup">
+                <div className={`ss-row ${recurring === id ? 'active' : ''} ${inc ? '' : 'off'}`}>
                 <span className="ss-reorder">
                   <button
                     className="ss-move icon-btn"
@@ -151,6 +183,22 @@ export function SongStructureDialog({
                   onChange={() => setRecurring(id)}
                   title="Repeat this after each stanza"
                 />
+              </div>
+              {recurring === id && (
+                <div className="ss-repeat-lines">
+                  <div className="ss-repeat-hint">
+                    First time plays the whole stanza · repeats use only the ticked lines
+                  </div>
+                  {sec.lines.map((line, i) =>
+                    line.trim() ? (
+                      <label key={i} className="ss-repeat-line">
+                        <input type="checkbox" checked={repeatLines.has(i)} onChange={() => toggleRepeatLine(i)} />
+                        <span>{line}</span>
+                      </label>
+                    ) : null
+                  )}
+                </div>
+              )}
               </div>
             )
           })}
@@ -190,7 +238,7 @@ export function SongStructureDialog({
           <button
             className="btn btn-primary"
             disabled={!canAdd}
-            onClick={() => onConfirm({ includedIds: includedInOrder, recurringId: recurring, background })}
+            onClick={() => onConfirm({ includedIds: includedInOrder, recurringId: recurring, repeatLineIndices, background })}
           >
             Add song
           </button>

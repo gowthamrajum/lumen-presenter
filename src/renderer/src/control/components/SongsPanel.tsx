@@ -83,9 +83,28 @@ export function SongsPanel(): JSX.Element {
   const confirmStructure = (choice: AddSongChoice): void => {
     if (!structure) return
     const { song, mode, goLive } = structure
-    const arrangement = buildSongArrangement(song, choice.includedIds, choice.recurringId)
+    let arrangement = buildSongArrangement(song, choice.includedIds, choice.recurringId)
+    let sections = song.sections
+    // Partial repeat: keep the FIRST occurrence of the recurring section whole,
+    // and swap every LATER occurrence for a synthetic section holding only the
+    // ticked lines — e.g. Pallavi in full, then just its first line each repeat.
+    if (choice.recurringId && choice.repeatLineIndices) {
+      const rec = song.sections.find((s) => s.id === choice.recurringId)
+      if (rec) {
+        const rptLines = choice.repeatLineIndices.map((i) => rec.lines[i]).filter((l): l is string => l != null)
+        const rptId = `${rec.id}__rpt`
+        sections = [...song.sections, { ...rec, id: rptId, lines: rptLines }]
+        let seenFirst = false
+        arrangement = arrangement.map((id) => {
+          if (id !== choice.recurringId) return id
+          if (seenFirst) return rptId
+          seenFirst = true
+          return id
+        })
+      }
+    }
     setStructure(null)
-    void doAdd({ ...song, arrangement }, mode, goLive, choice.background)
+    void doAdd({ ...song, sections, arrangement }, mode, goLive, choice.background)
   }
 
   // ----- local library -----
