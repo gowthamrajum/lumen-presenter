@@ -159,10 +159,13 @@
   html.mode-obs #stage { justify-content: flex-end; align-items: center; }
   html.mode-obs.pos-center #stage { justify-content: center; }
   html.mode-obs.pos-top #stage { justify-content: flex-start; }
-  html.mode-obs #scrim { background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0) 46%); }
-  html.mode-obs.pos-top #scrim { background: linear-gradient(to bottom, rgba(0,0,0,.62), rgba(0,0,0,0) 46%); }
-  html.mode-obs.pos-center #scrim { background: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.28), rgba(0,0,0,.5)); }
-  html.mode-obs.clean #scrim { display: none; }
+  /* The OBS overlay is fully transparent by default — only the text shows (it
+     carries its own shadow/outline below). The shaded band is opt-in: it paints
+     only when the operator turns it on (adds .scrim-on) for legibility over busy
+     footage. */
+  html.mode-obs.scrim-on #scrim { background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0) 46%); }
+  html.mode-obs.scrim-on.pos-top #scrim { background: linear-gradient(to bottom, rgba(0,0,0,.62), rgba(0,0,0,0) 46%); }
+  html.mode-obs.scrim-on.pos-center #scrim { background: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.28), rgba(0,0,0,.5)); }
   html.mode-obs .lyrics, html.mode-obs .caption {
     text-shadow:
       0 2px 2px rgba(0,0,0,.65), 0 0 6px rgba(0,0,0,.55),
@@ -654,7 +657,8 @@
     var p = os.position === 'top' || os.position === 'center' ? os.position : 'bottom';
     root.classList.remove('pos-top', 'pos-center', 'pos-bottom');
     root.classList.add('pos-' + p);
-    root.classList.toggle('clean', os.scrim === false);
+    // Transparent by default; the shaded band paints only when explicitly on.
+    root.classList.toggle('scrim-on', os.scrim === true);
   }
 
   function sizeFor(n, scale) {

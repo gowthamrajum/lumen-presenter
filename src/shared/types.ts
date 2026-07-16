@@ -397,7 +397,9 @@ export const DEFAULT_OBS_STYLE: ObsStyle = {
   textColor: '#ffffff',
   accentColor: '#ffd27f',
   uppercase: false,
-  scrim: true
+  // Off by default: the OBS overlay is fully transparent (text only, with its own
+  // shadow/outline for legibility). Turn the shaded band on for busy footage.
+  scrim: false
 }
 
 export const DEFAULT_BACKGROUND: Background = {
