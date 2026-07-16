@@ -575,9 +575,9 @@
   var NBSP = String.fromCharCode(0xa0);
   function formatLyric(line) {
     return String(line == null ? '' : line)
-      .replace(/[ \t]+/g, ' ')
+      .replace(/\s+/g, ' ')
       .replace(/^\s+|\s+$/g, '')
-      .replace(/(\S) *(\|\|[^|]+\|\|)/g, '$1' + NBSP + NBSP + '$2');
+      .replace(/(\S)\s*(\|\|[^|]+\|\|)/g, '$1' + NBSP + NBSP + '$2');
   }
   function textOf(slide) {
     if (!slide) return [];

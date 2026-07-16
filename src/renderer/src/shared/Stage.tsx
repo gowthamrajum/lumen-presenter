@@ -13,9 +13,9 @@ const NBSP = String.fromCharCode(0xa0)
  *  composer's single-line look in the output / OBS / web views. */
 function formatLyric(line: string): string {
   return line
-    .replace(/[ \t]+/g, ' ')
+    .replace(/\s+/g, ' ')
     .replace(/^\s+|\s+$/g, '')
-    .replace(/(\S) *(\|\|[^|]+\|\|)/g, '$1' + NBSP + NBSP + '$2')
+    .replace(/(\S)\s*(\|\|[^|]+\|\|)/g, '$1' + NBSP + NBSP + '$2')
 }
 
 /** Self-ticking countdown / clock rendered locally in each window. In preview
