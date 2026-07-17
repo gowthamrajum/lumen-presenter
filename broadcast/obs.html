@@ -696,6 +696,21 @@
     if (mode === 'audience') lyricsEl.style.fontSize = sizeFor(lines.length, scale);
   }
 
+  // OBS: keep each single-line lyric on ONE line by shrinking the font just enough
+  // to fit the width (the operator's --size stays the ceiling; we only shrink, and
+  // only when a line would overflow). Wrapping (non-single-line) slides are left
+  // to the operator's size as before.
+  function fitObsLyrics(singleLine) {
+    lyricsEl.style.fontSize = ''; // reset to the operator's --size (the maximum)
+    if (!singleLine) return;
+    var avail = lyricsEl.clientWidth;
+    var content = lyricsEl.scrollWidth;
+    if (avail > 0 && content > avail) {
+      var cur = parseFloat(getComputedStyle(lyricsEl).fontSize) || 0;
+      if (cur > 0) lyricsEl.style.fontSize = (cur * (avail / content)).toFixed(2) + 'px';
+    }
+  }
+
   function render(state) {
     // Order of service is independent of the live slide — update it first, before
     // any of the slide-state early returns below.
@@ -739,7 +754,8 @@
       var lines = textOf(slide).filter(function (t) { return t && t.trim(); });
       if (!lines.length) { stage.classList.remove('show'); setLiveShowing(false); return; }
       renderLines(lines, scale);
-      lyricsEl.classList.toggle('nowrap', mode === 'audience' && !!slide.singleLine);
+      lyricsEl.classList.toggle('nowrap', !!slide.singleLine);
+      if (mode === 'obs') fitObsLyrics(!!slide.singleLine);
     }
 
     var composedShown = mode === 'audience' && slide.composed && slide.composed.length;
@@ -755,6 +771,11 @@
   }
 
   function apply(msg) { if (msg && typeof msg === 'object' && 'state' in msg) render(msg.state); }
+
+  // Re-fit single-line OBS lyrics when the browser source is resized.
+  window.addEventListener('resize', function () {
+    if (mode === 'obs' && liveSlide && !isTimer(liveSlide)) fitObsLyrics(!!liveSlide.singleLine);
+  });
 
   // Primary: Server-Sent Events (instant). Fallback: short-poll.
   // The relay projects the payload per channel: the audience page asks for the

@@ -219,6 +219,10 @@ export interface Song {
   arrangement?: string[]
   /** lyric lines per slide (default 2) */
   linesPerSlide?: number
+  /** section lines are pre-arranged as bilingual blocks (2 Telugu lines then their
+   *  2 English lines per slide); slide splitting then chunks plainly, without the
+   *  single-language repeat-grouping. */
+  bilingual?: boolean
   savedAt?: string
 }
 

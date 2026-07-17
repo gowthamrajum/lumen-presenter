@@ -126,14 +126,15 @@ const REPEAT_LINE = /\(\s*\d+\s*\)\s*(?:\|\|[^|]*\|\|)?\s*$/
  * The cap wins over rule 1 as a last resort so a run of repeats can't pile onto
  * one giant slide.
  */
-export function chunkLyricLines(lines: string[], lpp: number): string[][] {
+export function chunkLyricLines(lines: string[], lpp: number, groupRepeats = true): string[][] {
   const cap = lpp * 2 // hard ceiling: target lpp lines, grow to 2·lpp to keep repeats together
   const slides: string[][] = []
   let cur: string[] = []
   for (const line of lines) {
     // A repeat line wants to stay on the current slide (with the line above) —
-    // unless that slide is already at the cap.
-    const keepWithAbove = REPEAT_LINE.test(line) && cur.length > 0 && cur.length < cap
+    // unless that slide is already at the cap. (Skipped for bilingual blocks,
+    // which are already pre-grouped 2 Telugu + 2 English per slide.)
+    const keepWithAbove = groupRepeats && REPEAT_LINE.test(line) && cur.length > 0 && cur.length < cap
     if (cur.length >= lpp && !keepWithAbove) {
       slides.push(cur)
       cur = []
@@ -179,13 +180,18 @@ export function songSlides(song: Song): SlideContent[] {
     // half-empty slides or shift the lines-per-slide pagination.
     const lines = sec.lines.filter((l) => l.trim().length > 0).map(formatLyricLine)
     if (lines.length === 0) continue
-    const chunks = chunkLyricLines(lines, lpp)
+    // Bilingual sections are already arranged into 2-Telugu-then-2-English blocks,
+    // so chunk them plainly (no repeat-regrouping); single-language groups repeats.
+    const chunks = chunkLyricLines(lines, lpp, !song.bilingual)
     chunks.forEach((chunk, i) => {
       slides.push({
         id: uid(),
         kind: 'text',
         label: chunks.length > 1 ? `${sec.label} (${i + 1})` : sec.label,
-        lines: chunk
+        lines: chunk,
+        // Each lyric line stays on its own single line — the output shrinks the
+        // font to fit the widest line instead of wrapping it.
+        singleLine: true
       })
     })
   }
