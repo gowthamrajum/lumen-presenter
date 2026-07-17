@@ -703,12 +703,22 @@
   function fitObsLyrics(singleLine) {
     lyricsEl.style.fontSize = ''; // reset to the operator's --size (the maximum)
     if (!singleLine) return;
-    var avail = lyricsEl.clientWidth;
-    var content = lyricsEl.scrollWidth;
-    if (avail > 0 && content > avail) {
+    // Iterate: one proportional pass can undershoot, so shrink until it fits.
+    for (var i = 0; i < 4; i++) {
+      var avail = lyricsEl.clientWidth;
+      var content = lyricsEl.scrollWidth;
+      if (avail <= 0 || content <= avail + 1) break;
       var cur = parseFloat(getComputedStyle(lyricsEl).fontSize) || 0;
-      if (cur > 0) lyricsEl.style.fontSize = (cur * (avail / content)).toFixed(2) + 'px';
+      if (cur <= 0) break;
+      lyricsEl.style.fontSize = (cur * (avail / content)).toFixed(2) + 'px';
     }
+  }
+  // Re-fit when the (Telugu) web font finishes loading — measuring with the
+  // fallback font under-shrinks, then the real glyphs overflow.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () {
+      if (mode === 'obs' && liveSlide && !isTimer(liveSlide)) fitObsLyrics(!!liveSlide.singleLine);
+    }).catch(function () {});
   }
 
   function render(state) {
