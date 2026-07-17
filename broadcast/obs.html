@@ -762,6 +762,13 @@
       renderComposed(slide.composed);
     } else {
       var lines = textOf(slide).filter(function (t) { return t && t.trim(); });
+      // OBS view: show ONLY the English transliteration — both languages crowd the
+      // lower third. Drop Telugu-script lines; keep the original if none remain (an
+      // all-Telugu slide isn't blanked). Audience/operator views keep both.
+      if (mode === 'obs') {
+        var en = lines.filter(function (t) { return !/[ఀ-౿]/.test(t); });
+        if (en.length) lines = en;
+      }
       if (!lines.length) { stage.classList.remove('show'); setLiveShowing(false); return; }
       renderLines(lines, scale);
       lyricsEl.classList.toggle('nowrap', !!slide.singleLine);
