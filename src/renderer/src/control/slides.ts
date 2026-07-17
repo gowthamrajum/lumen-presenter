@@ -108,8 +108,62 @@ export function formatLyricLine(line: string): string {
 }
 
 /**
+ * A lyric line whose trailing content is a repeat count, e.g. `…Kaadayaa (2)` or
+ * `…Lenayaa (2)  ||Neevu Leni||` ("sing twice"). Such a line must stay on the
+ * same slide as the line above it, so a repeated phrase is never split from its
+ * lead-in. The `(N)` may be followed by an optional `||…||` repeat marker.
+ */
+const REPEAT_LINE = /\(\s*\d+\s*\)\s*(?:\|\|[^|]*\|\|)?\s*$/
+
+/**
+ * Split a section's lyric lines into slides of ~`lpp` lines, with three rules:
+ *   1. a line ending in a repeat count `(N)` shares its slide with the line above
+ *      it (repeats stay attached to their lead-in — never split off);
+ *   2. every slide shows at least 2 lines — a lonely leftover is rebalanced or
+ *      folded into the previous slide;
+ *   3. a slide never exceeds `2·lpp` lines (≈4) — so a long or all-repeat chorus
+ *      still breaks into readable slides even though rule 1 groups repeats.
+ * The cap wins over rule 1 as a last resort so a run of repeats can't pile onto
+ * one giant slide.
+ */
+export function chunkLyricLines(lines: string[], lpp: number): string[][] {
+  const cap = lpp * 2 // hard ceiling: target lpp lines, grow to 2·lpp to keep repeats together
+  const slides: string[][] = []
+  let cur: string[] = []
+  for (const line of lines) {
+    // A repeat line wants to stay on the current slide (with the line above) —
+    // unless that slide is already at the cap.
+    const keepWithAbove = REPEAT_LINE.test(line) && cur.length > 0 && cur.length < cap
+    if (cur.length >= lpp && !keepWithAbove) {
+      slides.push(cur)
+      cur = []
+    }
+    cur.push(line)
+    if (cur.length >= cap) {
+      slides.push(cur)
+      cur = []
+    }
+  }
+  if (cur.length) slides.push(cur)
+  // Rule 2: no single-line slide. Prefer to rebalance one line down from a fuller
+  // previous slide (keeps both within the cap); otherwise merge (previous had 2 →
+  // becomes 3, still within the cap).
+  const n = slides.length
+  if (n > 1 && slides[n - 1].length < 2) {
+    const prev = slides[n - 2]
+    if (prev.length > 2) slides[n - 1].unshift(prev.pop() as string)
+    else {
+      prev.push(...slides[n - 1])
+      slides.pop()
+    }
+  }
+  return slides
+}
+
+/**
  * Song -> slides. Sections are emitted in arrangement order (or section order),
- * each section's lyric lines split into slides of `linesPerSlide` lines.
+ * each section's lyric lines split into slides of `linesPerSlide` lines (grouping
+ * repeat lines and keeping at least 2 lines per slide — see chunkLyricLines).
  */
 export function songSlides(song: Song): SlideContent[] {
   const lpp = Math.max(1, song.linesPerSlide ?? 2)
@@ -125,8 +179,7 @@ export function songSlides(song: Song): SlideContent[] {
     // half-empty slides or shift the lines-per-slide pagination.
     const lines = sec.lines.filter((l) => l.trim().length > 0).map(formatLyricLine)
     if (lines.length === 0) continue
-    const chunks: string[][] = []
-    for (let i = 0; i < lines.length; i += lpp) chunks.push(lines.slice(i, i + lpp))
+    const chunks = chunkLyricLines(lines, lpp)
     chunks.forEach((chunk, i) => {
       slides.push({
         id: uid(),
