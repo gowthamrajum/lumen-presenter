@@ -39,6 +39,7 @@ export type IconName =
   | 'flame'
   | 'link'
   | 'plus'
+  | 'copy'
 
 // Each entry draws inside a 24x24 viewBox. Stroked by default (inherits color);
 // icons that read better solid set their own fill/stroke on the element.
@@ -104,6 +105,12 @@ const PATHS: Record<IconName, JSX.Element> = {
   'chevron-left': <path d="M15 6l-6 6 6 6" />,
   'chevron-right': <path d="M9 6l6 6-6 6" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V6a2 2 0 0 1 2-2h8" />
+    </>
+  ),
   dots: (
     <>
       <circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none" />

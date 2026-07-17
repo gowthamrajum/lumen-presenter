@@ -17,6 +17,8 @@ export function SlideThumb({
   const background = useStore((s) => s.background)
   const goLive = useStore((s) => s.goLive)
   const removeSlide = useStore((s) => s.removeSlide)
+  const duplicateSlide = useStore((s) => s.duplicateSlide)
+  const moveSlide = useStore((s) => s.moveSlide)
   const openComposer = useStore((s) => s.openComposer)
   const openTimerConfig = useStore((s) => s.openTimerConfig)
 
@@ -73,6 +75,38 @@ export function SlideThumb({
       >
         <Icon name="close" />
       </button>
+      <div className="thumb-tools">
+        <button
+          className="thumb-tool"
+          title="Move earlier"
+          onClick={(e) => {
+            e.stopPropagation()
+            moveSlide(slide.id, -1)
+          }}
+        >
+          <Icon name="chevron-left" />
+        </button>
+        <button
+          className="thumb-tool"
+          title="Move later"
+          onClick={(e) => {
+            e.stopPropagation()
+            moveSlide(slide.id, 1)
+          }}
+        >
+          <Icon name="chevron-right" />
+        </button>
+        <button
+          className="thumb-tool"
+          title="Duplicate slide"
+          onClick={(e) => {
+            e.stopPropagation()
+            duplicateSlide(slide.id)
+          }}
+        >
+          <Icon name="copy" />
+        </button>
+      </div>
       <div className="thumb-stage">
         <Stage state={preview} preview />
       </div>

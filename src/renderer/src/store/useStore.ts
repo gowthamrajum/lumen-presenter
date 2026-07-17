@@ -130,6 +130,10 @@ interface AppState {
   addPsalm: (item: { title: string; slides: SlideContent[]; reference: string }, goLiveFirst?: boolean) => void
   removeItem: (id: string) => void
   removeSlide: (id: string) => void
+  /** copy a slide, inserting the duplicate right after it in its song/item */
+  duplicateSlide: (id: string) => void
+  /** move a slide one step earlier/later within its song/item (repeat to move anywhere) */
+  moveSlide: (id: string, dir: -1 | 1) => void
   moveItem: (id: string, dir: -1 | 1) => void
   /** move the item at `from` to index `to` (drag-and-drop reorder) */
   reorderItems: (from: number, to: number) => void
@@ -578,6 +582,37 @@ export const useStore = create<AppState>((set, get) => {
           .map((it) => ({ ...it, slides: it.slides.filter((sl) => sl.id !== id) }))
           .filter((it) => it.slides.length > 0),
         liveId: s.liveId === id ? null : s.liveId
+      }))
+      push()
+    },
+
+    duplicateSlide: (id) => {
+      set((s) => ({
+        items: s.items.map((it) => {
+          const idx = it.slides.findIndex((sl) => sl.id === id)
+          if (idx < 0) return it
+          const copy = { ...it.slides[idx], id: uid() }
+          const slides = it.slides.slice()
+          slides.splice(idx + 1, 0, copy)
+          return { ...it, slides }
+        })
+      }))
+      push() // the deck changed → refresh the stage monitor's `next`
+    },
+
+    moveSlide: (id, dir) => {
+      set((s) => ({
+        items: s.items.map((it) => {
+          const idx = it.slides.findIndex((sl) => sl.id === id)
+          if (idx < 0) return it
+          const j = idx + dir
+          if (j < 0 || j >= it.slides.length) return it
+          const slides = it.slides.slice()
+          const tmp = slides[idx]
+          slides[idx] = slides[j]
+          slides[j] = tmp
+          return { ...it, slides }
+        })
       }))
       push()
     },
