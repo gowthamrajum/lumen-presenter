@@ -14,6 +14,8 @@ export const IPC = {
   serviceSave: 'services:save',
   serviceLoad: 'services:load',
   serviceDelete: 'services:delete',
+  serviceExport: 'services:export',
+  serviceImport: 'services:import',
   songsList: 'songs:list',
   songSave: 'songs:save',
   songLoad: 'songs:load',

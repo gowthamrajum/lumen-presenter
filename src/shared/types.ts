@@ -181,6 +181,35 @@ export interface Service {
   theme?: ThemeStyle
 }
 
+/** Portable service backup: the whole deck as a versioned JSON envelope, written
+ *  to / read from a file. Kept deliberately clean + versioned so another tool
+ *  (e.g. worshipReady) can produce/consume it later. */
+export interface ServiceExport {
+  format: 'cantica-service'
+  version: 1
+  exportedAt: string
+  service: {
+    name: string
+    items: ServiceItem[]
+    background?: Background
+    theme?: ThemeStyle
+  }
+}
+
+export interface ServiceExportResult {
+  ok: boolean
+  path?: string
+  canceled?: boolean
+  error?: string
+}
+
+export interface ServiceImportResult {
+  ok: boolean
+  service?: Service
+  canceled?: boolean
+  error?: string
+}
+
 /** Lightweight service listing (no slide payloads). */
 export interface ServiceMeta {
   id: string

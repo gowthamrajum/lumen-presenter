@@ -12,6 +12,9 @@ import {
   type ScreenRole,
   type PptxImport,
   type Service,
+  type ServiceExport,
+  type ServiceExportResult,
+  type ServiceImportResult,
   type ServiceItem,
   type ServiceMeta,
   type SlideContent,
@@ -183,6 +186,10 @@ interface AppState {
   saveService: () => Promise<void>
   openService: (id: string) => Promise<void>
   deleteService: (id: string) => Promise<void>
+  /** write the current deck to a portable JSON file (user picks the path) */
+  exportServiceJson: () => Promise<ServiceExportResult>
+  /** load a deck from a JSON file into the current service */
+  importServiceJson: () => Promise<ServiceImportResult>
   newService: () => void
   /** start a fresh service pre-populated from a named template outline */
   applyTemplate: (templateId: string) => void
@@ -764,6 +771,45 @@ export const useStore = create<AppState>((set, get) => {
         showLogo: false
       })
       push()
+    },
+
+    exportServiceJson: async () => {
+      const s = get()
+      const env: ServiceExport = {
+        format: 'cantica-service',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        service: {
+          name: s.serviceName.trim() || 'Untitled Service',
+          items: s.items,
+          background: s.background,
+          theme: s.theme
+        }
+      }
+      return window.lumen.exportServiceJson(env)
+    },
+
+    importServiceJson: async () => {
+      const res = await window.lumen.importServiceJson()
+      if (!res.ok || !res.service) return res
+      const svc = res.service
+      // Fresh serviceId (null) → saving creates a NEW entry, never overwrites a
+      // saved service. Re-arm countdowns so an imported deck doesn't show 0:00.
+      const items = reArmItems(svc.items ?? [], Date.now())
+      set({
+        serviceId: null,
+        serviceName: svc.name || 'Imported Service',
+        items,
+        selectedItemId: items[0]?.id ?? null,
+        liveId: null,
+        background: svc.background ?? get().background,
+        theme: svc.theme ?? get().theme,
+        blackout: false,
+        clearText: false,
+        showLogo: false
+      })
+      push()
+      return res
     },
 
     deleteService: async (id) => {

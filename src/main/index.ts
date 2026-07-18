@@ -15,6 +15,7 @@ import {
   type ScreenRole,
   type Service,
   type ServiceMeta,
+  type ServiceExport,
   type Song,
   type SongMeta,
   type PsalmVerse,
@@ -406,6 +407,51 @@ function registerIpc(): void {
   ipcMain.handle(IPC.serviceDelete, async (_e, id: string) => {
     if (isSafeId(id)) await unlink(serviceFile(id)).catch(() => {})
     return listServices()
+  })
+
+  // Export the whole service (deck) as a portable JSON file the user picks.
+  ipcMain.handle(IPC.serviceExport, async (_e, env: ServiceExport) => {
+    const name = (env?.service?.name || 'Cantica Service').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Cantica Service'
+    const res = await dialog.showSaveDialog(controlWindow!, {
+      title: 'Export service (JSON)',
+      defaultPath: `${name}.cantica.json`,
+      filters: [{ name: 'Cantica service', extensions: ['json'] }]
+    })
+    if (res.canceled || !res.filePath) return { ok: false, canceled: true }
+    try {
+      await writeFile(res.filePath, JSON.stringify(env, null, 2), 'utf8')
+      return { ok: true, path: res.filePath }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // Import a service from a JSON file: accepts our envelope (`{service:…}`) or a
+  // bare service object (`{items:…}`) so an external tool's export still loads.
+  ipcMain.handle(IPC.serviceImport, async () => {
+    const res = await dialog.showOpenDialog(controlWindow!, {
+      title: 'Import service (JSON)',
+      properties: ['openFile'],
+      filters: [{ name: 'Cantica service', extensions: ['json'] }]
+    })
+    if (res.canceled || !res.filePaths[0]) return { ok: false, canceled: true }
+    try {
+      const raw = JSON.parse(await readFile(res.filePaths[0], 'utf8'))
+      const svc = raw?.service ?? raw
+      if (!svc || !Array.isArray(svc.items)) {
+        return { ok: false, error: 'That file isn’t a Cantica service (no slides found).' }
+      }
+      const service: Service = {
+        id: '',
+        name: String(svc.name || 'Imported Service'),
+        items: svc.items,
+        background: svc.background,
+        theme: svc.theme
+      }
+      return { ok: true, service }
+    } catch {
+      return { ok: false, error: 'Could not read that file — it isn’t valid JSON.' }
+    }
   })
 
   // ---- songs (library) persistence ----

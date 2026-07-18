@@ -9,6 +9,9 @@ import type {
   PptxImport,
   Service,
   ServiceMeta,
+  ServiceExport,
+  ServiceExportResult,
+  ServiceImportResult,
   Song,
   SongMeta,
   RemoteSong,
@@ -47,6 +50,9 @@ const api = {
     ipcRenderer.invoke(IPC.serviceSave, service),
   loadService: (id: string): Promise<Service | null> => ipcRenderer.invoke(IPC.serviceLoad, id),
   deleteService: (id: string): Promise<ServiceMeta[]> => ipcRenderer.invoke(IPC.serviceDelete, id),
+  exportServiceJson: (env: ServiceExport): Promise<ServiceExportResult> =>
+    ipcRenderer.invoke(IPC.serviceExport, env),
+  importServiceJson: (): Promise<ServiceImportResult> => ipcRenderer.invoke(IPC.serviceImport),
 
   // songs (library)
   listSongs: (): Promise<SongMeta[]> => ipcRenderer.invoke(IPC.songsList),

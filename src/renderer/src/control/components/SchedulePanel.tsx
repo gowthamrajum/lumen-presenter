@@ -43,6 +43,8 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const savedServices = useStore((s) => s.savedServices)
   const openService = useStore((s) => s.openService)
   const deleteService = useStore((s) => s.deleteService)
+  const exportServiceJson = useStore((s) => s.exportServiceJson)
+  const importServiceJson = useStore((s) => s.importServiceJson)
 
   const [menu, setMenu] = useState(false)
   /** PowerPoint export status shown inline in the header */
@@ -69,6 +71,21 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
     const t = setTimeout(() => setExp({ phase: 'idle', done: 0, total: 0 }), 4500)
     return () => clearTimeout(t)
   }, [exp.phase])
+
+  // Export/import the whole deck as portable JSON (reuse the header status line).
+  const doExportJson = async (): Promise<void> => {
+    setMenu(false)
+    if (!items.length) return
+    const res = await exportServiceJson()
+    if (res.ok) setExp({ phase: 'done', done: 0, total: 0, msg: 'Service exported' })
+    else if (!res.canceled) setExp({ phase: 'error', done: 0, total: 0, msg: res.error || 'Export failed' })
+  }
+  const doImportJson = async (): Promise<void> => {
+    setMenu(false)
+    const res = await importServiceJson()
+    if (res.ok) setExp({ phase: 'done', done: 0, total: 0, msg: 'Service imported' })
+    else if (!res.canceled) setExp({ phase: 'error', done: 0, total: 0, msg: res.error || 'Import failed' })
+  }
 
   const exportPptx = async (): Promise<void> => {
     if (!items.length || exp.phase === 'running') return
@@ -148,6 +165,12 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
               <div className="service-menu">
                 <button className="menu-item" onClick={() => { newService(); setMenu(false) }}>
                   <span className="mi-row"><Icon name="spark" /> New service</span>
+                </button>
+                <button className="menu-item" onClick={() => void doImportJson()}>
+                  <span className="mi-row"><Icon name="upload" /> Import service (JSON)…</span>
+                </button>
+                <button className="menu-item" onClick={() => void doExportJson()} disabled={!items.length}>
+                  <span className="mi-row"><Icon name="download" /> Export service (JSON)…</span>
                 </button>
                 <div className="menu-label">Start from a template</div>
                 {SERVICE_TEMPLATES.map((t) => (
