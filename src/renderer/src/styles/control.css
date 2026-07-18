@@ -1307,6 +1307,15 @@ select:focus {
   border-color: var(--live);
   box-shadow: 0 0 0 1px var(--live), 0 6px 22px rgba(255, 59, 82, 0.18);
 }
+/* drag-reorder feedback: the dragged slide fades; the drop target shows an accent
+   bar on its leading (left) edge = "drop before this slide". */
+.slide-thumb.dragging {
+  opacity: 0.4;
+}
+.slide-thumb.drop-target {
+  border-color: var(--accent);
+  box-shadow: inset 4px 0 0 -1px var(--accent);
+}
 .thumb-stage {
   position: relative;
   aspect-ratio: 16 / 9;

@@ -7,11 +7,23 @@ import type { LiveState, SlideContent } from '@shared/types'
 export function SlideThumb({
   slide,
   index,
-  live
+  live,
+  dragging = false,
+  dropTarget = false,
+  onDragStartSlide,
+  onDragOverSlide,
+  onDropSlide,
+  onDragEndSlide
 }: {
   slide: SlideContent
   index: number
   live: boolean
+  dragging?: boolean
+  dropTarget?: boolean
+  onDragStartSlide?: () => void
+  onDragOverSlide?: () => void
+  onDropSlide?: () => void
+  onDragEndSlide?: () => void
 }): JSX.Element {
   const theme = useStore((s) => s.theme)
   const background = useStore((s) => s.background)
@@ -49,7 +61,22 @@ export function SlideThumb({
   return (
     <div
       ref={ref}
-      className={`slide-thumb ${live ? 'live' : ''}`}
+      className={`slide-thumb ${live ? 'live' : ''} ${dragging ? 'dragging' : ''} ${dropTarget ? 'drop-target' : ''}`}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move'
+        onDragStartSlide?.()
+      }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        onDragOverSlide?.()
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        onDropSlide?.()
+      }}
+      onDragEnd={onDragEndSlide}
       onClick={() => goLive(slide.id)}
       title={slide.label ?? `Slide ${index + 1}`}
     >

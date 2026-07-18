@@ -11,9 +11,17 @@ export function SlidesPanel(): JSX.Element {
   const liveId = useStore((s) => s.liveId)
   const attachMediaToItem = useStore((s) => s.attachMediaToItem)
   const attachMediaUrlToItem = useStore((s) => s.attachMediaUrlToItem)
+  const reorderSlides = useStore((s) => s.reorderSlides)
 
   const [urlOpen, setUrlOpen] = useState(false)
   const [urlVal, setUrlVal] = useState('')
+  // drag-and-drop reorder within this item's slides (indices into item.slides)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [overIndex, setOverIndex] = useState<number | null>(null)
+  const endDrag = (): void => {
+    setDragIndex(null)
+    setOverIndex(null)
+  }
 
   const item = items.find((i) => i.id === selectedItemId) ?? null
   const isMediaItem = item?.kind === 'video' || item?.kind === 'media'
@@ -87,7 +95,23 @@ export function SlidesPanel(): JSX.Element {
       )}
       <div className="slides-grid">
         {item.slides.map((sl, i) => (
-          <SlideThumb key={sl.id} slide={sl} index={i} live={sl.id === liveId} />
+          <SlideThumb
+            key={sl.id}
+            slide={sl}
+            index={i}
+            live={sl.id === liveId}
+            dragging={dragIndex === i}
+            dropTarget={overIndex === i && dragIndex !== null && dragIndex !== i}
+            onDragStartSlide={() => setDragIndex(i)}
+            onDragOverSlide={() => {
+              if (overIndex !== i) setOverIndex(i)
+            }}
+            onDropSlide={() => {
+              if (dragIndex !== null && dragIndex !== i) reorderSlides(item.id, dragIndex, i)
+              endDrag()
+            }}
+            onDragEndSlide={endDrag}
+          />
         ))}
       </div>
     </div>

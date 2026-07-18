@@ -134,6 +134,8 @@ interface AppState {
   duplicateSlide: (id: string) => void
   /** move a slide one step earlier/later within its song/item (repeat to move anywhere) */
   moveSlide: (id: string, dir: -1 | 1) => void
+  /** drag-reorder: move a slide from index `from` to index `to` within its item */
+  reorderSlides: (itemId: string, from: number, to: number) => void
   moveItem: (id: string, dir: -1 | 1) => void
   /** move the item at `from` to index `to` (drag-and-drop reorder) */
   reorderItems: (from: number, to: number) => void
@@ -611,6 +613,23 @@ export const useStore = create<AppState>((set, get) => {
           const tmp = slides[idx]
           slides[idx] = slides[j]
           slides[j] = tmp
+          return { ...it, slides }
+        })
+      }))
+      push()
+    },
+
+    reorderSlides: (itemId, from, to) => {
+      set((s) => ({
+        items: s.items.map((it) => {
+          if (it.id !== itemId) return it
+          if (from === to || from < 0 || to < 0 || from >= it.slides.length || to >= it.slides.length) return it
+          const slides = it.slides.slice()
+          const [moved] = slides.splice(from, 1)
+          // drop highlight = "insert before this slide"; a rightward move shifts the
+          // target down one after removal (mirrors reorderItems).
+          const dest = from < to ? to - 1 : to
+          slides.splice(dest, 0, moved)
           return { ...it, slides }
         })
       }))
