@@ -1367,8 +1367,59 @@ select:focus {
   opacity: 0;
   transition: opacity 0.12s;
 }
-.slide-thumb:hover .thumb-tools {
+.slide-thumb:hover .thumb-tools,
+.slide-thumb.dup-open .thumb-tools {
   opacity: 1;
+}
+.thumb-tool.active {
+  background: var(--accent);
+}
+/* duplicate-placement popup (after this slide / end of song) */
+.thumb-dup-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.thumb-dup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+.thumb-dup-menu {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 0;
+  z-index: 21;
+  min-width: 132px;
+  padding: 5px;
+  border-radius: 9px;
+  background: var(--panel-hi);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.thumb-dup-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  padding: 3px 7px 1px;
+}
+.thumb-dup-opt {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.thumb-dup-opt:hover {
+  background: var(--accent);
+  color: #fff;
 }
 .thumb-tool {
   width: 22px;

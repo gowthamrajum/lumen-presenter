@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import { Icon } from '../../shared/Icon'
@@ -38,6 +38,14 @@ export function SlideThumb({
   // opens the timer settings dialog (minutes + message) instead of the composer.
   const isTimer = slide.kind === 'countdown' || slide.kind === 'clock'
 
+  // Duplicate: a small popup asks where to drop the copy (after this slide, or at
+  // the very end) — so you don't have to drag a copy across the whole song.
+  const [dupOpen, setDupOpen] = useState(false)
+  const duplicate = (placement: 'after' | 'end'): void => {
+    duplicateSlide(slide.id, placement)
+    setDupOpen(false)
+  }
+
   // Keep the live slide in view: scroll the grid the minimal amount when this
   // thumb goes live, so stepping through a many-slide section (song, psalm range)
   // follows the selection down/up instead of leaving it off-screen.
@@ -61,7 +69,7 @@ export function SlideThumb({
   return (
     <div
       ref={ref}
-      className={`slide-thumb ${live ? 'live' : ''} ${dragging ? 'dragging' : ''} ${dropTarget ? 'drop-target' : ''}`}
+      className={`slide-thumb ${live ? 'live' : ''} ${dragging ? 'dragging' : ''} ${dropTarget ? 'drop-target' : ''} ${dupOpen ? 'dup-open' : ''}`}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
@@ -123,16 +131,38 @@ export function SlideThumb({
         >
           <Icon name="chevron-right" />
         </button>
-        <button
-          className="thumb-tool"
-          title="Duplicate slide"
-          onClick={(e) => {
-            e.stopPropagation()
-            duplicateSlide(slide.id)
-          }}
-        >
-          <Icon name="copy" />
-        </button>
+        <div className="thumb-dup-wrap">
+          <button
+            className={`thumb-tool ${dupOpen ? 'active' : ''}`}
+            title="Duplicate slide…"
+            onClick={(e) => {
+              e.stopPropagation()
+              setDupOpen((v) => !v)
+            }}
+          >
+            <Icon name="copy" />
+          </button>
+          {dupOpen && (
+            <>
+              <div
+                className="thumb-dup-backdrop"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDupOpen(false)
+                }}
+              />
+              <div className="thumb-dup-menu" onClick={(e) => e.stopPropagation()}>
+                <div className="thumb-dup-title">Duplicate to…</div>
+                <button className="thumb-dup-opt" onClick={() => duplicate('after')}>
+                  After this slide
+                </button>
+                <button className="thumb-dup-opt" onClick={() => duplicate('end')}>
+                  End of song
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
       <div className="thumb-stage">
         <Stage state={preview} preview />

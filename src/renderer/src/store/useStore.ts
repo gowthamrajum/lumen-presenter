@@ -133,8 +133,9 @@ interface AppState {
   addPsalm: (item: { title: string; slides: SlideContent[]; reference: string }, goLiveFirst?: boolean) => void
   removeItem: (id: string) => void
   removeSlide: (id: string) => void
-  /** copy a slide, inserting the duplicate right after it in its song/item */
-  duplicateSlide: (id: string) => void
+  /** copy a slide; `placement` puts the duplicate right after it (default) or at
+   *  the end of its song/item */
+  duplicateSlide: (id: string, placement?: 'after' | 'end') => void
   /** move a slide one step earlier/later within its song/item (repeat to move anywhere) */
   moveSlide: (id: string, dir: -1 | 1) => void
   /** drag-reorder: move a slide from index `from` to index `to` within its item */
@@ -595,14 +596,15 @@ export const useStore = create<AppState>((set, get) => {
       push()
     },
 
-    duplicateSlide: (id) => {
+    duplicateSlide: (id, placement = 'after') => {
       set((s) => ({
         items: s.items.map((it) => {
           const idx = it.slides.findIndex((sl) => sl.id === id)
           if (idx < 0) return it
           const copy = { ...it.slides[idx], id: uid() }
           const slides = it.slides.slice()
-          slides.splice(idx + 1, 0, copy)
+          if (placement === 'end') slides.push(copy)
+          else slides.splice(idx + 1, 0, copy)
           return { ...it, slides }
         })
       }))
