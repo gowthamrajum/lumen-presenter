@@ -23,6 +23,9 @@ export class Bible {
   private verses: BibleVerse[]
   private order: string[]
   private names: Record<string, string>
+  /** Lazily-built book|chapter|verse -> verse index, for O(1) parallel lookups
+   *  when pairing two translations (e.g. Telugu + English on one slide). */
+  private index?: Map<string, BibleVerse>
   readonly name: string
 
   constructor(t: Translation = SAMPLE_TRANSLATION) {
@@ -30,6 +33,16 @@ export class Bible {
     this.verses = t.verses
     this.order = t.order ?? CANON
     this.names = t.names ?? {}
+  }
+
+  /** The verse at an exact reference (canonical English book key), or undefined
+   *  if this translation doesn't have it. */
+  verse(book: string, chapter: number, verse: number): BibleVerse | undefined {
+    if (!this.index) {
+      this.index = new Map()
+      for (const v of this.verses) this.index.set(`${v.book}|${v.chapter}|${v.verse}`, v)
+    }
+    return this.index.get(`${book}|${chapter}|${verse}`)
   }
 
   /** Localized display name for an English book key. */

@@ -42,6 +42,31 @@ export function scriptureSlides(
 }
 
 /**
+ * One scripture slide per verse in the chosen language(s) — Telugu, English, or
+ * both (Telugu first, English next). `teluguOf`/`englishOf` resolve each verse's
+ * text in that language (empty string if the translation lacks it); `refOf`
+ * builds the caption/label. Verses with no text in the chosen language(s) are
+ * dropped (no blank slides). Mirrors psalmSlides for the general Bible source.
+ */
+export function bilingualScriptureSlides(
+  verses: BibleVerse[],
+  lang: PsalmLang,
+  teluguOf: (v: BibleVerse) => string,
+  englishOf: (v: BibleVerse) => string,
+  refOf: (v: BibleVerse) => string
+): SlideContent[] {
+  return verses
+    .map((v) => {
+      const te = (teluguOf(v) || '').trim()
+      const en = (englishOf(v) || '').trim()
+      const lines = (lang === 'telugu' ? [te] : lang === 'english' ? [en] : [te, en]).filter((l) => l)
+      const ref = refOf(v)
+      return { id: uid(), kind: 'scripture' as const, label: ref, lines, caption: ref }
+    })
+    .filter((s) => s.lines.length > 0)
+}
+
+/**
  * Free text -> slides. Blank lines separate slides; single newlines separate
  * lines within a slide.
  */

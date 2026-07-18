@@ -116,6 +116,9 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
   const showText = visible && !isTimer && !hasComposed && lines.length > 0
   const showTimer = visible && isTimer && !!slide
   const qr = visible && !isTimer ? slide?.qr : undefined
+  // Drop a trailing "(ESV)" version tag from the caption — the footer no longer
+  // carries the version marker (covers decks built before this change).
+  const caption = (slide?.caption ?? '').replace(/\s*\(ESV\)\s*$/i, '')
 
   const textStyle: CSSProperties = {
     color: theme.textColor,
@@ -188,9 +191,9 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
               ))}
             </div>
           </div>
-          {slide?.caption && (
+          {caption && (
             <div className="stage-caption" style={{ color: theme.captionColor, fontFamily: theme.fontFamily }}>
-              {slide.caption}
+              {caption}
             </div>
           )}
           {qr && (

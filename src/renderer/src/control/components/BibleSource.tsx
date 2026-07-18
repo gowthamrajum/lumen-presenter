@@ -1,15 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bible, type BibleVerse } from '@shared/bible'
+import { Bible, referenceOf, type BibleVerse } from '@shared/bible'
 import { useStore } from '../../store/useStore'
-import { scriptureSlides } from '../slides'
-import { TRANSLATIONS, DEFAULT_TRANSLATION_ID, translationMeta } from '../translations'
+import { bilingualScriptureSlides, type PsalmLang } from '../slides'
+import { LangToggle } from './LangToggle'
 
+/**
+ * Bible source — bilingual like the Psalms source. Both church bibles load once
+ * (Telugu OV + WEB English); a verse pairs its Telugu and English text by the
+ * canonical English book key + chapter + verse, so a slide can carry Both, just
+ * Telugu, or just English. Reference search ("John 3:16") works in any mode;
+ * text search reads the language you're browsing in.
+ */
 export function BibleSource(): JSX.Element {
   const addItem = useStore((s) => s.addItem)
 
-  const [translationId, setTranslationId] = useState(DEFAULT_TRANSLATION_ID)
-  const [bible, setBible] = useState<Bible | null>(null)
+  const [telugu, setTelugu] = useState<Bible | null>(null)
+  const [web, setWeb] = useState<Bible | null>(null)
   const [loading, setLoading] = useState(true)
+  const [lang, setLang] = useState<PsalmLang>('both')
 
   const [query, setQuery] = useState('')
   const [book, setBook] = useState('')
@@ -21,25 +29,24 @@ export function BibleSource(): JSX.Element {
   const [vEnd, setVEnd] = useState(10)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  // Load the selected translation (Telugu comes from the main process).
+  // Load both translations up front (each is read once by the main process).
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setBible(null)
-    translationMeta(translationId)
-      .load()
-      .then((t) => {
+    Promise.all([window.lumen.loadTranslation('telugu'), window.lumen.loadTranslation('web')])
+      .then(([te, en]) => {
         if (cancelled) return
-        const b = new Bible(t)
-        setBible(b)
-        const firstBook = b.books()[0]?.book ?? ''
-        const firstChapter = firstBook ? b.chaptersFor(firstBook)[0] ?? 1 : 1
+        const teB = te ? new Bible(te) : null
+        const enB = en ? new Bible(en) : null
+        setTelugu(teB)
+        setWeb(enB)
+        const base = teB ?? enB
+        const firstBook = base?.books()[0]?.book ?? ''
+        const firstChapter = firstBook && base ? base.chaptersFor(firstBook)[0] ?? 1 : 1
         setBook(firstBook)
         setChapter(firstChapter)
         setChapterText(String(firstChapter))
         setChapterError('')
-        setRangeOn(false)
-        setSelected(new Set())
         setLoading(false)
       })
       .catch(() => {
@@ -48,21 +55,35 @@ export function BibleSource(): JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [translationId])
+  }, [])
 
-  const books = useMemo(() => bible?.books() ?? [], [bible])
-  const chapters = useMemo(() => (bible && book ? bible.chaptersFor(book) : []), [bible, book])
+  // Browse/search from the language you're reading (so English word-search works
+  // in English mode); the book KEY is the same across both, so toggling language
+  // keeps your place. Both/Telugu browse the Telugu OV.
+  const primary = lang === 'english' ? web : telugu
+
+  const teOf = (v: BibleVerse): string => telugu?.verse(v.book, v.chapter, v.verse)?.text ?? ''
+  const enOf = (v: BibleVerse): string => web?.verse(v.book, v.chapter, v.verse)?.text ?? ''
+  const refOf = (v: BibleVerse): string => primary?.reference(v) ?? referenceOf(v)
+  const keyOf = (v: BibleVerse): string => referenceOf(v) // stable across languages
+  const previewOf = (v: BibleVerse): string => {
+    const te = teOf(v)
+    const en = enOf(v)
+    return lang === 'telugu' ? te : lang === 'english' ? en : [te, en].filter(Boolean).join('\n')
+  }
+
+  const books = useMemo(() => primary?.books() ?? [], [primary])
+  const chapters = useMemo(() => (primary && book ? primary.chaptersFor(book) : []), [primary, book])
   const maxChapter = chapters.length ? chapters[chapters.length - 1] : 1
   const searchResults = useMemo(
-    () => (bible && query.trim() ? bible.search(query) : null),
-    [bible, query]
+    () => (primary && query.trim() ? primary.search(query) : null),
+    [primary, query]
   )
   const browseVerses = useMemo(
-    () => (bible && book ? bible.versesFor(book, chapter) : []),
-    [bible, book, chapter]
+    () => (primary && book ? primary.versesFor(book, chapter) : []),
+    [primary, book, chapter]
   )
   const maxVerse = browseVerses.length ? browseVerses[browseVerses.length - 1].verse : 1
-  // In browse mode, an optional verse range narrows the chapter to vStart–vEnd.
   const rangedVerses = useMemo(
     () => (rangeOn && vStart <= vEnd ? browseVerses.filter((v) => v.verse >= vStart && v.verse <= vEnd) : browseVerses),
     [browseVerses, rangeOn, vStart, vEnd]
@@ -82,22 +103,17 @@ export function BibleSource(): JSX.Element {
       return
     }
     const n = Number(t)
-    // Only chapters this book actually has (matches the old dropdown's set).
     if (!chapters.includes(n)) {
       setChapterError(`This book has ${maxChapter} chapter${maxChapter > 1 ? 's' : ''}`)
       return
     }
     setChapterError('')
-    // Only drop the selection / stale range when the chapter really changes.
     if (n !== chapter) {
       setChapter(n)
       setSelected(new Set())
       setRangeOn(false)
     }
   }
-
-  const refOf = (v: BibleVerse): string => bible?.reference(v) ?? `${v.book} ${v.chapter}:${v.verse}`
-  const keyOf = refOf
 
   const toggle = (v: BibleVerse): void => {
     setSelected((prev) => {
@@ -114,32 +130,20 @@ export function BibleSource(): JSX.Element {
   const addSelected = (goLive: boolean): void => {
     const toAdd = selectedVerses.length ? selectedVerses : verses
     if (!toAdd.length) return
-    const title =
-      toAdd.length === 1
-        ? refOf(toAdd[0])
-        : `${refOf(toAdd[0])}–${toAdd[toAdd.length - 1].verse}`
-    addItem({ title, kind: 'scripture', slides: scriptureSlides(toAdd, refOf) }, goLive)
+    const title = toAdd.length === 1 ? refOf(toAdd[0]) : `${refOf(toAdd[0])}–${toAdd[toAdd.length - 1].verse}`
+    addItem({ title, kind: 'scripture', slides: bilingualScriptureSlides(toAdd, lang, teOf, enOf, refOf) }, goLive)
     setSelected(new Set())
   }
 
   const presentOne = (v: BibleVerse): void => {
-    addItem({ title: refOf(v), kind: 'scripture', slides: scriptureSlides([v], refOf) }, true)
+    addItem({ title: refOf(v), kind: 'scripture', slides: bilingualScriptureSlides([v], lang, teOf, enOf, refOf) }, true)
   }
 
   return (
     <div className="source bible-source">
-      <select
-        className="translation-select"
-        value={translationId}
-        onChange={(e) => setTranslationId(e.target.value)}
-        title="Bible translation"
-      >
-        {TRANSLATIONS.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.name}
-          </option>
-        ))}
-      </select>
+      <div className="lang-row">
+        <LangToggle value={lang} onChange={(l) => setLang(l as PsalmLang)} />
+      </div>
 
       <input
         className="search"
@@ -159,7 +163,7 @@ export function BibleSource(): JSX.Element {
               value={book}
               onChange={(e) => {
                 const nb = e.target.value
-                const first = (bible ? bible.chaptersFor(nb)[0] : 1) ?? 1
+                const first = (primary ? primary.chaptersFor(nb)[0] : 1) ?? 1
                 setBook(nb)
                 setChapter(first)
                 setChapterText(String(first))
@@ -223,10 +227,8 @@ export function BibleSource(): JSX.Element {
       )}
 
       <div className="verse-list">
-        {loading && <div className="empty-note">Loading {translationMeta(translationId).name}…</div>}
-        {!loading && verses.length === 0 && (
-          <div className="empty-note">No verses. Try another search.</div>
-        )}
+        {loading && <div className="empty-note">Loading Telugu + English…</div>}
+        {!loading && verses.length === 0 && <div className="empty-note">No verses. Try another search.</div>}
         {verses.map((v) => {
           const k = keyOf(v)
           return (
@@ -237,8 +239,8 @@ export function BibleSource(): JSX.Element {
               onDoubleClick={() => presentOne(v)}
               title="Click to select · double-click to present now"
             >
-              <div className="verse-ref">{k}</div>
-              <div className="verse-text">{v.text}</div>
+              <div className="verse-ref">{refOf(v)}</div>
+              <div className="verse-text psalm-text">{previewOf(v)}</div>
             </div>
           )
         })}
@@ -253,7 +255,7 @@ export function BibleSource(): JSX.Element {
         </button>
       </div>
       <div className="source-hint">
-        {bible ? `${bible.name} · ` : ''}double-click a verse to present it instantly
+        {loading ? 'Loading…' : 'Telugu OV + WEB · double-click a verse to present it instantly'}
       </div>
     </div>
   )
