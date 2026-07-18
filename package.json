@@ -1,6 +1,6 @@
 {
   "name": "cantica",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "description": "Cantica — an open worship presentation app (ProPresenter / Worship Tools Presenter style)",
   "main": "./out/main/index.js",
   "author": "Telugu Community Church (https://teluguchurchdfw.org)",
