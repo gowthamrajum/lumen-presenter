@@ -56,9 +56,9 @@ export interface ExportOptions {
 
 export async function exportSessionToPptx(
   req: PptxExportRequest,
-  outPath: string,
+  outPath: string | null,
   opts: ExportOptions
-): Promise<{ count: number }> {
+): Promise<{ count: number; bytes: Uint8Array }> {
   const states = slideStates(req)
   if (states.length === 0) throw new Error('nothing to export — the session has no slides')
 
@@ -93,8 +93,8 @@ export async function exportSessionToPptx(
     }
 
     const pptx = buildPptx(pngs)
-    await writeFile(outPath, Buffer.from(pptx))
-    return { count: states.length }
+    if (outPath) await writeFile(outPath, Buffer.from(pptx))
+    return { count: states.length, bytes: pptx }
   } finally {
     if (!win.isDestroyed()) win.destroy()
   }

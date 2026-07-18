@@ -72,13 +72,20 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
     return () => clearTimeout(t)
   }, [exp.phase])
 
-  // Export/import the whole deck as portable JSON (reuse the header status line).
-  const doExportJson = async (): Promise<void> => {
+  // Export the whole deck as a .zip (rendered PowerPoint + JSON); import a .json/.zip.
+  // The zip export renders the PPTX, so it shows the same live progress.
+  const doExportZip = async (): Promise<void> => {
     setMenu(false)
-    if (!items.length) return
-    const res = await exportServiceJson()
-    if (res.ok) setExp({ phase: 'done', done: 0, total: 0, msg: 'Service exported' })
-    else if (!res.canceled) setExp({ phase: 'error', done: 0, total: 0, msg: res.error || 'Export failed' })
+    if (!items.length || exp.phase === 'running') return
+    setExp({ phase: 'running', done: 0, total: 0 })
+    try {
+      const res = await exportServiceJson()
+      if (res.ok) setExp({ phase: 'done', done: res.count ?? 0, total: res.count ?? 0, msg: 'Exported PPTX + JSON (zip)' })
+      else if (res.canceled) setExp({ phase: 'idle', done: 0, total: 0 })
+      else setExp({ phase: 'error', done: 0, total: 0, msg: res.error || 'Export failed' })
+    } catch (e) {
+      setExp({ phase: 'error', done: 0, total: 0, msg: e instanceof Error ? e.message : 'Export failed' })
+    }
   }
   const doImportJson = async (): Promise<void> => {
     setMenu(false)
@@ -167,10 +174,14 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                   <span className="mi-row"><Icon name="spark" /> New service</span>
                 </button>
                 <button className="menu-item" onClick={() => void doImportJson()}>
-                  <span className="mi-row"><Icon name="upload" /> Import service (JSON)…</span>
+                  <span className="mi-row"><Icon name="upload" /> Import service (JSON / ZIP)…</span>
                 </button>
-                <button className="menu-item" onClick={() => void doExportJson()} disabled={!items.length}>
-                  <span className="mi-row"><Icon name="download" /> Export service (JSON)…</span>
+                <button
+                  className="menu-item"
+                  onClick={() => void doExportZip()}
+                  disabled={!items.length || exp.phase === 'running'}
+                >
+                  <span className="mi-row"><Icon name="download" /> Export service (PPTX + JSON zip)…</span>
                 </button>
                 <div className="menu-label">Start from a template</div>
                 {SERVICE_TEMPLATES.map((t) => (

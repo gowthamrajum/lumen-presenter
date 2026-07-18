@@ -25,6 +25,8 @@ import {
 } from '../shared/types'
 import { importPptxFiles } from './pptx'
 import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExport'
+import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate'
+import { DEFAULT_BACKGROUND, DEFAULT_THEME } from '../shared/types'
 import { cachedFetchJson } from './httpCache'
 import { esvKeyStatus, esvSetKey, esvPassage } from './esv'
 import type { PptxExportRequest } from '../shared/types'
@@ -409,34 +411,61 @@ function registerIpc(): void {
     return listServices()
   })
 
-  // Export the whole service (deck) as a portable JSON file the user picks.
+  // Export the whole service as a .zip containing BOTH a rendered PowerPoint
+  // (pixel-faithful, one image slide per slide) and the portable JSON envelope.
   ipcMain.handle(IPC.serviceExport, async (_e, env: ServiceExport) => {
-    const name = (env?.service?.name || 'Cantica Service').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Cantica Service'
+    const svc = env?.service
+    if (!svc?.items?.length) return { ok: false, error: 'Nothing to export — the service has no slides.' }
+    const name = (svc.name || 'Cantica Service').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Cantica Service'
     const res = await dialog.showSaveDialog(controlWindow!, {
-      title: 'Export service (JSON)',
-      defaultPath: `${name}.cantica.json`,
-      filters: [{ name: 'Cantica service', extensions: ['json'] }]
+      title: 'Export service (PowerPoint + JSON, zipped)',
+      defaultPath: `${name}.zip`,
+      filters: [{ name: 'Zip archive', extensions: ['zip'] }]
     })
     if (res.canceled || !res.filePath) return { ok: false, canceled: true }
     try {
-      await writeFile(res.filePath, JSON.stringify(env, null, 2), 'utf8')
-      return { ok: true, path: res.filePath }
+      const { bytes: pptxBytes, count } = await exportSessionToPptx(
+        { name, items: svc.items, background: svc.background ?? DEFAULT_BACKGROUND, theme: svc.theme ?? DEFAULT_THEME },
+        null,
+        {
+          preloadPath: preloadPathFrom(__dirname),
+          exportUrl: exportUrlFrom(rendererUrl('output')),
+          onProgress: (done, total) => controlWindow?.webContents.send(IPC.pptxExportProgress, { done, total })
+        }
+      )
+      const zip = zipSync(
+        { [`${name}.pptx`]: pptxBytes, [`${name}.cantica.json`]: strToU8(JSON.stringify(env, null, 2)) },
+        { level: 4 }
+      )
+      await writeFile(res.filePath, Buffer.from(zip))
+      return { ok: true, path: res.filePath, count }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
   })
 
-  // Import a service from a JSON file: accepts our envelope (`{service:…}`) or a
-  // bare service object (`{items:…}`) so an external tool's export still loads.
+  // Import a service from a .json OR a .zip (reads the .json inside). Accepts our
+  // envelope (`{service:…}`) or a bare service object (`{items:…}`) so an external
+  // tool's export still loads.
   ipcMain.handle(IPC.serviceImport, async () => {
     const res = await dialog.showOpenDialog(controlWindow!, {
-      title: 'Import service (JSON)',
+      title: 'Import service (JSON or ZIP)',
       properties: ['openFile'],
-      filters: [{ name: 'Cantica service', extensions: ['json'] }]
+      filters: [{ name: 'Cantica service', extensions: ['json', 'zip'] }]
     })
     if (res.canceled || !res.filePaths[0]) return { ok: false, canceled: true }
+    const filePath = res.filePaths[0]
     try {
-      const raw = JSON.parse(await readFile(res.filePaths[0], 'utf8'))
+      let text: string
+      if (/\.zip$/i.test(filePath)) {
+        const entries = unzipSync(new Uint8Array(await readFile(filePath)))
+        const jsonName = Object.keys(entries).find((n) => /\.json$/i.test(n))
+        if (!jsonName) return { ok: false, error: 'That zip has no service JSON inside it.' }
+        text = strFromU8(entries[jsonName])
+      } else {
+        text = await readFile(filePath, 'utf8')
+      }
+      const raw = JSON.parse(text)
       const svc = raw?.service ?? raw
       if (!svc || !Array.isArray(svc.items)) {
         return { ok: false, error: 'That file isn’t a Cantica service (no slides found).' }
@@ -448,9 +477,10 @@ function registerIpc(): void {
         background: svc.background,
         theme: svc.theme
       }
-      return { ok: true, service }
+      const obsStyle = raw?.obsStyle ?? svc?.obsStyle
+      return { ok: true, service, obsStyle }
     } catch {
-      return { ok: false, error: 'Could not read that file — it isn’t valid JSON.' }
+      return { ok: false, error: 'Could not read that file — it isn’t a valid JSON/ZIP.' }
     }
   })
 

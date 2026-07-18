@@ -194,11 +194,17 @@ export interface ServiceExport {
     background?: Background
     theme?: ThemeStyle
   }
+  /** OBS lower-third size/style (text size, position, colors, band). Included so a
+   *  backup restores the OBS look too; the room slug + control PIN are deliberately
+   *  NOT exported (install-specific, unrelated to the deck). */
+  obsStyle?: ObsStyle
 }
 
 export interface ServiceExportResult {
   ok: boolean
   path?: string
+  /** number of slides rendered into the bundled PowerPoint */
+  count?: number
   canceled?: boolean
   error?: string
 }
@@ -206,6 +212,8 @@ export interface ServiceExportResult {
 export interface ServiceImportResult {
   ok: boolean
   service?: Service
+  /** OBS style from the file, if present (applied to the broadcast config on import) */
+  obsStyle?: ObsStyle
   canceled?: boolean
   error?: string
 }

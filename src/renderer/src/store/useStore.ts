@@ -775,6 +775,9 @@ export const useStore = create<AppState>((set, get) => {
 
     exportServiceJson: async () => {
       const s = get()
+      // Include the OBS lower-third style (size/position/colors/band) for a complete
+      // presentation snapshot — but never the room slug / control PIN.
+      const bc = await window.lumen.getBroadcast().catch(() => null)
       const env: ServiceExport = {
         format: 'cantica-service',
         version: 1,
@@ -784,7 +787,8 @@ export const useStore = create<AppState>((set, get) => {
           items: s.items,
           background: s.background,
           theme: s.theme
-        }
+        },
+        obsStyle: bc?.obsStyle
       }
       return window.lumen.exportServiceJson(env)
     },
@@ -793,6 +797,8 @@ export const useStore = create<AppState>((set, get) => {
       const res = await window.lumen.importServiceJson()
       if (!res.ok || !res.service) return res
       const svc = res.service
+      // Restore the OBS lower-third style if the file carried it (room/PIN unchanged).
+      if (res.obsStyle) await window.lumen.setBroadcast({ obsStyle: res.obsStyle }).catch(() => {})
       // Fresh serviceId (null) → saving creates a NEW entry, never overwrites a
       // saved service. Re-arm countdowns so an imported deck doesn't show 0:00.
       const items = reArmItems(svc.items ?? [], Date.now())
