@@ -8,18 +8,15 @@ export type PsalmLang = 'both' | 'telugu' | 'english'
 
 /** Psalm verses -> scripture slides, one per verse, in the chosen language(s).
  *  Verses with no text in the chosen language are skipped (no blank slides).
- *  When the English is the ESV and it's actually shown, the caption carries the
- *  required "(ESV)" attribution. */
-export function psalmSlides(verses: PsalmVerse[], lang: PsalmLang = 'both', esv = false): SlideContent[] {
-  const showsEnglish = lang !== 'telugu'
+ *  The caption is just the reference — no version marker on the footer. */
+export function psalmSlides(verses: PsalmVerse[], lang: PsalmLang = 'both'): SlideContent[] {
   return verses
     .map((v) => {
       const ref = `Psalm ${v.chapter}:${v.verse}`
       const lines = (lang === 'telugu' ? [v.telugu] : lang === 'english' ? [v.english] : [v.telugu, v.english]).filter(
         (l) => l && l.trim()
       )
-      const caption = esv && showsEnglish ? `${ref} (ESV)` : ref
-      return { id: uid(), kind: 'scripture' as const, label: ref, lines, caption }
+      return { id: uid(), kind: 'scripture' as const, label: ref, lines, caption: ref }
     })
     .filter((s) => s.lines.length > 0)
 }

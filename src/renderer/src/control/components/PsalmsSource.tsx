@@ -80,7 +80,6 @@ export function PsalmsSource(): JSX.Element {
   }
 
   const selectedVerses = verses.filter((v) => selected.has(v.id))
-  const esvCaptions = usedEnglish === 'esv'
 
   const add = (goLive: boolean): void => {
     const toAdd = selectedVerses.length ? selectedVerses : verses
@@ -95,13 +94,13 @@ export function PsalmsSource(): JSX.Element {
     const reference = wholeChapter
       ? `${first.chapter}`
       : `${first.chapter}:${first.verse}${toAdd.length > 1 ? `-${last.verse}` : ''}`
-    addPsalm({ title, slides: psalmSlides(toAdd, lang, esvCaptions), reference }, goLive)
+    addPsalm({ title, slides: psalmSlides(toAdd, lang), reference }, goLive)
     setSelected(new Set())
   }
 
   const presentOne = (v: PsalmVerse): void => {
     addItem(
-      { title: `Psalm ${v.chapter}:${v.verse}`, kind: 'scripture', slides: psalmSlides([v], lang, esvCaptions) },
+      { title: `Psalm ${v.chapter}:${v.verse}`, kind: 'scripture', slides: psalmSlides([v], lang) },
       true
     )
   }

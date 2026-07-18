@@ -762,12 +762,17 @@
       renderComposed(slide.composed);
     } else {
       var lines = textOf(slide).filter(function (t) { return t && t.trim(); });
-      // OBS view: show ONLY the English transliteration — both languages crowd the
-      // lower third. Drop Telugu-script lines; keep the original if none remain (an
-      // all-Telugu slide isn't blanked). Audience/operator views keep both.
+      // OBS lower third shows ONE language so it doesn't crowd:
+      //   • scripture (Psalms / Bible) → the Telugu text (the church reads Telugu);
+      //   • songs / everything else    → the English transliteration.
+      // If the chosen language has no line on this slide, keep the original so an
+      // all-one-language slide is never blanked. Audience/operator views keep both.
       if (mode === 'obs') {
-        var en = lines.filter(function (t) { return !/[ఀ-౿]/.test(t); });
-        if (en.length) lines = en;
+        var isTelugu = function (t) { return /[ఀ-౿]/.test(t); };
+        var pick = slide.kind === 'scripture'
+          ? lines.filter(isTelugu)
+          : lines.filter(function (t) { return !isTelugu(t); });
+        if (pick.length) lines = pick;
       }
       if (!lines.length) { stage.classList.remove('show'); setLiveShowing(false); return; }
       renderLines(lines, scale);
@@ -776,7 +781,9 @@
     }
 
     var composedShown = mode === 'audience' && slide.composed && slide.composed.length;
-    var cap = slide.caption || '';
+    // Drop a trailing "(ESV)" version tag — the lower third no longer carries the
+    // version marker (covers decks built before this change too).
+    var cap = (slide.caption || '').replace(/\s*\(ESV\)\s*$/i, '');
     captionEl.textContent = cap;
     captionEl.style.display = cap && !composedShown ? '' : 'none';
     // giving/offering QR (audience mirror only), seated to the right of the text
