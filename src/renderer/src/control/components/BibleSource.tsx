@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Bible, referenceOf, type BibleVerse } from '@shared/bible'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Bible, referenceOf, compactVerses, type BibleBook, type BibleVerse } from '@shared/bible'
 import { useStore } from '../../store/useStore'
 import { bilingualScriptureSlides, type PsalmLang } from '../slides'
 import { LangToggle } from './LangToggle'
@@ -73,6 +73,29 @@ export function BibleSource(): JSX.Element {
   }
 
   const books = useMemo(() => primary?.books() ?? [], [primary])
+
+  // Book-name autocomplete: while the operator is still typing the book (before a
+  // chapter number), suggest matching books so "rev" → Revelation. Matches the
+  // localized display name and the English key; hidden once a chapter is typed or
+  // the name is already complete.
+  const searchRef = useRef<HTMLInputElement>(null)
+  const bookSuggestions = useMemo<BibleBook[]>(() => {
+    const m = query.trim().match(/^(.+?)\s*(\d+\s*(?::[\d\s,-]+)?)?$/)
+    const bq = m?.[1]?.trim().toLowerCase() ?? ''
+    if (!bq || m?.[2]) return [] // nothing typed yet, or a chapter is already present
+    const hits = books.filter(
+      (b) => b.display.toLowerCase().startsWith(bq) || b.book.toLowerCase().startsWith(bq)
+    )
+    // Don't dangle a single suggestion that just echoes a fully-typed name.
+    if (hits.length === 1 && (hits[0].display.toLowerCase() === bq || hits[0].book.toLowerCase() === bq)) return []
+    return hits.slice(0, 8)
+  }, [query, books])
+
+  const pickBook = (b: BibleBook): void => {
+    setQuery(`${b.display} `) // leave a trailing space so the operator types "3:16" next
+    setSelected(new Set())
+    searchRef.current?.focus()
+  }
   const chapters = useMemo(() => (primary && book ? primary.chaptersFor(book) : []), [primary, book])
   const maxChapter = chapters.length ? chapters[chapters.length - 1] : 1
   const searchResults = useMemo(
@@ -127,16 +150,36 @@ export function BibleSource(): JSX.Element {
 
   const selectedVerses = verses.filter((v) => selected.has(keyOf(v)))
 
+  // Accurate label for a selection: one verse → its ref; several within the same
+  // chapter → "Book c:13-16,20" (comma lists no longer read like a range); a
+  // cross-chapter span → first–last full refs.
+  const titleFor = (list: BibleVerse[]): string => {
+    if (list.length === 1) return refOf(list[0])
+    const sameChapter = list.every((v) => v.book === list[0].book && v.chapter === list[0].chapter)
+    if (sameChapter) {
+      const prefix = refOf(list[0]).replace(/:\d+$/, '') // "Book c"
+      return `${prefix}:${compactVerses(list.map((v) => v.verse))}`
+    }
+    return `${refOf(list[0])}–${refOf(list[list.length - 1])}`
+  }
+
   const addSelected = (goLive: boolean): void => {
     const toAdd = selectedVerses.length ? selectedVerses : verses
     if (!toAdd.length) return
-    const title = toAdd.length === 1 ? refOf(toAdd[0]) : `${refOf(toAdd[0])}–${toAdd[toAdd.length - 1].verse}`
-    addItem({ title, kind: 'scripture', slides: bilingualScriptureSlides(toAdd, lang, teOf, enOf, refOf) }, goLive)
+    const title = titleFor(toAdd)
+    // Bible passages auto-advance to the Sermon slide after the verse TTL.
+    addItem(
+      { title, kind: 'scripture', slides: bilingualScriptureSlides(toAdd, lang, teOf, enOf, refOf), autoAdvance: true },
+      goLive
+    )
     setSelected(new Set())
   }
 
   const presentOne = (v: BibleVerse): void => {
-    addItem({ title: refOf(v), kind: 'scripture', slides: bilingualScriptureSlides([v], lang, teOf, enOf, refOf) }, true)
+    addItem(
+      { title: refOf(v), kind: 'scripture', slides: bilingualScriptureSlides([v], lang, teOf, enOf, refOf), autoAdvance: true },
+      true
+    )
   }
 
   return (
@@ -145,16 +188,40 @@ export function BibleSource(): JSX.Element {
         <LangToggle value={lang} onChange={(l) => setLang(l as PsalmLang)} />
       </div>
 
-      <input
-        className="search"
-        placeholder="Search text or reference"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value)
-          setSelected(new Set()) // selection is scoped to the visible list
-        }}
-        disabled={loading}
-      />
+      <div className="search-wrap">
+        <input
+          ref={searchRef}
+          className="search"
+          placeholder="Search text or reference (e.g. Mark 5:13-16 or 5:13,16)"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setSelected(new Set()) // selection is scoped to the visible list
+          }}
+          disabled={loading}
+        />
+        {bookSuggestions.length > 0 && (
+          <div className="book-suggest" role="listbox">
+            {bookSuggestions.map((b) => (
+              <button
+                key={b.book}
+                type="button"
+                role="option"
+                aria-selected={false}
+                className="book-suggest-item"
+                // onMouseDown (not onClick) so the pick lands before the input blurs.
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  pickBook(b)
+                }}
+              >
+                <span className="book-suggest-name">{b.display}</span>
+                {b.display !== b.book && <span className="book-suggest-key">{b.book}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {!searchResults && (
         <>

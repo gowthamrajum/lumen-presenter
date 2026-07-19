@@ -91,6 +91,10 @@ export class Bible {
     if (!raw) return []
     const q = raw.toLowerCase()
     const ref = this.parseRef(q)
+    // A reference with an explicit verse spec (a range/list like "5:13-16" or
+    // "5:13,16") may name more verses than the default text-search cap; make sure
+    // every requested verse can come back.
+    const cap = ref?.verses ? Math.max(limit, ref.verses.length) : limit
     const out: BibleVerse[] = []
     for (const v of this.verses) {
       const localizedName = this.names[v.book]
@@ -99,20 +103,22 @@ export class Bible {
         (v.book.toLowerCase().startsWith(ref.book) ||
           (localizedName ? localizedName.startsWith(ref.book) : false)) &&
         (ref.chapter == null || v.chapter === ref.chapter) &&
-        (ref.verse == null || v.verse === ref.verse)
+        (ref.verses == null || ref.verses.includes(v.verse))
       const matchesText = v.text.toLowerCase().includes(q)
       const matchesLocalizedBook = localizedName ? localizedName.includes(raw) : false
       if (matchesRef || matchesText || matchesLocalizedBook) {
         out.push(v)
-        if (out.length >= limit) break
+        if (out.length >= cap) break
       }
     }
     return out
   }
 
-  private parseRef(q: string): { book: string; chapter: number | null; verse: number | null } | null {
-    // e.g. "john 3:16", "psalm 23", "1 cor 13", or a localized book name
-    const m = q.match(/^(.+?)\s*(\d+)?\s*(?::\s*(\d+))?$/)
+  private parseRef(q: string): { book: string; chapter: number | null; verses: number[] | null } | null {
+    // e.g. "john 3:16", "psalm 23", "1 cor 13", "mark 5:13-16", "mark 5:13,16",
+    // or a localized book name. The part after ":" is a verse spec: a single
+    // verse, a hyphen range, a comma list, or any mix ("13-16,20").
+    const m = q.match(/^(.+?)\s*(\d+)?\s*(?::\s*([\d\s,-]+))?$/)
     if (!m) return null
     const book = m[1].trim()
     // The book part must contain a letter (Latin or localized script). This
@@ -120,15 +126,59 @@ export class Bible {
     // which produced spurious reference matches — such queries fall through to
     // plain text search instead.
     if (!book || !/\p{L}/u.test(book)) return null
+    const verses = m[3] ? parseVerseSpec(m[3]) : null
     return {
       book,
       chapter: m[2] ? parseInt(m[2], 10) : null,
-      verse: m[3] ? parseInt(m[3], 10) : null
+      // Empty/garbled spec (e.g. a lone "-") → treat as "whole chapter".
+      verses: verses && verses.length ? verses : null
     }
   }
+}
+
+/**
+ * Expand a verse spec ("13", "13-16", "13,16", "13-16,20") into a sorted, unique
+ * list of verse numbers. Reversed ranges ("16-13") are tolerated. Non-numeric
+ * junk is ignored. Returns [] for an empty/unparseable spec.
+ */
+export function parseVerseSpec(spec: string): number[] {
+  const out = new Set<number>()
+  for (const part of spec.split(',')) {
+    const p = part.trim()
+    if (!p) continue
+    const range = p.match(/^(\d+)\s*-\s*(\d+)$/)
+    if (range) {
+      let a = parseInt(range[1], 10)
+      let b = parseInt(range[2], 10)
+      if (a > b) [a, b] = [b, a]
+      for (let n = a; n <= b; n++) out.add(n)
+    } else if (/^\d+$/.test(p)) {
+      out.add(parseInt(p, 10))
+    }
+  }
+  return [...out].sort((a, b) => a - b)
 }
 
 /** English reference, independent of any loaded translation. */
 export function referenceOf(v: BibleVerse): string {
   return `${v.book} ${v.chapter}:${v.verse}`
+}
+
+/**
+ * Collapse a set of verse numbers into a compact reference tail: consecutive runs
+ * become ranges, gaps become commas — [13,14,15,16] → "13-16", [13,16] → "13,16",
+ * [13,14,15,16,20] → "13-16,20". Used to label a multi-verse selection accurately
+ * (a comma list no longer reads like a single range).
+ */
+export function compactVerses(nums: number[]): string {
+  const s = [...new Set(nums)].sort((a, b) => a - b)
+  const parts: string[] = []
+  let i = 0
+  while (i < s.length) {
+    let j = i
+    while (j + 1 < s.length && s[j + 1] === s[j] + 1) j++
+    parts.push(i === j ? String(s[i]) : `${s[i]}-${s[j]}`)
+    i = j + 1
+  }
+  return parts.join(',')
 }

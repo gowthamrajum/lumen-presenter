@@ -1,14 +1,51 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import { Icon, type IconName } from '../../shared/Icon'
 import type { LiveState } from '@shared/types'
 import { THEME_PRESETS } from '../presets'
+import { VERSE_EXTEND_MS } from '../useVerseAutoAdvance'
 
 const ALIGN_ICON: Record<'left' | 'center' | 'right', IconName> = {
   left: 'align-left',
   center: 'align-center',
   right: 'align-right'
+}
+
+/** Live countdown shown while a Bible verse is set to auto-advance to the Sermon.
+ *  Lets the operator add time or hold it. Renders nothing when nothing is pending. */
+function SermonCountdown(): JSX.Element | null {
+  const autoAdvanceAt = useStore((s) => s.autoAdvanceAt)
+  const extend = useStore((s) => s.extendAutoAdvance)
+  const cancel = useStore((s) => s.cancelAutoAdvance)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (autoAdvanceAt == null) return
+    const id = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(id)
+  }, [autoAdvanceAt])
+
+  if (autoAdvanceAt == null) return null
+  const remain = Math.max(0, Math.ceil((autoAdvanceAt - now) / 1000))
+  return (
+    <div className="auto-advance">
+      <Icon name="timer" />
+      <span className="auto-advance-text">
+        Sermon in <b>{remain}s</b>
+      </span>
+      <button
+        className="btn tiny"
+        onClick={() => extend(VERSE_EXTEND_MS)}
+        title={`Hold the verse ${VERSE_EXTEND_MS / 1000}s longer`}
+      >
+        +{VERSE_EXTEND_MS / 1000}s
+      </button>
+      <button className="btn tiny" onClick={cancel} title="Stop the auto-advance and stay on the verse">
+        Hold
+      </button>
+    </div>
+  )
 }
 
 export function LivePanel(): JSX.Element {
@@ -68,6 +105,7 @@ export function LivePanel(): JSX.Element {
             Next <Icon name="chevron-right" />
           </button>
         </div>
+        <SermonCountdown />
       </div>
 
       <div className="live-section">

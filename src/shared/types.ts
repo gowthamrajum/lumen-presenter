@@ -168,6 +168,9 @@ export interface ServiceItem {
   /** @deprecated legacy single flag (both channels). Read via the helpers;
    *  normalized to the two fields above when a saved service is opened. */
   noBroadcast?: boolean
+  /** When live, this item's verse auto-advances to the Sermon slide after a TTL.
+   *  Set on Bible passages only (not psalms / responsive readings). */
+  autoAdvance?: boolean
 }
 
 /** A worship service / setlist: an ordered collection of items plus the look

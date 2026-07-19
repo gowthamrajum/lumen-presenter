@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore'
 import { psalmSlides, type PsalmLang } from '../slides'
 import { Icon } from '../../shared/Icon'
 import { LangToggle } from './LangToggle'
+import { parseVerseSpec, compactVerses } from '@shared/bible'
 import type { PsalmVerse, PsalmEnglish } from '@shared/types'
 
 // Required ESV attribution, shown whenever ESV text is displayed (Crossway terms).
@@ -25,6 +26,10 @@ export function PsalmsSource(): JSX.Element {
   const [rangeOn, setRangeOn] = useState(false)
   const [start, setStart] = useState(1)
   const [end, setEnd] = useState(5)
+  // Verses parsed from a "23:1-4,6"-style reference typed in the Psalm box; when
+  // set it filters the loaded chapter down to exactly those verses (supports the
+  // non-contiguous comma lists the numeric range slider can't).
+  const [versePick, setVersePick] = useState<number[] | null>(null)
   const [lang, setLang] = useState<PsalmLang>('both')
   const [version, setVersion] = useState<PsalmEnglish>('webbe')
   const [verses, setVerses] = useState<PsalmVerse[]>([])
@@ -79,21 +84,23 @@ export function PsalmsSource(): JSX.Element {
     })
   }
 
-  const selectedVerses = verses.filter((v) => selected.has(v.id))
+  // The chapter's verses narrowed to a typed "23:1-4,6" pick (if any).
+  const shown = versePick ? verses.filter((v) => versePick.includes(v.verse)) : verses
+  const selectedVerses = shown.filter((v) => selected.has(v.id))
 
   const add = (goLive: boolean): void => {
-    const toAdd = selectedVerses.length ? selectedVerses : verses
+    const toAdd = selectedVerses.length ? selectedVerses : shown
     if (!toAdd.length) return
     const first = toAdd[0]
-    const last = toAdd[toAdd.length - 1]
+    const verseList = compactVerses(toAdd.map((v) => v.verse))
     const title =
-      toAdd.length === 1 ? `Psalm ${first.chapter}:${first.verse}` : `Psalm ${first.chapter}:${first.verse}–${last.verse}`
+      toAdd.length === 1 ? `Psalm ${first.chapter}:${first.verse}` : `Psalm ${first.chapter}:${verseList}`
     // Reference for the Responsive-Reading heading: whole chapter → "23";
-    // a range/selection → "23:1-6".
-    const wholeChapter = !rangeOn && selectedVerses.length === 0
+    // a range/list/selection → "23:1-4,6".
+    const wholeChapter = !rangeOn && !versePick && selectedVerses.length === 0
     const reference = wholeChapter
       ? `${first.chapter}`
-      : `${first.chapter}:${first.verse}${toAdd.length > 1 ? `-${last.verse}` : ''}`
+      : `${first.chapter}:${toAdd.length > 1 ? verseList : String(first.verse)}`
     addPsalm({ title, slides: psalmSlides(toAdd, lang), reference }, goLive)
     setSelected(new Set())
   }
@@ -108,7 +115,9 @@ export function PsalmsSource(): JSX.Element {
   const textOf = (v: PsalmVerse): string =>
     lang === 'telugu' ? v.telugu : lang === 'english' ? v.english : `${v.telugu}\n${v.english}`
 
-  // Free-form chapter box: expect a whole number 1–150, flag out-of-bounds.
+  // Free-form Psalm box: a chapter ("23") or a full reference with a verse spec
+  // ("23:1-4,6" / "23:1,3,5"). The verse spec filters the loaded chapter to those
+  // verses; a bare chapter clears the filter.
   const onChapterText = (raw: string): void => {
     setChapterText(raw)
     const t = raw.trim()
@@ -116,16 +125,22 @@ export function PsalmsSource(): JSX.Element {
       setChapterError('')
       return
     }
-    if (!/^\d+$/.test(t)) {
-      setChapterError('Enter a number')
+    const m = t.match(/^(\d+)\s*(?::\s*([\d\s,-]+))?$/)
+    if (!m) {
+      setChapterError('Try e.g. 23 or 23:1-4,6')
       return
     }
-    const n = Number(t)
+    const n = Number(m[1])
     if (n < 1 || n > 150) {
       setChapterError('Psalms are 1–150')
       return
     }
     setChapterError('')
+    const pick = m[2] ? parseVerseSpec(m[2]) : []
+    setVersePick(pick.length ? pick : null)
+    // A typed verse spec supersedes the numeric range slider; load the whole
+    // chapter (rangeOn=false) so the client-side filter has every verse.
+    if (pick.length) setRangeOn(false)
     if (n !== chapter) setChapter(n)
   }
 
@@ -137,12 +152,11 @@ export function PsalmsSource(): JSX.Element {
           <input
             className="search"
             type="text"
-            inputMode="numeric"
             value={chapterText}
             onChange={(e) => onChapterText(e.target.value)}
-            placeholder="1–150"
-            aria-label="Psalm chapter number"
-            title="Type a psalm number (1–150)"
+            placeholder="23 or 23:1-4,6"
+            aria-label="Psalm reference"
+            title="Type a psalm number (1–150), optionally with verses: 23:1-4,6"
           />
         </label>
       </div>
@@ -179,7 +193,22 @@ export function PsalmsSource(): JSX.Element {
 
       <div className="verse-range">
         <label className="chk">
-          <input type="checkbox" checked={rangeOn} onChange={(e) => setRangeOn(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={rangeOn}
+            onChange={(e) => {
+              const on = e.target.checked
+              setRangeOn(on)
+              // The numeric slider and a typed verse spec are two ways to pick the
+              // same thing — turning the slider on clears any typed pick so there's
+              // a single source of truth.
+              if (on) {
+                setVersePick(null)
+                setChapterText(String(chapter))
+                setChapterError('')
+              }
+            }}
+          />
           Verse range
         </label>
         {rangeOn && (
@@ -213,8 +242,10 @@ export function PsalmsSource(): JSX.Element {
             {error} <button className="btn tiny" onClick={() => void load()}>Retry</button>
           </div>
         )}
-        {!loading && !error && verses.length === 0 && <div className="empty-note">No verses.</div>}
-        {verses.map((v) => {
+        {!loading && !error && shown.length === 0 && (
+          <div className="empty-note">{versePick ? 'No matching verses in this psalm.' : 'No verses.'}</div>
+        )}
+        {shown.map((v) => {
           const ref = `Psalm ${v.chapter}:${v.verse}`
           return (
             <div
@@ -232,17 +263,21 @@ export function PsalmsSource(): JSX.Element {
       </div>
 
       <div className="source-actions">
-        <button className="btn btn-primary" onClick={() => add(false)} disabled={loading || verses.length === 0}>
+        <button className="btn btn-primary" onClick={() => add(false)} disabled={loading || shown.length === 0}>
           Add {selectedVerses.length ? `${selectedVerses.length} verse${selectedVerses.length > 1 ? 's' : ''}` : 'all'}
         </button>
-        <button className="btn" onClick={() => add(true)} disabled={loading || verses.length === 0}>
+        <button className="btn" onClick={() => add(true)} disabled={loading || shown.length === 0}>
           Add &amp; Present
         </button>
       </div>
 
       <div className="source-hint">
-        {loading ? 'Loading…' : `Showing Psalm ${chapter}${rangeOn ? ` · verses ${start}–${end}` : ''}`} ·
-        double-click a verse to present it instantly
+        {loading
+          ? 'Loading…'
+          : `Showing Psalm ${chapter}${
+              versePick ? ` · verses ${compactVerses(versePick)}` : rangeOn ? ` · verses ${start}–${end}` : ''
+            }`}{' '}
+        · double-click a verse to present it instantly
       </div>
 
       {usedEnglish === 'esv' && verses.length > 0 && (

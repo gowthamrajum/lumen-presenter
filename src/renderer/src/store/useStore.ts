@@ -126,7 +126,10 @@ interface AppState {
   // service items
   /** arm the insertion point for the next add ("+ between sections"); null = append */
   setInsertAt: (index: number | null) => void
-  addItem: (item: { title: string; kind: ItemKind; slides: SlideContent[] }, goLiveFirst?: boolean) => void
+  addItem: (
+    item: { title: string; kind: ItemKind; slides: SlideContent[]; autoAdvance?: boolean },
+    goLiveFirst?: boolean
+  ) => void
   /** add a song wrapped with Praise & Worship bookends (audience-only broadcast) */
   addSong: (item: { title: string; slides: SlideContent[] }, goLiveFirst?: boolean) => void
   /** add a psalm prefixed with a Responsive-Reading heading (broadcast to all) */
@@ -199,6 +202,19 @@ interface AppState {
   goLive: (id: string | null) => void
   goNext: () => void
   goPrev: () => void
+  /** Jump live to the service's Sermon slide (the item titled "Sermon" /
+   *  "వాక్యోపదేశం"). Used by the verse auto-advance. No-op if there's no such
+   *  item or its slide is already live. Returns true if it moved. */
+  goToSermon: () => boolean
+  /** epoch ms when the live Bible verse will auto-advance to the Sermon, or null
+   *  when no auto-advance is pending. The operator can extend or hold it. */
+  autoAdvanceAt: number | null
+  /** (re)arm the auto-advance to fire `ms` from now */
+  armAutoAdvance: (ms: number) => void
+  /** push the pending auto-advance back by `ms` (operator "Extend"); no-op if none */
+  extendAutoAdvance: (ms: number) => void
+  /** stop a pending auto-advance (operator "Hold", or leaving the verse) */
+  cancelAutoAdvance: () => void
   toggleBlackout: () => void
   toggleClear: () => void
   toggleLogo: () => void
@@ -337,6 +353,7 @@ export const useStore = create<AppState>((set, get) => {
     selectedItemId: null,
     insertAt: null,
     liveId: null,
+    autoAdvanceAt: null,
     autoSaveStatus: 'idle',
 
     theme: DEFAULT_THEME,
@@ -414,9 +431,16 @@ export const useStore = create<AppState>((set, get) => {
 
     setInsertAt: (index) => set({ insertAt: index }),
 
-    addItem: ({ title, kind, slides }, goLiveFirst = false) => {
+    addItem: ({ title, kind, slides, autoAdvance }, goLiveFirst = false) => {
       if (!slides.length) return
-      const item: ServiceItem = { id: uid(), title, kind, slides, ...broadcastDefaults(kind) }
+      const item: ServiceItem = {
+        id: uid(),
+        title,
+        kind,
+        slides,
+        ...broadcastDefaults(kind),
+        ...(autoAdvance ? { autoAdvance: true } : {})
+      }
       set((s) => ({ items: insertItems(s.items, s.insertAt, [item]), selectedItemId: item.id, insertAt: null }))
       if (goLiveFirst) get().goLive(slides[0].id)
     },
@@ -870,6 +894,22 @@ export const useStore = create<AppState>((set, get) => {
       })
       push()
     },
+
+    goToSermon: () => {
+      const s = get()
+      // Match the Sermon item by title (English or Telugu), as built by the
+      // service templates and typically named by the operator.
+      const sermon = s.items.find((it) => /sermon|వాక్యోపదేశం/i.test(it.title))
+      const target = sermon?.slides[0]?.id
+      if (!target || target === s.liveId) return false
+      get().goLive(target)
+      return true
+    },
+
+    armAutoAdvance: (ms) => set({ autoAdvanceAt: Date.now() + ms }),
+    extendAutoAdvance: (ms) =>
+      set((s) => ({ autoAdvanceAt: s.autoAdvanceAt != null ? s.autoAdvanceAt + ms : null })),
+    cancelAutoAdvance: () => set((s) => (s.autoAdvanceAt == null ? {} : { autoAdvanceAt: null })),
 
     goNext: () => {
       const slides = selectSlides(get())

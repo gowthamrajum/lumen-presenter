@@ -5,9 +5,11 @@ import { LivePanel } from './components/LivePanel'
 import { SlideComposer } from './components/SlideComposer'
 import { CountdownDialog } from './components/CountdownDialog'
 import { useRemoteControl } from './useRemoteControl'
+import { useVerseAutoAdvance } from './useVerseAutoAdvance'
 
 export function App(): JSX.Element {
   useRemoteControl()
+  useVerseAutoAdvance()
   return (
     <div className="app">
       <TopBar />
