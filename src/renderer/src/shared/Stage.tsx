@@ -172,22 +172,27 @@ export function Stage({
 
   // lineHeight is a dep: it changes scrollHeight, so the auto-fit has to re-solve
   // (looser spacing => smaller font) or the text overflows its box.
-  // Auto-size normalisation: when the slide carries the run's busiest text, fit
-  // THAT and use the resulting size here, so every slide in the song renders at
-  // one steady size. The sample is measured in a hidden twin of the text box so
-  // it sees the same width, font and line-height the real text will.
+  //
+  // Auto-size normalisation measures TWO hidden probes: this slide's own text and
+  // the run's busiest slide. The rendered size sits between them.
   const sample = slide?.fitSample
-  const { ref, fontSize } = useFitText(
-    [
-      (sample ?? lines).join('\n'),
-      theme.fontScale,
-      theme.uppercase,
-      slide?.singleLine,
-      !!qr,
-      lineHeight
-    ],
-    { scale: theme.fontScale }
-  )
+  const deps = [theme.fontScale, theme.uppercase, slide?.singleLine, !!qr, lineHeight]
+  const own = useFitText([lines.join('\n'), ...deps], { scale: theme.fontScale })
+  const busiest = useFitText([(sample ?? lines).join('\n'), ...deps], { scale: theme.fontScale })
+
+  /**
+   * How far a slide may be shrunk to match its neighbours. Sizing purely to the
+   * busiest slide made a whole reading render at its worst verse — Psalm 102's
+   * verse 26 is 142 characters against verse 27's 52, so every slide took the
+   * 142-character size. The floor keeps the run visually even while stopping one
+   * outlier from shrinking everything: at most a ~1.4x spread remains.
+   */
+  const NORMALISE_FLOOR = 0.72
+  // Never above `own` — that is the largest this slide's own text can take
+  // without overflowing.
+  const fontSize = sample
+    ? Math.min(own.fontSize, Math.max(busiest.fontSize, own.fontSize * NORMALISE_FLOOR))
+    : own.fontSize
 
   return (
     <div className={`stage${qr ? ' has-qr' : ''}`}>
@@ -242,36 +247,25 @@ export function Stage({
       {showText && (
         <div className="stage-textwrap">
           <div className="stage-fitbox">
-            {sample ? (
-              <>
-                {/* Measured but never seen: the run's busiest slide, so this
-                    slide adopts the size that one needs. */}
-                <div
-                  ref={ref}
-                  aria-hidden
-                  className={`stage-text stage-fitsample${slide?.singleLine ? ' oneline' : ''}`}
-                  style={textStyle}
-                >
-                  {sample.map((l, i) => (
-                    <div key={i}>{formatLyric(l) || ' '}</div>
-                  ))}
-                </div>
-                <div
-                  className={`stage-text${slide?.singleLine ? ' oneline' : ''}`}
-                  style={{ ...textStyle, fontSize }}
-                >
-                  {lines.map((l, i) => (
-                    <div key={i}>{formatLyric(l) || ' '}</div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div ref={ref} className={`stage-text${slide?.singleLine ? ' oneline' : ''}`} style={textStyle}>
-                {lines.map((l, i) => (
+            {/* Measured, never seen: this slide's own text, and the run's
+                busiest slide. The visible text takes the size derived above. */}
+            <div ref={own.ref} aria-hidden className={`stage-text stage-fitsample${slide?.singleLine ? ' oneline' : ''}`} style={textStyle}>
+              {lines.map((l, i) => (
+                <div key={i}>{formatLyric(l) || ' '}</div>
+              ))}
+            </div>
+            {sample && (
+              <div ref={busiest.ref} aria-hidden className={`stage-text stage-fitsample${slide?.singleLine ? ' oneline' : ''}`} style={textStyle}>
+                {sample.map((l, i) => (
                   <div key={i}>{formatLyric(l) || ' '}</div>
                 ))}
               </div>
             )}
+            <div className={`stage-text${slide?.singleLine ? ' oneline' : ''}`} style={{ ...textStyle, fontSize }}>
+              {lines.map((l, i) => (
+                <div key={i}>{formatLyric(l) || ' '}</div>
+              ))}
+            </div>
           </div>
           {caption && (
             <div className="stage-caption" style={{ color: theme.captionColor, fontFamily: theme.fontFamily }}>

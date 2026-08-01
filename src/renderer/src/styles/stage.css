@@ -122,6 +122,10 @@
 }
 
 .stage-fitbox {
+  /* The auto-size probes are absolutely positioned inside this box; without a
+     containing block here their max-width resolves against .stage-textwrap and
+     they measure wider than the space they are being fitted into. */
+  position: relative;
   flex: 1;
   min-height: 0;
   width: 100%;
