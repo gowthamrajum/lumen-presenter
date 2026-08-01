@@ -22,6 +22,13 @@ export interface AddSongChoice {
    *  units-per-slide (see SongSection.groups). Only sections they actually
    *  regrouped appear here; the rest keep the automatic split. */
   groups?: Record<string, number[]>
+  /** Per-section lines rewritten by reordering units in the grouping editor.
+   *  A unit moves as a whole, so a Telugu line and its transliteration travel
+   *  together. Only sections actually reordered appear here. */
+  sectionLines?: Record<string, string[]>
+  /** Slide grouping for the REPEAT occurrences of the recurring section (the
+   *  ticked lines that play after each stanza), units-per-slide. */
+  repeatGroups?: number[]
 }
 
 /** Cumulative unit index after each slide, i.e. where the breaks sit. */
@@ -82,6 +89,10 @@ export function SongStructureDialog({
   const [grouping, setGrouping] = useState<string | null>(null)
   /** operator-chosen units-per-slide, by section id (absent = automatic) */
   const [groups, setGroups] = useState<Record<string, number[]>>({})
+  /** section lines rewritten by moving units around (absent = as written) */
+  const [lineOverride, setLineOverride] = useState<Record<string, string[]>>({})
+  /** grouping for the repeat occurrences (the ticked lines), or null = automatic */
+  const [repeatGroups, setRepeatGroups] = useState<number[] | null>(null)
 
   useEffect(() => {
     setOrder(song.sections.map((s) => s.id))
@@ -90,6 +101,8 @@ export function SongStructureDialog({
     setBgId('default')
     setGrouping(null)
     setGroups({})
+    setLineOverride({})
+    setRepeatGroups(null)
   }, [song])
 
   const byId = useMemo(() => new Map(song.sections.map((s) => [s.id, s])), [song])
@@ -119,18 +132,33 @@ export function SongStructureDialog({
   const lpp = Math.max(1, song.linesPerSlide ?? 2)
   /** A section's groupable units: a lyric line, or a whole Telugu+transliteration
    *  pair in a bilingual section — so a break can never split a pair. */
-  const unitsOf = (id: string): SlideUnit[] => {
-    const sec = byId.get(id)
-    if (!sec) return []
-    return sectionUnits(sec.lines, !!song.bilingual || isBilingualSection(sec.lines))
+  /** A section's lines as they stand now — reordered if the operator moved units. */
+  const linesOf = (id: string): string[] => lineOverride[id] ?? byId.get(id)?.lines ?? []
+  const isBi = (id: string): boolean => !!song.bilingual || isBilingualSection(linesOf(id))
+  const unitsOf = (id: string): SlideUnit[] => sectionUnits(linesOf(id), isBi(id))
+
+  /**
+   * Move a whole unit one step. Because a unit IS the Telugu line plus its
+   * transliteration, the two can only ever travel together. The rewritten lines
+   * are stored flat, unit by unit, which re-derives to the same units — so the
+   * grouping stays meaningful across the move.
+   */
+  const moveUnit = (id: string, index: number, dir: -1 | 1): void => {
+    const units = unitsOf(id)
+    const j = index + dir
+    if (j < 0 || j >= units.length) return
+    const next = units.slice()
+    ;[next[index], next[j]] = [next[j], next[index]]
+    setLineOverride((prev) => ({ ...prev, [id]: next.flatMap((u) => unitLines(u)) }))
   }
   /** The grouping in force: the operator's, else what the automatic split gives. */
   const groupsOf = (id: string): number[] => {
     const chosen = groups[id]
-    if (chosen) return chosen
-    const sec = byId.get(id)
-    if (!sec) return []
-    return autoGroups(sec.lines, !!song.bilingual || isBilingualSection(sec.lines), lpp)
+    const units = unitsOf(id)
+    // A stale grouping (units moved or edited underneath it) falls back rather
+    // than mis-slicing — same rule songSlides applies.
+    if (chosen && chosen.reduce((a, b) => a + b, 0) === units.length) return chosen
+    return autoGroups(linesOf(id), isBi(id), lpp)
   }
   /** Split after this unit, or rejoin across it. */
   const toggleBreak = (id: string, unitIndex: number): void => {
@@ -140,12 +168,19 @@ export function SongStructureDialog({
     else breaks.add(unitIndex)
     setGroups((prev) => ({ ...prev, [id]: breaksToGroups(breaks, units.length) }))
   }
-  const resetGrouping = (id: string): void =>
+  /** Back to the automatic split AND the written line order. */
+  const resetGrouping = (id: string): void => {
     setGroups((prev) => {
       const next = { ...prev }
       delete next[id]
       return next
     })
+    setLineOverride((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
 
   const toggleInclude = (id: string): void => {
     setIncluded((prev) => {
@@ -186,6 +221,25 @@ export function SongStructureDialog({
   const tickedRepeat = recEntries.map((e, i) => (e.repeat ? i : -1)).filter((i) => i >= 0)
   const repeatLineIndices =
     recurring && tickedRepeat.length < recEntries.length ? tickedRepeat : null
+
+  // ---- the repeat's own slide grouping ----
+  // The lines that actually play after each stanza, decomposed into units so the
+  // repeat can be split on pair boundaries like any other stanza.
+  const repeatLines = tickedRepeat.map((i) => recEntries[i].text)
+  const repeatUnits = recurring
+    ? sectionUnits(repeatLines, !!song.bilingual || isBilingualSection(repeatLines))
+    : []
+  const repeatBreaksGroups =
+    repeatGroups && repeatGroups.reduce((a, b) => a + b, 0) === repeatUnits.length
+      ? repeatGroups
+      : autoGroups(repeatLines, !!song.bilingual || isBilingualSection(repeatLines), lpp)
+  const repeatBreaks = groupsToBreaks(repeatBreaksGroups)
+  const toggleRepeatBreak = (u: number): void => {
+    const b = new Set(repeatBreaks)
+    if (b.has(u)) b.delete(u)
+    else b.add(u)
+    setRepeatGroups(breaksToGroups(b, repeatUnits.length))
+  }
 
   return (
     <div className="modal-backdrop" onClick={onCancel}>
@@ -280,11 +334,31 @@ export function SongStructureDialog({
                   {units.map((unit, u) => (
                     <div key={u}>
                       <div className="ss-unit">
-                        {unitLines(unit).map((line, k) => (
-                          <div key={k} className="ss-unit-line">
-                            {line}
-                          </div>
-                        ))}
+                        <span className="ss-unit-move">
+                          <button
+                            className="icon-btn"
+                            onClick={() => moveUnit(id, u, -1)}
+                            disabled={u === 0}
+                            title="Move these lines up (Telugu and its transliteration together)"
+                          >
+                            <Icon name="chevron-up" />
+                          </button>
+                          <button
+                            className="icon-btn"
+                            onClick={() => moveUnit(id, u, 1)}
+                            disabled={u === units.length - 1}
+                            title="Move these lines down (Telugu and its transliteration together)"
+                          >
+                            <Icon name="chevron-down" />
+                          </button>
+                        </span>
+                        <span className="ss-unit-lines">
+                          {unitLines(unit).map((line, k) => (
+                            <span key={k} className="ss-unit-line">
+                              {line}
+                            </span>
+                          ))}
+                        </span>
                       </div>
                       {u < units.length - 1 && (
                         <button
@@ -327,6 +401,46 @@ export function SongStructureDialog({
                   <button className="ss-line-add with-ico" onClick={addLine}>
                     <Icon name="plus" /> Add line
                   </button>
+
+                  {/* The repeat is its own run of slides — split it like any stanza,
+                      instead of always falling back to the automatic pagination. */}
+                  {repeatUnits.length > 1 && (
+                    <div className="ss-slides ss-repeat-slides">
+                      <div className="ss-slides-hint">
+                        How the repeat splits · {repeatBreaksGroups.length} slide
+                        {repeatBreaksGroups.length === 1 ? '' : 's'}
+                        {repeatGroups && (
+                          <button className="ss-slides-reset" onClick={() => setRepeatGroups(null)}>
+                            Reset
+                          </button>
+                        )}
+                      </div>
+                      {repeatUnits.map((unit, u) => (
+                        <div key={u}>
+                          <div className="ss-unit">
+                            <span className="ss-unit-lines">
+                              {unitLines(unit).map((line, k) => (
+                                <span key={k} className="ss-unit-line">
+                                  {line}
+                                </span>
+                              ))}
+                            </span>
+                          </div>
+                          {u < repeatUnits.length - 1 && (
+                            <button
+                              className={`ss-divider ${repeatBreaks.has(u) ? 'on' : ''}`}
+                              onClick={() => toggleRepeatBreak(u)}
+                              title={repeatBreaks.has(u) ? 'Rejoin onto one slide' : 'Split onto a new slide'}
+                            >
+                              <span className="ss-divider-label">
+                                {repeatBreaks.has(u) ? 'new slide' : 'split here'}
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               </div>
@@ -375,7 +489,9 @@ export function SongStructureDialog({
                 repeatLineIndices,
                 recurringLines,
                 background,
-                groups
+                groups,
+                sectionLines: lineOverride,
+                repeatGroups: repeatGroups ?? undefined
               })
             }
           >

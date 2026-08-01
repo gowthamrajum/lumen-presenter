@@ -12,9 +12,20 @@ import { useLayoutEffect, useRef, useState } from 'react'
  */
 export function useFitText(
   deps: unknown[],
-  opts: { min?: number; max?: number; scale?: number; maxFraction?: number } = {}
+  opts: {
+    min?: number
+    max?: number
+    scale?: number
+    maxFraction?: number
+    /** Largest line count among sibling slides — see SlideContent.fitLines.
+     *  Lowers the ceiling to what the busiest sibling can take, so every slide
+     *  in the run renders at a steady size instead of each filling its own box. */
+    normalizeLines?: number
+    /** line-height multiple in force, needed to predict the busiest slide's height */
+    lineHeight?: number
+  } = {}
 ): { ref: React.RefObject<HTMLDivElement>; fontSize: number } {
-  const { min = 12, max = 4000, scale = 1, maxFraction = 0.4 } = opts
+  const { min = 12, max = 4000, scale = 1, maxFraction = 0.4, normalizeLines = 0, lineHeight = 1.22 } = opts
   const ref = useRef<HTMLDivElement>(null)
   const [fontSize, setFontSize] = useState(48)
 
@@ -37,7 +48,15 @@ export function useFitText(
       // Ceiling: cap the font at a fraction of the container height so short
       // text stays a consistent, readable size instead of filling the box.
       // The user's Size bias raises/lowers this ceiling.
-      const cap = Math.min(max, availH * maxFraction * scale)
+      let cap = Math.min(max, availH * maxFraction * scale)
+
+      // Normalisation: also cap at the size the busiest sibling slide could take,
+      // so a two-line slide doesn't render twice as large as the six-line one
+      // next to it. Only ever LOWERS the ceiling — the fit below can still shrink
+      // further for a slide that genuinely needs it.
+      if (normalizeLines > 1) {
+        cap = Math.min(cap, (targetH / (normalizeLines * lineHeight)) * scale)
+      }
 
       let lo = min
       let hi = Math.max(min, cap)

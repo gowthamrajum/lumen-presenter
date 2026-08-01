@@ -10,7 +10,7 @@ export type PsalmLang = 'both' | 'telugu' | 'english'
  *  Verses with no text in the chosen language are skipped (no blank slides).
  *  The caption is just the reference — no version marker on the footer. */
 export function psalmSlides(verses: PsalmVerse[], lang: PsalmLang = 'both'): SlideContent[] {
-  return verses
+  const out = verses
     .map((v) => {
       const ref = `Psalm ${v.chapter}:${v.verse}`
       const lines = (lang === 'telugu' ? [v.telugu] : lang === 'english' ? [v.english] : [v.telugu, v.english]).filter(
@@ -18,7 +18,7 @@ export function psalmSlides(verses: PsalmVerse[], lang: PsalmLang = 'both'): Sli
       )
       return { id: uid(), kind: 'scripture' as const, label: ref, lines, caption: ref }
     })
-    .filter((s) => s.lines.length > 0)
+  return withFitLines(out.filter((s) => s.lines.length > 0))
 }
 
 /**
@@ -77,12 +77,14 @@ export function textSlides(text: string, label = 'Text'): SlideContent[] {
     .map((b) => b.trim())
     .filter(Boolean)
   const src = blocks.length ? blocks : ['']
-  return src.map((block, i) => ({
-    id: uid(),
-    kind: 'text',
-    label: blocks.length > 1 ? `${label} ${i + 1}` : label,
-    lines: block.split('\n')
-  }))
+  return withFitLines(
+    src.map((block, i) => ({
+      id: uid(),
+      kind: 'text' as const,
+      label: blocks.length > 1 ? `${label} ${i + 1}` : label,
+      lines: block.split('\n')
+    }))
+  )
 }
 
 /** A media-only slide: just a background (image/video), no text. */
@@ -418,7 +420,32 @@ export function songSlides(song: Song): SlideContent[] {
       })
     })
   }
-  return slides
+  return withFitLines(slides)
+}
+
+/**
+ * Stamp every slide in a run with the busiest slide's text, so the renderer
+ * sizes them all to what the hardest one needs. Without it a two-line slide
+ * fills its box while the six-line slide beside it shrinks, and pressing through
+ * a song visibly jumps in size.
+ *
+ * "Busiest" is the most lines, then the longest single line — a slide shrinks to
+ * fit both its height and the width of its longest line, so the winner has to
+ * account for both.
+ */
+export function withFitLines(slides: SlideContent[]): SlideContent[] {
+  const textual = slides.filter((s) => s.lines.length > 0)
+  if (textual.length < 2) return slides
+  const widest = (s: SlideContent): number => s.lines.reduce((m, l) => Math.max(m, l.length), 0)
+  const busiest = textual.reduce((best, s) => {
+    if (s.lines.length !== best.lines.length) return s.lines.length > best.lines.length ? s : best
+    return widest(s) > widest(best) ? s : best
+  }, textual[0])
+  // Every slide already at the busiest shape measures itself — no sample needed.
+  const sample = busiest.lines
+  return slides.map((s) =>
+    s.lines.length > 0 && s !== busiest ? { ...s, fitSample: sample } : s
+  )
 }
 
 /**

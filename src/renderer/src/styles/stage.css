@@ -131,6 +131,15 @@
   overflow: hidden;
 }
 
+/* The auto-size probe: laid out (so it can be measured) but invisible and
+   outside the flow, so it never shifts or shows the busiest slide's text. */
+.stage-fitsample {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
 .stage-text {
   display: inline-block;
   /* wrap within <100% so glyph ink has left/right breathing room and never

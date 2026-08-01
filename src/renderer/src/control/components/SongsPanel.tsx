@@ -89,6 +89,14 @@ export function SongsPanel(): JSX.Element {
       choice.recurringId && choice.recurringLines
         ? song.sections.map((s) => (s.id === choice.recurringId ? { ...s, lines: choice.recurringLines! } : s))
         : song.sections
+    // Lines reordered by moving units in the grouping editor (a Telugu line and
+    // its transliteration always move as one). Applied before the grouping so
+    // the two describe the same section.
+    if (choice.sectionLines) {
+      sections = sections.map((s) =>
+        choice.sectionLines?.[s.id] ? { ...s, lines: choice.sectionLines[s.id] } : s
+      )
+    }
     // Stamp on the operator's slide grouping (units per slide). songSlides drops
     // any that no longer fits its section, so an edited stanza just reverts to
     // the automatic split rather than mis-slicing.
@@ -103,9 +111,10 @@ export function SongsPanel(): JSX.Element {
       if (rec) {
         const rptLines = choice.repeatLineIndices.map((i) => rec.lines[i]).filter((l): l is string => l != null)
         const rptId = `${rec.id}__rpt`
-        // The repeat holds a subset of the lines, so the section's grouping no
-        // longer describes it — drop it and let the automatic split handle it.
-        sections = [...sections, { ...rec, id: rptId, lines: rptLines, groups: undefined }]
+        // The repeat holds a subset of the lines, so the stanza's own grouping
+        // doesn't describe it — it carries the repeat's grouping instead (chosen
+        // in the repeat's split editor), or falls back to the automatic split.
+        sections = [...sections, { ...rec, id: rptId, lines: rptLines, groups: choice.repeatGroups }]
         let seenFirst = false
         arrangement = arrangement.map((id) => {
           if (id !== choice.recurringId) return id

@@ -1956,10 +1956,49 @@ select:focus {
 /* One groupable unit: a lyric line, or a whole Telugu+transliteration pair
    (rendered as its rows boxed together, so it reads as indivisible). */
 .ss-unit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 3px 8px;
   border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
   border-radius: 3px;
   background: color-mix(in srgb, var(--fg) 4%, transparent);
+}
+/* Reorder a whole unit. A unit is the Telugu line WITH its transliteration, so
+   these move both together — there is no way to separate them. */
+.ss-unit-move {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+}
+.ss-unit-move .icon-btn {
+  padding: 0;
+  width: 16px;
+  height: 12px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ss-unit-move .icon-btn:hover:not(:disabled) {
+  color: var(--accent);
+}
+.ss-unit-move .icon-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.ss-unit-move svg {
+  width: 12px;
+  height: 12px;
+}
+.ss-unit-lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .ss-unit-line {
   font-size: 12px;
@@ -1968,6 +2007,12 @@ select:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* the repeat's own split editor, nested inside the repeat-lines panel */
+.ss-repeat-slides {
+  margin-left: 0;
+  margin-top: 8px;
+  background: transparent;
 }
 /* The clickable gap between two units. Off = a faint "split here"; on = a solid
    rule meaning the next unit starts a new slide. */

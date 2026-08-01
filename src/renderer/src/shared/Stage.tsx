@@ -148,8 +148,20 @@ export function Stage({
 
   // lineHeight is a dep: it changes scrollHeight, so the auto-fit has to re-solve
   // (looser spacing => smaller font) or the text overflows its box.
-  const { ref } = useFitText(
-    [lines.join('\n'), theme.fontScale, theme.uppercase, slide?.singleLine, !!qr, lineHeight],
+  // Auto-size normalisation: when the slide carries the run's busiest text, fit
+  // THAT and use the resulting size here, so every slide in the song renders at
+  // one steady size. The sample is measured in a hidden twin of the text box so
+  // it sees the same width, font and line-height the real text will.
+  const sample = slide?.fitSample
+  const { ref, fontSize } = useFitText(
+    [
+      (sample ?? lines).join('\n'),
+      theme.fontScale,
+      theme.uppercase,
+      slide?.singleLine,
+      !!qr,
+      lineHeight
+    ],
     { scale: theme.fontScale }
   )
 
@@ -204,11 +216,36 @@ export function Stage({
       {showText && (
         <div className="stage-textwrap">
           <div className="stage-fitbox">
-            <div ref={ref} className={`stage-text${slide?.singleLine ? ' oneline' : ''}`} style={textStyle}>
-              {lines.map((l, i) => (
-                <div key={i}>{formatLyric(l) || ' '}</div>
-              ))}
-            </div>
+            {sample ? (
+              <>
+                {/* Measured but never seen: the run's busiest slide, so this
+                    slide adopts the size that one needs. */}
+                <div
+                  ref={ref}
+                  aria-hidden
+                  className={`stage-text stage-fitsample${slide?.singleLine ? ' oneline' : ''}`}
+                  style={textStyle}
+                >
+                  {sample.map((l, i) => (
+                    <div key={i}>{formatLyric(l) || ' '}</div>
+                  ))}
+                </div>
+                <div
+                  className={`stage-text${slide?.singleLine ? ' oneline' : ''}`}
+                  style={{ ...textStyle, fontSize }}
+                >
+                  {lines.map((l, i) => (
+                    <div key={i}>{formatLyric(l) || ' '}</div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div ref={ref} className={`stage-text${slide?.singleLine ? ' oneline' : ''}`} style={textStyle}>
+                {lines.map((l, i) => (
+                  <div key={i}>{formatLyric(l) || ' '}</div>
+                ))}
+              </div>
+            )}
           </div>
           {caption && (
             <div className="stage-caption" style={{ color: theme.captionColor, fontFamily: theme.fontFamily }}>

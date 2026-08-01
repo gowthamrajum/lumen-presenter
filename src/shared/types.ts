@@ -100,6 +100,18 @@ export interface SlideContent {
   /** render the text on a single line, shrinking to fit width instead of
    *  wrapping (used by bilingual title cards). */
   singleLine?: boolean
+  /**
+   * Auto-size normalisation: the text of the BUSIEST slide in the run this one
+   * was built with (its song / reading). The renderer measures this instead of
+   * the slide's own text, so every slide in the run lands on the size the
+   * hardest one needs — pressing through a song holds a steady size instead of
+   * jumping between a huge two-line slide and a small six-line one.
+   *
+   * It has to be the real text, not just a line count: a slide also shrinks to
+   * fit the WIDTH of its longest line, so counting lines alone still leaves the
+   * wordiest slide smaller than its neighbours.
+   */
+  fitSample?: string[]
 }
 
 export interface LiveState {
