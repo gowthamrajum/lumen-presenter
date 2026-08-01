@@ -260,6 +260,15 @@ export interface SongSection {
   label: string
   /** lyric lines for this section (split into slides by linesPerSlide) */
   lines: string[]
+  /**
+   * Operator-chosen slide grouping, as a count of UNITS per slide. A unit is one
+   * lyric line — except in a bilingual section, where it is a Telugu line
+   * together with its English transliteration, so a grouping can never split a
+   * pair. Absent (the default) = the automatic split by linesPerSlide.
+   * Ignored if it no longer sums to the section's unit count (the lines were
+   * edited underneath it), which falls back to the automatic split.
+   */
+  groups?: number[]
 }
 
 export interface Song {

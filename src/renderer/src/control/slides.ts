@@ -274,6 +274,99 @@ export function chunkBilingualLines(lines: string[], pairsPerSlide: number): str
   return slides
 }
 
+// ---- operator-chosen slide grouping -----------------------------------------
+
+/**
+ * One groupable unit — the smallest thing a slide break can fall between.
+ *
+ * `lines` renders first (the Telugu block of a bilingual stanza, or simply the
+ * lyric line of a single-language one) and `translit` is the English
+ * transliteration that must stay with it. Keeping the two sides as separate
+ * fields is what preserves the Telugu-block-then-English-block layout when
+ * several units share a slide — concatenating a unit whole would interleave
+ * them (తె1 Te1 తె2 Te2) instead of stacking them (తె1 తె2 Te1 Te2).
+ */
+export interface SlideUnit {
+  lines: string[]
+  translit: string[]
+}
+
+/** A unit's lines in render order. */
+export function unitLines(u: SlideUnit): string[] {
+  return [...u.lines, ...u.translit]
+}
+
+/**
+ * Decompose a section into units. In a bilingual section a unit is a whole pair
+ * — a Telugu line with its transliteration — so an operator moving breaks around
+ * physically cannot separate the two; an unpaired leftover line is its own unit.
+ * (chunkBilingualLines at one pair per slide IS that decomposition, so the two
+ * can never disagree.)
+ */
+export function sectionUnits(lines: string[], bilingual: boolean): SlideUnit[] {
+  const src = lines.filter((l) => l.trim().length > 0)
+  if (!bilingual) return src.map((l) => ({ lines: [l], translit: [] }))
+  return chunkBilingualLines(src, 1).map((pair) => ({
+    lines: pair.filter((l) => isTelugu(l)),
+    translit: pair.filter((l) => !isTelugu(l))
+  }))
+}
+
+/**
+ * The unit grouping the automatic split would produce — what the grouping editor
+ * opens on, so the operator starts from today's behaviour and adjusts.
+ */
+export function autoGroups(lines: string[], bilingual: boolean, lpp: number): number[] {
+  const units = sectionUnits(lines, bilingual)
+  const src = lines.filter((l) => l.trim().length > 0)
+  const chunks = bilingual
+    ? chunkBilingualLines(src, Math.max(1, Math.round(lpp / 2)))
+    : chunkLyricLines(src, lpp, true)
+  // Both walk the same lines in the same order, so units can be consumed to
+  // match each chunk's line count — converting chunk sizes (lines) to units.
+  const out: number[] = []
+  let u = 0
+  for (const c of chunks) {
+    let taken = 0
+    let n = 0
+    while (u < units.length && taken < c.length) {
+      taken += unitLines(units[u]).length
+      u++
+      n++
+    }
+    if (n > 0) out.push(n)
+  }
+  if (u < units.length) out.push(units.length - u)
+  return out
+}
+
+/**
+ * Slice units into slides by a unit-count grouping. Each slide stacks every
+ * unit's lyric lines first, then every unit's transliterations — the same
+ * block layout the automatic split produces. Never drops a unit.
+ */
+export function applyGroups(units: SlideUnit[], groups: number[]): string[][] {
+  const slide = (us: SlideUnit[]): string[] => [
+    ...us.flatMap((u) => u.lines),
+    ...us.flatMap((u) => u.translit)
+  ]
+  const out: string[][] = []
+  let i = 0
+  for (const g of groups) {
+    const n = Math.max(1, Math.floor(g))
+    const s = units.slice(i, i + n)
+    i += n
+    if (s.length) out.push(slide(s))
+  }
+  if (i < units.length) out.push(slide(units.slice(i))) // safety net
+  return out
+}
+
+/** A grouping still describes its section only while it accounts for every unit. */
+export function groupsFit(groups: number[] | undefined, unitCount: number): groups is number[] {
+  return !!groups?.length && groups.reduce((a, b) => a + b, 0) === unitCount
+}
+
 /**
  * Song -> slides. Sections are emitted in arrangement order (or section order),
  * each section's lyric lines split into slides of `linesPerSlide` lines (grouping
@@ -281,6 +374,9 @@ export function chunkBilingualLines(lines: string[], pairsPerSlide: number): str
  *
  * Bilingual sections take the pairing path instead, so a Telugu line and its
  * English transliteration always share a slide (see chunkBilingualLines).
+ *
+ * A section carrying an operator-chosen `groups` uses that instead of either
+ * automatic split — but still over units, so the bilingual pairing holds.
  */
 export function songSlides(song: Song): SlideContent[] {
   const lpp = Math.max(1, song.linesPerSlide ?? 2)
@@ -301,10 +397,15 @@ export function songSlides(song: Song): SlideContent[] {
     // the next slide whenever a stanza's two languages were uneven. `bilingual` is
     // set by the catalog import; detect it too, for hand-authored songs.
     const bilingual = song.bilingual || isBilingualSection(lines)
-    const chunks = bilingual
-      ? // lpp counts LINES (4 = 2 Telugu + 2 English), the chunker counts PAIRS.
-        chunkBilingualLines(lines, Math.max(1, Math.round(lpp / 2)))
-      : chunkLyricLines(lines, lpp, true)
+    // An operator grouping wins when it still accounts for every unit; a stale
+    // one (the lines changed under it) falls back to the automatic split.
+    const units = sectionUnits(lines, bilingual)
+    const chunks = groupsFit(sec.groups, units.length)
+      ? applyGroups(units, sec.groups)
+      : bilingual
+        ? // lpp counts LINES (4 = 2 Telugu + 2 English), the chunker counts PAIRS.
+          chunkBilingualLines(lines, Math.max(1, Math.round(lpp / 2)))
+        : chunkLyricLines(lines, lpp, true)
     chunks.forEach((chunk, i) => {
       slides.push({
         id: uid(),

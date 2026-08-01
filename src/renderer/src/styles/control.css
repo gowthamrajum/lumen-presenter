@@ -1894,6 +1894,121 @@ select:focus {
   flex-direction: column;
   gap: 6px;
 }
+/* ---- slide grouping: which lines share a slide ---- */
+/* The per-stanza toggle in the row, showing the resulting slide count. */
+.ss-slides-btn {
+  flex: none;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ss-slides-btn:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+.ss-slides-btn.active {
+  color: var(--fg);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+/* a grouping the operator set by hand, rather than the automatic split */
+.ss-slides-btn.custom {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.ss-slides-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ss-slides {
+  margin-left: 34px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.ss-slides-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.ss-slides-reset {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+.ss-slides-reset:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+/* One groupable unit: a lyric line, or a whole Telugu+transliteration pair
+   (rendered as its rows boxed together, so it reads as indivisible). */
+.ss-unit {
+  padding: 3px 8px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+}
+.ss-unit-line {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The clickable gap between two units. Off = a faint "split here"; on = a solid
+   rule meaning the next unit starts a new slide. */
+.ss-divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  margin: 1px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 10px;
+  opacity: 0.45;
+}
+.ss-divider::before,
+.ss-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px dashed var(--line);
+}
+.ss-divider:hover {
+  opacity: 1;
+  color: var(--accent);
+}
+.ss-divider.on {
+  opacity: 1;
+  color: var(--accent);
+  font-weight: 600;
+}
+.ss-divider.on::before,
+.ss-divider.on::after {
+  border-top: 1px solid var(--accent);
+}
+.ss-divider-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .ss-repeat-lines {
   margin-left: 34px;
   padding: 8px 10px;

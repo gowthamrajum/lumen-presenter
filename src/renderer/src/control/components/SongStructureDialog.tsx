@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { detectRecurringSection } from '../songArrange'
 import { BACKGROUND_PRESETS } from '../presets'
+import { autoGroups, isBilingualSection, sectionUnits, unitLines, type SlideUnit } from '../slides'
 import { Icon } from '../../shared/Icon'
 import type { Background, Song } from '@shared/types'
 
@@ -17,6 +18,34 @@ export interface AddSongChoice {
   recurringLines?: string[]
   /** null = keep the current/global background */
   background: Background | null
+  /** Per-section slide grouping the operator set in the grouping editor, as
+   *  units-per-slide (see SongSection.groups). Only sections they actually
+   *  regrouped appear here; the rest keep the automatic split. */
+  groups?: Record<string, number[]>
+}
+
+/** Cumulative unit index after each slide, i.e. where the breaks sit. */
+function groupsToBreaks(groups: number[]): Set<number> {
+  const breaks = new Set<number>()
+  let at = 0
+  for (let i = 0; i < groups.length - 1; i++) {
+    at += groups[i]
+    breaks.add(at - 1) // "a break follows unit at-1"
+  }
+  return breaks
+}
+
+function breaksToGroups(breaks: Set<number>, unitCount: number): number[] {
+  const groups: number[] = []
+  let run = 0
+  for (let i = 0; i < unitCount; i++) {
+    run++
+    if (breaks.has(i) || i === unitCount - 1) {
+      groups.push(run)
+      run = 0
+    }
+  }
+  return groups
 }
 
 function swatchStyle(bg: Background): CSSProperties {
@@ -49,12 +78,18 @@ export function SongStructureDialog({
   // The operator can retype a line or add one to break it (e.g. repeat only half).
   const [editLines, setEditLines] = useState<{ text: string; repeat: boolean }[]>([])
   const [bgId, setBgId] = useState<string>('default') // 'default' | preset id
+  /** which section's slide-grouping editor is expanded, or null */
+  const [grouping, setGrouping] = useState<string | null>(null)
+  /** operator-chosen units-per-slide, by section id (absent = automatic) */
+  const [groups, setGroups] = useState<Record<string, number[]>>({})
 
   useEffect(() => {
     setOrder(song.sections.map((s) => s.id))
     setIncluded(new Set(song.sections.map((s) => s.id)))
     setRecurring(detectRecurringSection(song))
     setBgId('default')
+    setGrouping(null)
+    setGroups({})
   }, [song])
 
   const byId = useMemo(() => new Map(song.sections.map((s) => [s.id, s])), [song])
@@ -79,6 +114,38 @@ export function SongStructureDialog({
     const l = sec?.lines.find((x) => x.trim().length > 0) ?? ''
     return l.length > 40 ? `${l.slice(0, 40)}…` : l
   }
+
+  // ---- slide grouping ----
+  const lpp = Math.max(1, song.linesPerSlide ?? 2)
+  /** A section's groupable units: a lyric line, or a whole Telugu+transliteration
+   *  pair in a bilingual section — so a break can never split a pair. */
+  const unitsOf = (id: string): SlideUnit[] => {
+    const sec = byId.get(id)
+    if (!sec) return []
+    return sectionUnits(sec.lines, !!song.bilingual || isBilingualSection(sec.lines))
+  }
+  /** The grouping in force: the operator's, else what the automatic split gives. */
+  const groupsOf = (id: string): number[] => {
+    const chosen = groups[id]
+    if (chosen) return chosen
+    const sec = byId.get(id)
+    if (!sec) return []
+    return autoGroups(sec.lines, !!song.bilingual || isBilingualSection(sec.lines), lpp)
+  }
+  /** Split after this unit, or rejoin across it. */
+  const toggleBreak = (id: string, unitIndex: number): void => {
+    const units = unitsOf(id)
+    const breaks = groupsToBreaks(groupsOf(id))
+    if (breaks.has(unitIndex)) breaks.delete(unitIndex)
+    else breaks.add(unitIndex)
+    setGroups((prev) => ({ ...prev, [id]: breaksToGroups(breaks, units.length) }))
+  }
+  const resetGrouping = (id: string): void =>
+    setGroups((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
 
   const toggleInclude = (id: string): void => {
     setIncluded((prev) => {
@@ -151,6 +218,9 @@ export function SongStructureDialog({
             const sec = byId.get(id)
             if (!sec) return null
             const inc = included.has(id)
+            // Only decompose the stanza that's actually expanded.
+            const units = grouping === id ? unitsOf(id) : []
+            const breaks = grouping === id ? groupsToBreaks(groupsOf(id)) : new Set<number>()
             return (
               <div key={id} className="ss-rowgroup">
                 <div className={`ss-row ${recurring === id ? 'active' : ''} ${inc ? '' : 'off'}`}>
@@ -177,6 +247,14 @@ export function SongStructureDialog({
                   <div className="ss-label">{sec.label}</div>
                   <div className="ss-preview">{firstLine(id) || '—'}</div>
                 </div>
+                <button
+                  className={`ss-slides-btn ${grouping === id ? 'active' : ''} ${groups[id] ? 'custom' : ''}`}
+                  disabled={!inc}
+                  onClick={() => setGrouping(grouping === id ? null : id)}
+                  title="Choose which lines share a slide"
+                >
+                  {groupsOf(id).length} slide{groupsOf(id).length === 1 ? '' : 's'}
+                </button>
                 <input
                   type="radio"
                   name="recurring"
@@ -187,6 +265,40 @@ export function SongStructureDialog({
                   title="Repeat this after each stanza"
                 />
               </div>
+              {grouping === id && (
+                <div className="ss-slides">
+                  <div className="ss-slides-hint">
+                    Click a divider to split or rejoin a slide
+                    {(!!song.bilingual || isBilingualSection(sec.lines)) &&
+                      ' · each Telugu line stays with its transliteration'}
+                    {groups[id] && (
+                      <button className="ss-slides-reset" onClick={() => resetGrouping(id)}>
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  {units.map((unit, u) => (
+                    <div key={u}>
+                      <div className="ss-unit">
+                        {unitLines(unit).map((line, k) => (
+                          <div key={k} className="ss-unit-line">
+                            {line}
+                          </div>
+                        ))}
+                      </div>
+                      {u < units.length - 1 && (
+                        <button
+                          className={`ss-divider ${breaks.has(u) ? 'on' : ''}`}
+                          onClick={() => toggleBreak(id, u)}
+                          title={breaks.has(u) ? 'Rejoin onto one slide' : 'Split onto a new slide'}
+                        >
+                          <span className="ss-divider-label">{breaks.has(u) ? 'new slide' : 'split here'}</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               {recurring === id && (
                 <div className="ss-repeat-lines">
                   <div className="ss-repeat-hint">
@@ -257,7 +369,14 @@ export function SongStructureDialog({
             className="btn btn-primary"
             disabled={!canAdd}
             onClick={() =>
-              onConfirm({ includedIds: includedInOrder, recurringId: recurring, repeatLineIndices, recurringLines, background })
+              onConfirm({
+                includedIds: includedInOrder,
+                recurringId: recurring,
+                repeatLineIndices,
+                recurringLines,
+                background,
+                groups
+              })
             }
           >
             Add song

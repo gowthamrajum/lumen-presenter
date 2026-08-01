@@ -89,6 +89,12 @@ export function SongsPanel(): JSX.Element {
       choice.recurringId && choice.recurringLines
         ? song.sections.map((s) => (s.id === choice.recurringId ? { ...s, lines: choice.recurringLines! } : s))
         : song.sections
+    // Stamp on the operator's slide grouping (units per slide). songSlides drops
+    // any that no longer fits its section, so an edited stanza just reverts to
+    // the automatic split rather than mis-slicing.
+    if (choice.groups) {
+      sections = sections.map((s) => (choice.groups?.[s.id] ? { ...s, groups: choice.groups[s.id] } : s))
+    }
     // Partial repeat: keep the FIRST occurrence of the recurring section whole,
     // and swap every LATER occurrence for a synthetic section holding only the
     // ticked lines — e.g. Pallavi in full, then just its first line each repeat.
@@ -97,7 +103,9 @@ export function SongsPanel(): JSX.Element {
       if (rec) {
         const rptLines = choice.repeatLineIndices.map((i) => rec.lines[i]).filter((l): l is string => l != null)
         const rptId = `${rec.id}__rpt`
-        sections = [...sections, { ...rec, id: rptId, lines: rptLines }]
+        // The repeat holds a subset of the lines, so the section's grouping no
+        // longer describes it — drop it and let the automatic split handle it.
+        sections = [...sections, { ...rec, id: rptId, lines: rptLines, groups: undefined }]
         let seenFirst = false
         arrangement = arrangement.map((id) => {
           if (id !== choice.recurringId) return id
