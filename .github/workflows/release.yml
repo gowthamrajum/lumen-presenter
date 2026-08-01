@@ -15,15 +15,41 @@ permissions:
   contents: write # create/upload the GitHub Release
 
 jobs:
+  # Create the tag's draft release BEFORE any builder runs, so every uploader
+  # FINDS it instead of creating it.
+  #
+  # `electron-builder --publish always` does a find-or-create per upload. Two
+  # uploads racing that check both miss and each create a draft, and the assets
+  # split across them. max-parallel: 1 below only serialises mac vs windows — it
+  # cannot help *within* a job, and the mac job uploads x64 and arm64
+  # concurrently. That is exactly how v0.2.18 landed as two 4-asset drafts
+  # (neither installable on its own: one had no .exe/latest.yml, the other no
+  # dmg). Creating the release here removes the race for every uploader.
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure the draft release exists
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${{ github.ref_name }}" --repo "${{ github.repository }}" >/dev/null 2>&1 \
+            || gh release create "${{ github.ref_name }}" \
+                 --repo "${{ github.repository }}" \
+                 --draft \
+                 --title "${{ github.ref_name }}" \
+                 --notes-file .github/RELEASE_NOTES.md
+
   release:
+    needs: prepare
     strategy:
       fail-fast: false
-      # Serialize the platform builds. Both run `electron-builder --publish always`,
-      # which finds-or-creates the tag's draft release; running them concurrently
-      # races and creates TWO drafts, splitting the mac + win assets across them.
-      # With max-parallel: 1 the first runner creates the draft and the second
-      # reuses it, so one release carries every asset. (Costs ~one extra build's
-      # wall-clock; releases are infrequent, so that's fine.)
+      # Kept as a second line of defence (and to be gentle on the upload API).
+      # `prepare` above is now what actually prevents split drafts, so this could
+      # be raised to run both platforms at once if release wall-clock ever matters.
       max-parallel: 1
       matrix:
         include:
