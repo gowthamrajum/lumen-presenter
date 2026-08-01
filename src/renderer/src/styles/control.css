@@ -2277,6 +2277,16 @@ select:focus {
   flex: 1;
   accent-color: var(--accent);
 }
+/* Numeric readout for a slider whose effect isn't visible in the previews
+   (line Spacing applies to the Go Live screen only) — this is the operator's
+   only feedback without looking at the projector. */
+.look-val {
+  min-width: 30px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .look-row input[type='color'] {
   width: 28px;
   height: 24px;

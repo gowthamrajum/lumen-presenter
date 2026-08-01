@@ -21,7 +21,9 @@ function Output(): JSX.Element {
     return window.lumen.onLiveState(setState)
   }, [])
 
-  return layout === 'stage' ? <StageDisplay state={state} /> : <Stage state={state} />
+  // The audience layout IS the Go Live screen — the only surface that honours
+  // theme.lineSpacing. The stage monitor keeps the default spacing.
+  return layout === 'stage' ? <StageDisplay state={state} /> : <Stage state={state} live />
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)

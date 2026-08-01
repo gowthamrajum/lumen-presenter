@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import type { Background, LiveState, SlideContent, ThemeStyle } from '@shared/types'
+import { DEFAULT_LINE_SPACING, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
 import { useFitText } from './useFitText'
 import { Icon } from './Icon'
 
@@ -101,8 +101,21 @@ function BackgroundLayer({ bg }: { bg: Background }): JSX.Element {
 /**
  * Pure presentational render of a LiveState. Fills its parent; the parent
  * decides the size (fullscreen on the output window, small on previews).
+ *
+ * `live` marks the one instance that IS the Go Live audience screen. It is the
+ * only render that honours `theme.lineSpacing`; every other surface (operator
+ * previews, thumbnails, the stage monitor, the export host) keeps
+ * DEFAULT_LINE_SPACING. See ThemeStyle.lineSpacing.
  */
-export function Stage({ state, preview }: { state: LiveState; preview?: boolean }): JSX.Element {
+export function Stage({
+  state,
+  preview,
+  live
+}: {
+  state: LiveState
+  preview?: boolean
+  live?: boolean
+}): JSX.Element {
   const { slide, theme } = state
   const bg = slide?.background ?? state.background
   const lines = slide?.lines ?? []
@@ -120,19 +133,25 @@ export function Stage({ state, preview }: { state: LiveState; preview?: boolean 
   // carries the version marker (covers decks built before this change).
   const caption = (slide?.caption ?? '').replace(/\s*\(ESV\)\s*$/i, '')
 
+  // Go Live screen only — everywhere else renders at the shared default.
+  const lineHeight = live ? theme.lineSpacing ?? DEFAULT_LINE_SPACING : DEFAULT_LINE_SPACING
+
   const textStyle: CSSProperties = {
     color: theme.textColor,
     fontFamily: theme.fontFamily,
     textAlign: theme.textAlign,
     textTransform: theme.uppercase ? 'uppercase' : 'none',
     textShadow: theme.shadow ? '0 2px 18px rgba(0,0,0,0.65)' : 'none',
-    lineHeight: 1.22,
+    lineHeight,
     fontWeight: 700
   }
 
-  const { ref } = useFitText([lines.join('\n'), theme.fontScale, theme.uppercase, slide?.singleLine, !!qr], {
-    scale: theme.fontScale
-  })
+  // lineHeight is a dep: it changes scrollHeight, so the auto-fit has to re-solve
+  // (looser spacing => smaller font) or the text overflows its box.
+  const { ref } = useFitText(
+    [lines.join('\n'), theme.fontScale, theme.uppercase, slide?.singleLine, !!qr, lineHeight],
+    { scale: theme.fontScale }
+  )
 
   return (
     <div className={`stage${qr ? ' has-qr' : ''}`}>

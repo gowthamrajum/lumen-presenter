@@ -55,6 +55,17 @@ function configFile(): string {
   return join(app.getPath('userData'), 'broadcast.json')
 }
 
+/**
+ * The theme as the web sees it. `lineSpacing` is a Go-Live-screen-only setting
+ * (see ThemeStyle.lineSpacing), so it is dropped here — the single choke point
+ * every relay channel goes through, which keeps the audience mirror, the OBS
+ * lower-third and the phone remote on their own spacing.
+ */
+function webTheme(theme: LiveState['theme'] | undefined): Omit<LiveState['theme'], 'lineSpacing'> {
+  const { lineSpacing: _goLiveOnly, ...rest } = theme ?? DEFAULT_THEME
+  return rest
+}
+
 async function persist(): Promise<void> {
   await mkdir(app.getPath('userData'), { recursive: true }).catch(() => {})
   await writeFile(configFile(), JSON.stringify(config), 'utf8').catch(() => {})
@@ -134,7 +145,7 @@ async function publishOff(): Promise<void> {
     blackout: true,
     clearText: false,
     showLogo: false,
-    theme: latest?.theme ?? DEFAULT_THEME,
+    theme: webTheme(latest?.theme),
     obsStyle: config.obsStyle ?? DEFAULT_OBS_STYLE,
     users: { slide: null, next: null },
     stream: { slide: null, next: null },
@@ -185,6 +196,8 @@ async function flush(): Promise<void> {
   } = latest
   const payload = {
     ...rest,
+    // Go-Live-screen-only fields (line spacing) never leave the machine.
+    theme: webTheme(rest.theme),
     // OBS lower-third styling — a shared field the relay passes straight through;
     // only the OBS overlay reads it (audience/operator ignore it).
     obsStyle: config.obsStyle ?? DEFAULT_OBS_STYLE,

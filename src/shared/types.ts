@@ -13,7 +13,20 @@ export interface ThemeStyle {
   uppercase: boolean
   /** 0..1 dark scrim over the background to keep text legible */
   scrim: number
+  /**
+   * Line spacing (CSS line-height) for slide body text — **the Go Live audience
+   * screen only**. Deliberately local: the operator previews, slide thumbnails
+   * and the stage monitor render at DEFAULT_LINE_SPACING, and the publisher
+   * strips this field from the relay payload so the web audience mirror, the OBS
+   * lower-third and the phone remote keep their own spacing. Undefined on themes
+   * saved before this existed — always read it through DEFAULT_LINE_SPACING.
+   */
+  lineSpacing?: number
 }
+
+/** Slide-text line-height everywhere except the Go Live screen (and the Go Live
+ *  screen's own default). Was hard-coded in Stage before `lineSpacing`. */
+export const DEFAULT_LINE_SPACING = 1.22
 
 export type BackgroundType = 'color' | 'gradient' | 'image' | 'video'
 
@@ -432,7 +445,8 @@ export const DEFAULT_THEME: ThemeStyle = {
   textAlign: 'center',
   shadow: true,
   uppercase: false,
-  scrim: 0.35
+  scrim: 0.35,
+  lineSpacing: DEFAULT_LINE_SPACING
 }
 
 export const DEFAULT_OBS_STYLE: ObsStyle = {

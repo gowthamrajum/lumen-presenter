@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import { Icon, type IconName } from '../../shared/Icon'
-import type { LiveState } from '@shared/types'
+import { DEFAULT_LINE_SPACING, type LiveState } from '@shared/types'
 import { THEME_PRESETS } from '../presets'
 import { VERSE_EXTEND_MS } from '../useVerseAutoAdvance'
 
@@ -145,6 +145,19 @@ export function LivePanel(): JSX.Element {
             value={theme.fontScale}
             onChange={(e) => setTheme({ fontScale: Number(e.target.value) })}
           />
+        </label>
+
+        <label className="look-row" title="Line spacing on the Go Live screen only — the previews here, the web broadcast and the OBS overlay are unaffected">
+          <span>Spacing</span>
+          <input
+            type="range"
+            min={0.9}
+            max={2}
+            step={0.05}
+            value={theme.lineSpacing ?? DEFAULT_LINE_SPACING}
+            onChange={(e) => setTheme({ lineSpacing: Number(e.target.value) })}
+          />
+          <span className="look-val">{(theme.lineSpacing ?? DEFAULT_LINE_SPACING).toFixed(2)}</span>
         </label>
 
         <label className="look-row">
