@@ -1994,6 +1994,24 @@ select:focus {
   width: 12px;
   height: 12px;
 }
+/* Send this unit to another stanza. Sits on the row so the pair it belongs to
+   is unambiguous. */
+.ss-unit-to {
+  flex: none;
+  max-width: 108px;
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+.ss-unit-to:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
 .ss-unit-lines {
   flex: 1;
   min-width: 0;

@@ -157,6 +157,54 @@ export function SongStructureDialog({
     setLineOverride((prev) => ({ ...prev, [id]: next.flatMap((u) => unitLines(u)) }))
     setGroups((prev) => ({ ...prev, [id]: held }))
   }
+  /** Which slide (group index) a given unit currently sits in. */
+  const groupOfUnit = (grps: number[], unitIndex: number): number => {
+    let at = 0
+    for (let g = 0; g < grps.length; g++) {
+      at += grps[g]
+      if (unitIndex < at) return g
+    }
+    return Math.max(0, grps.length - 1)
+  }
+
+  /**
+   * Move a unit OUT of one stanza and onto the end of another. The unit is the
+   * Telugu line with its transliteration, so the pair travels intact across the
+   * move too.
+   *
+   * Both stanzas' groupings are carried across rather than recomputed: the lines
+   * are stored flat, unit by unit, which interleaves the languages, and letting
+   * the automatic split re-derive would re-paginate both stanzas (the same trap
+   * as the within-stanza move). So the source loses one slot from the slide the
+   * unit was on, and the target gains one on its last slide.
+   */
+  const moveUnitTo = (fromId: string, index: number, toId: string): void => {
+    if (fromId === toId) return
+    const fromUnits = unitsOf(fromId)
+    const toUnits = unitsOf(toId)
+    const unit = fromUnits[index]
+    if (!unit) return
+
+    const fromGroups = groupsOf(fromId).slice()
+    const g = groupOfUnit(fromGroups, index)
+    fromGroups[g] -= 1
+    const nextFromGroups = fromGroups.filter((n) => n > 0)
+
+    const toGroups = groupsOf(toId).slice()
+    if (toGroups.length) toGroups[toGroups.length - 1] += 1
+    else toGroups.push(1)
+
+    const nextFrom = fromUnits.filter((_, i) => i !== index)
+    const nextTo = [...toUnits, unit]
+
+    setLineOverride((prev) => ({
+      ...prev,
+      [fromId]: nextFrom.flatMap((u) => unitLines(u)),
+      [toId]: nextTo.flatMap((u) => unitLines(u))
+    }))
+    setGroups((prev) => ({ ...prev, [fromId]: nextFromGroups, [toId]: toGroups }))
+  }
+
   /** The grouping in force: the operator's, else what the automatic split gives. */
   const groupsOf = (id: string): number[] => {
     const chosen = groups[id]
@@ -365,6 +413,25 @@ export function SongStructureDialog({
                             </span>
                           ))}
                         </span>
+                        {order.filter((o) => o !== id && included.has(o)).length > 0 && (
+                          <select
+                            className="ss-unit-to"
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) moveUnitTo(id, u, e.target.value)
+                            }}
+                            title="Move these lines to another stanza"
+                          >
+                            <option value="">Move to…</option>
+                            {order
+                              .filter((o) => o !== id && included.has(o))
+                              .map((o) => (
+                                <option key={o} value={o}>
+                                  {byId.get(o)?.label ?? o}
+                                </option>
+                              ))}
+                          </select>
+                        )}
                       </div>
                       {u < units.length - 1 && (
                         <button
