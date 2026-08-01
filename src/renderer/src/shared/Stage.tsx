@@ -136,6 +136,30 @@ export function Stage({
   // Go Live screen only — everywhere else renders at the shared default.
   const lineHeight = live ? theme.lineSpacing ?? DEFAULT_LINE_SPACING : DEFAULT_LINE_SPACING
 
+  /**
+   * The same Spacing setting, as a factor, for composed (Canvas) slides. Those
+   * lines are absolutely positioned at their own y with line-height:1, so the
+   * text path above cannot reach them — a song added via Canvas ignored Spacing
+   * entirely. Here the gaps are stretched about the block's centre instead, which
+   * is the positional equivalent, and clamped so a wide setting can never push a
+   * line off the slide.
+   */
+  const composedSpread = (): number => {
+    const want = lineHeight / DEFAULT_LINE_SPACING
+    if (want === 1 || !composed || composed.length < 2) return 1
+    const ys = composed.map((l) => l.y)
+    const half = (Math.max(...ys) - Math.min(...ys)) / 2
+    if (half <= 0) return 1
+    const tallest = Math.max(...composed.map((l) => l.fontSize))
+    // keep the whole block inside 92% of the 540-tall reference canvas
+    const room = (540 * 0.92) / 2 - tallest / 2
+    return Math.max(1, Math.min(want, room / half))
+  }
+  const spread = composedSpread()
+  const composedMid = composed?.length
+    ? (Math.min(...composed.map((l) => l.y)) + Math.max(...composed.map((l) => l.y))) / 2
+    : 0
+
   const textStyle: CSSProperties = {
     color: theme.textColor,
     fontFamily: theme.fontFamily,
@@ -197,7 +221,9 @@ export function Stage({
               className="stage-cline"
               style={{
                 left: `${(l.x / 960) * 100}%`,
-                top: `${(l.y / 540) * 100}%`,
+                // Spacing stretches the gaps about the block's centre (spread is
+                // 1 everywhere but the Go Live screen, so this is a no-op there).
+                top: `${((composedMid + (l.y - composedMid) * spread) / 540) * 100}%`,
                 transform: 'translate(-50%, -50%)',
                 fontSize: `${(l.fontSize / 540) * 100}cqh`,
                 color: l.color || theme.textColor,
