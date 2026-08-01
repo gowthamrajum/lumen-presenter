@@ -6,18 +6,25 @@ export type SongLang = 'telugu' | 'english' | 'both'
 /** Pick lyric lines for a section in the chosen language. "both" lays out each
  *  slide as a block of up to 2 Telugu lines followed by their up to 2 English
  *  lines (so a 4-line slide reads: 2 Telugu on top, 2 English below), rather than
- *  interleaving line-by-line. Chunked 4-per-slide downstream. */
+ *  interleaving line-by-line.
+ *
+ *  The two languages correspond by index — english[i] is the transliteration of
+ *  telugu[i] — so blocks are cut on even index boundaries and an index position
+ *  blank in BOTH languages is skipped whole, never one side at a time. That keeps
+ *  each Telugu line adjacent to its own transliteration; slides.ts then splits on
+ *  those pair boundaries (see chunkBilingualLines). */
 function pickLines(telugu: string[] = [], english: string[] = [], lang: SongLang): string[] {
   if (lang === 'telugu') return telugu
   if (lang === 'english') return english
   const out: string[] = []
   const n = Math.max(telugu.length, english.length)
+  const has = (l: string | undefined): l is string => !!l && l.trim().length > 0
   for (let i = 0; i < n; i += 2) {
     // Telugu block (this slide's 2 lines), then the matching English block.
-    if (telugu[i]) out.push(telugu[i])
-    if (telugu[i + 1]) out.push(telugu[i + 1])
-    if (english[i]) out.push(english[i])
-    if (english[i + 1]) out.push(english[i + 1])
+    const te = [telugu[i], telugu[i + 1]].filter(has)
+    const en = [english[i], english[i + 1]].filter(has)
+    if (!te.length && !en.length) continue
+    out.push(...te, ...en)
   }
   return out
 }

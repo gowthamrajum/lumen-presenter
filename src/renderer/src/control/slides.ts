@@ -183,10 +183,104 @@ export function chunkLyricLines(lines: string[], lpp: number, groupRepeats = tru
   return slides
 }
 
+// ---- bilingual (Telugu + English transliteration) pairing --------------------
+
+/** Any character from the Telugu Unicode block. */
+const TELUGU_CHAR = /[ఀ-౿]/
+/** Any Latin letter — the script the transliteration is written in. */
+const LATIN_CHAR = /[A-Za-z]/
+
+function isTelugu(line: string): boolean {
+  return TELUGU_CHAR.test(line)
+}
+
+/**
+ * Is this section a bilingual stanza — Telugu lyrics with an English
+ * transliteration underneath? Requires at least two lines of each script, so a
+ * Telugu song carrying one stray Latin word ("Hallelujah") is not mistaken for
+ * one. Used to pair sections that carry no `bilingual` flag (hand-authored songs,
+ * or a song whose flag predates it).
+ */
+export function isBilingualSection(lines: string[]): boolean {
+  let te = 0
+  let en = 0
+  for (const l of lines) {
+    if (!l.trim()) continue
+    if (isTelugu(l)) te++
+    else if (LATIN_CHAR.test(l)) en++
+  }
+  return te >= 2 && en >= 2
+}
+
+/**
+ * Strict check: does this slide keep every Telugu line with its transliteration?
+ * A slide is paired when its Telugu lines and its Latin lines are equal in number
+ * (they correspond one-for-one, in order) — or when it holds a single language.
+ * This is the invariant `chunkBilingualLines` guarantees by construction; exported
+ * so the pairing can be asserted (and unit-tested) rather than assumed.
+ */
+export function isSlidePaired(lines: string[]): boolean {
+  const te = lines.filter((l) => l.trim() && isTelugu(l)).length
+  const en = lines.filter((l) => l.trim() && !isTelugu(l) && LATIN_CHAR.test(l)).length
+  return te === 0 || en === 0 || te === en
+}
+
+/**
+ * Split a bilingual section into slides that NEVER separate a Telugu line from
+ * its English transliteration.
+ *
+ * The lines arrive as runs — some Telugu lines, then their transliterations —
+ * so we rebuild that structure instead of counting lines (which is what let a
+ * pair drift onto two slides). Within a run-pair the two languages correspond by
+ * position: Telugu[i] <-> English[i]. Each output slide carries `pairsPerSlide`
+ * whole pairs, laid out Telugu-block-then-English-block to match the existing look.
+ *
+ * When a source stanza is lopsided (the catalog has ~180 such sections — e.g. 22
+ * Telugu lines against 4 English) the surplus lines have no counterpart to keep.
+ * They are emitted on their own single-language slides AFTER the paired ones,
+ * rather than being folded in beside an unrelated pair.
+ */
+export function chunkBilingualLines(lines: string[], pairsPerSlide: number): string[][] {
+  const per = Math.max(1, pairsPerSlide)
+  const src = lines.filter((l) => l.trim().length > 0)
+
+  // Rebuild the [Telugu run][English run] blocks the lines were laid out in.
+  const blocks: { te: string[]; en: string[] }[] = []
+  let cur: { te: string[]; en: string[] } | null = null
+  for (const line of src) {
+    const telugu = isTelugu(line)
+    // A Telugu line after this block's English run has started begins a new block.
+    if (!cur || (telugu && cur.en.length > 0)) {
+      cur = { te: [], en: [] }
+      blocks.push(cur)
+    }
+    if (telugu) cur.te.push(line)
+    else cur.en.push(line)
+  }
+
+  const slides: string[][] = []
+  for (const b of blocks) {
+    const paired = Math.min(b.te.length, b.en.length)
+    // Whole pairs, `per` of them per slide: Telugu lines first, then their
+    // transliterations, so each slide reads exactly as the stanza does.
+    for (let i = 0; i < paired; i += per) {
+      const n = Math.min(per, paired - i)
+      slides.push([...b.te.slice(i, i + n), ...b.en.slice(i, i + n)])
+    }
+    // Whatever had no counterpart: its own slides, one language, never mixed in.
+    const leftover = b.te.length > paired ? b.te.slice(paired) : b.en.slice(paired)
+    for (let i = 0; i < leftover.length; i += per) slides.push(leftover.slice(i, i + per))
+  }
+  return slides
+}
+
 /**
  * Song -> slides. Sections are emitted in arrangement order (or section order),
  * each section's lyric lines split into slides of `linesPerSlide` lines (grouping
  * repeat lines and keeping at least 2 lines per slide — see chunkLyricLines).
+ *
+ * Bilingual sections take the pairing path instead, so a Telugu line and its
+ * English transliteration always share a slide (see chunkBilingualLines).
  */
 export function songSlides(song: Song): SlideContent[] {
   const lpp = Math.max(1, song.linesPerSlide ?? 2)
@@ -202,9 +296,15 @@ export function songSlides(song: Song): SlideContent[] {
     // half-empty slides or shift the lines-per-slide pagination.
     const lines = sec.lines.filter((l) => l.trim().length > 0).map(formatLyricLine)
     if (lines.length === 0) continue
-    // Bilingual sections are already arranged into 2-Telugu-then-2-English blocks,
-    // so chunk them plainly (no repeat-regrouping); single-language groups repeats.
-    const chunks = chunkLyricLines(lines, lpp, !song.bilingual)
+    // Bilingual sections pair Telugu with its transliteration and split on pair
+    // boundaries — counting lines (the old path) could strand a line's translit on
+    // the next slide whenever a stanza's two languages were uneven. `bilingual` is
+    // set by the catalog import; detect it too, for hand-authored songs.
+    const bilingual = song.bilingual || isBilingualSection(lines)
+    const chunks = bilingual
+      ? // lpp counts LINES (4 = 2 Telugu + 2 English), the chunker counts PAIRS.
+        chunkBilingualLines(lines, Math.max(1, Math.round(lpp / 2)))
+      : chunkLyricLines(lines, lpp, true)
     chunks.forEach((chunk, i) => {
       slides.push({
         id: uid(),
