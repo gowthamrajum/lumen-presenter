@@ -72,15 +72,15 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
     return () => clearTimeout(t)
   }, [exp.phase])
 
-  // Export the whole deck as a .zip (rendered PowerPoint + JSON); import a .json/.zip.
-  // The zip export renders the PPTX, so it shows the same live progress.
-  const doExportZip = async (): Promise<void> => {
+  // Export the deck as portable JSON on its own — no slide render, so it's
+  // immediate and needs no progress. PowerPoint is its own command below.
+  // Import still takes a .json or a legacy .zip.
+  const doExportJson = async (): Promise<void> => {
     setMenu(false)
     if (!items.length || exp.phase === 'running') return
-    setExp({ phase: 'running', done: 0, total: 0 })
     try {
       const res = await exportServiceJson()
-      if (res.ok) setExp({ phase: 'done', done: res.count ?? 0, total: res.count ?? 0, msg: 'Exported PPTX + JSON (zip)' })
+      if (res.ok) setExp({ phase: 'done', done: 0, total: 0, msg: 'Exported service JSON' })
       else if (res.canceled) setExp({ phase: 'idle', done: 0, total: 0 })
       else setExp({ phase: 'error', done: 0, total: 0, msg: res.error || 'Export failed' })
     } catch (e) {
@@ -178,10 +178,17 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                 </button>
                 <button
                   className="menu-item"
-                  onClick={() => void doExportZip()}
+                  onClick={() => { setMenu(false); void exportPptx() }}
                   disabled={!items.length || exp.phase === 'running'}
                 >
-                  <span className="mi-row"><Icon name="download" /> Export service (PPTX + JSON zip)…</span>
+                  <span className="mi-row"><Icon name="download" /> Export PowerPoint (.pptx)…</span>
+                </button>
+                <button
+                  className="menu-item"
+                  onClick={() => void doExportJson()}
+                  disabled={!items.length || exp.phase === 'running'}
+                >
+                  <span className="mi-row"><Icon name="download" /> Export service JSON (.json)…</span>
                 </button>
                 <div className="menu-label">Start from a template</div>
                 {SERVICE_TEMPLATES.map((t) => (

@@ -219,7 +219,7 @@ export interface ServiceExport {
 export interface ServiceExportResult {
   ok: boolean
   path?: string
-  /** number of slides rendered into the bundled PowerPoint */
+  /** number of slides written into the exported service JSON */
   count?: number
   canceled?: boolean
   error?: string

@@ -25,8 +25,9 @@ import {
 } from '../shared/types'
 import { importPptxFiles } from './pptx'
 import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExport'
-import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate'
-import { DEFAULT_BACKGROUND, DEFAULT_THEME } from '../shared/types'
+// Only the import path unzips now — the JSON export writes a plain file, and the
+// PowerPoint export builds its own container in pptxWrite.
+import { unzipSync, strFromU8 } from 'fflate'
 import { cachedFetchJson } from './httpCache'
 import { esvKeyStatus, esvSetKey, esvPassage } from './esv'
 import type { PptxExportRequest } from '../shared/types'
@@ -411,33 +412,23 @@ function registerIpc(): void {
     return listServices()
   })
 
-  // Export the whole service as a .zip containing BOTH a rendered PowerPoint
-  // (pixel-faithful, one image slide per slide) and the portable JSON envelope.
+  // Export the portable JSON envelope on its own. PowerPoint is a separate
+  // command (IPC.pptxExport) — the two used to be bundled into one .zip, which
+  // meant asking for the deck's JSON also paid for a full slide render.
+  // Importing still accepts either, so previously-exported .zip files keep working.
   ipcMain.handle(IPC.serviceExport, async (_e, env: ServiceExport) => {
     const svc = env?.service
     if (!svc?.items?.length) return { ok: false, error: 'Nothing to export — the service has no slides.' }
     const name = (svc.name || 'Cantica Service').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Cantica Service'
     const res = await dialog.showSaveDialog(controlWindow!, {
-      title: 'Export service (PowerPoint + JSON, zipped)',
-      defaultPath: `${name}.zip`,
-      filters: [{ name: 'Zip archive', extensions: ['zip'] }]
+      title: 'Export service JSON',
+      defaultPath: `${name}.cantica.json`,
+      filters: [{ name: 'Cantica service', extensions: ['json'] }]
     })
     if (res.canceled || !res.filePath) return { ok: false, canceled: true }
     try {
-      const { bytes: pptxBytes, count } = await exportSessionToPptx(
-        { name, items: svc.items, background: svc.background ?? DEFAULT_BACKGROUND, theme: svc.theme ?? DEFAULT_THEME },
-        null,
-        {
-          preloadPath: preloadPathFrom(__dirname),
-          exportUrl: exportUrlFrom(rendererUrl('output')),
-          onProgress: (done, total) => controlWindow?.webContents.send(IPC.pptxExportProgress, { done, total })
-        }
-      )
-      const zip = zipSync(
-        { [`${name}.pptx`]: pptxBytes, [`${name}.cantica.json`]: strToU8(JSON.stringify(env, null, 2)) },
-        { level: 4 }
-      )
-      await writeFile(res.filePath, Buffer.from(zip))
+      await writeFile(res.filePath, JSON.stringify(env, null, 2), 'utf8')
+      const count = svc.items.reduce((n, it) => n + (it.slides?.length ?? 0), 0)
       return { ok: true, path: res.filePath, count }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
