@@ -147,9 +147,15 @@ export function SongStructureDialog({
     const units = unitsOf(id)
     const j = index + dir
     if (j < 0 || j >= units.length) return
+    // Pin the grouping as it stands. Reordering writes the lines back unit by
+    // unit, which interleaves the two languages — so the AUTOMATIC split would
+    // then see one pair per block and re-paginate (2 slides became 4). The unit
+    // count is unchanged by a swap, so the current grouping still fits exactly.
+    const held = groupsOf(id)
     const next = units.slice()
     ;[next[index], next[j]] = [next[j], next[index]]
     setLineOverride((prev) => ({ ...prev, [id]: next.flatMap((u) => unitLines(u)) }))
+    setGroups((prev) => ({ ...prev, [id]: held }))
   }
   /** The grouping in force: the operator's, else what the automatic split gives. */
   const groupsOf = (id: string): number[] => {
