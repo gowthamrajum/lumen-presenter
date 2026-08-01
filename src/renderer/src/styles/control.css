@@ -2032,6 +2032,62 @@ select:focus {
   margin-top: 8px;
   background: transparent;
 }
+/* ---- slide boxes: one per slide, pairs dragged between them ---- */
+.ss-slidebox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ss-slidebox {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 6px 6px;
+  background: color-mix(in srgb, var(--fg) 2%, transparent);
+}
+.ss-slidebox.over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.ss-slidebox-head {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.ss-slidebox .ss-unit {
+  cursor: grab;
+  margin-bottom: 3px;
+}
+.ss-slidebox .ss-unit:last-child {
+  margin-bottom: 0;
+}
+.ss-unit.dragging {
+  opacity: 0.4;
+}
+.ss-unit-grip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  cursor: grab;
+}
+.ss-unit-grip svg {
+  width: 13px;
+  height: 13px;
+}
+/* trailing drop target — drag here to split onto a fresh slide */
+.ss-slidebox-new {
+  border-style: dashed;
+  text-align: center;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 7px 6px;
+  background: none;
+}
+
 /* The clickable gap between two units. Off = a faint "split here"; on = a solid
    rule meaning the next unit starts a new slide. */
 .ss-divider {

@@ -29,6 +29,9 @@ export interface AddSongChoice {
   /** Slide grouping for the REPEAT occurrences of the recurring section (the
    *  ticked lines that play after each stanza), units-per-slide. */
   repeatGroups?: number[]
+  /** The repeat's exact lines, in order, once the operator has dragged them
+   *  around. Takes precedence over repeatLineIndices when present. */
+  repeatLines?: string[]
 }
 
 /** Cumulative unit index after each slide, i.e. where the breaks sit. */
@@ -93,6 +96,8 @@ export function SongStructureDialog({
   const [lineOverride, setLineOverride] = useState<Record<string, string[]>>({})
   /** grouping for the repeat occurrences (the ticked lines), or null = automatic */
   const [repeatGroups, setRepeatGroups] = useState<number[] | null>(null)
+  /** repeat lines reordered by dragging, or null = the ticked order */
+  const [repeatLineOverride, setRepeatLineOverride] = useState<string[] | null>(null)
 
   useEffect(() => {
     setOrder(song.sections.map((s) => s.id))
@@ -103,6 +108,7 @@ export function SongStructureDialog({
     setGroups({})
     setLineOverride({})
     setRepeatGroups(null)
+    setRepeatLineOverride(null)
   }, [song])
 
   const byId = useMemo(() => new Map(song.sections.map((s) => [s.id, s])), [song])
@@ -157,6 +163,78 @@ export function SongStructureDialog({
     setLineOverride((prev) => ({ ...prev, [id]: next.flatMap((u) => unitLines(u)) }))
     setGroups((prev) => ({ ...prev, [id]: held }))
   }
+  /** The section as the slides it will actually produce: units grouped per slide. */
+  const slidesOf = (id: string): SlideUnit[][] => {
+    const units = unitsOf(id)
+    const grps = groupsOf(id)
+    const out: SlideUnit[][] = []
+    let i = 0
+    for (const g of grps) {
+      out.push(units.slice(i, i + g))
+      i += g
+    }
+    if (i < units.length) out.push(units.slice(i))
+    return out.filter((s) => s.length > 0)
+  }
+
+  /** Write a slide layout back as lines + grouping (empty slides disappear). */
+  const applySlides = (id: string, slides: SlideUnit[][]): void => {
+    const kept = slides.filter((s) => s.length > 0)
+    const lines = kept.flat().flatMap((u) => unitLines(u))
+    const sizes = kept.map((s) => s.length)
+    if (id === REPEAT_ID) {
+      setRepeatLineOverride(lines)
+      setRepeatGroups(sizes)
+      return
+    }
+    setLineOverride((prev) => ({ ...prev, [id]: lines }))
+    setGroups((prev) => ({ ...prev, [id]: sizes }))
+  }
+
+  /** Slides for either a stanza or the repeat, so one editor drives both. */
+  const slidesFor = (id: string): SlideUnit[][] => {
+    if (id !== REPEAT_ID) return slidesOf(id)
+    const units = repeatUnits
+    const grps = repeatBreaksGroups
+    const out: SlideUnit[][] = []
+    let i = 0
+    for (const g of grps) {
+      out.push(units.slice(i, i + g))
+      i += g
+    }
+    if (i < units.length) out.push(units.slice(i))
+    return out.filter((x) => x.length > 0)
+  }
+
+  /** Where a drag started: which stanza, which slide, which unit in it. */
+  const [drag, setDrag] = useState<{ id: string; s: number; u: number } | null>(null)
+  const [overSlide, setOverSlide] = useState<number | null>(null)
+
+  /** Pseudo-section id for the recurring stanza's REPEAT, so the same slide
+   *  editor drives it as drives a normal stanza. */
+  const REPEAT_ID = '__repeat'
+
+  /**
+   * Drop the dragged pair onto `toSlide` at `toIndex` (null = the end). This is
+   * how two lines are put on one slide: drag one onto the other's box. The pair
+   * moves whole — a Telugu line can never be parted from its transliteration.
+   */
+  const dropUnit = (id: string, toSlide: number, toIndex: number | null): void => {
+    if (!drag || drag.id !== id) return
+    const slides = slidesFor(id).map((s) => s.slice())
+    const [unit] = slides[drag.s].splice(drag.u, 1)
+    if (!unit) return
+    while (slides.length <= toSlide) slides.push([])
+    const target = slides[toSlide]
+    let at = toIndex == null || toIndex > target.length ? target.length : toIndex
+    // removing from the same slide above the drop point shifts it down one
+    if (drag.s === toSlide && drag.u < at) at -= 1
+    target.splice(Math.max(0, at), 0, unit)
+    applySlides(id, slides)
+    setDrag(null)
+    setOverSlide(null)
+  }
+
   /** Which slide (group index) a given unit currently sits in. */
   const groupOfUnit = (grps: number[], unitIndex: number): number => {
     let at = 0
@@ -279,7 +357,7 @@ export function SongStructureDialog({
   // ---- the repeat's own slide grouping ----
   // The lines that actually play after each stanza, decomposed into units so the
   // repeat can be split on pair boundaries like any other stanza.
-  const repeatLines = tickedRepeat.map((i) => recEntries[i].text)
+  const repeatLines = repeatLineOverride ?? tickedRepeat.map((i) => recEntries[i].text)
   const repeatUnits = recurring
     ? sectionUnits(repeatLines, !!song.bilingual || isBilingualSection(repeatLines))
     : []
@@ -293,6 +371,108 @@ export function SongStructureDialog({
     if (b.has(u)) b.delete(u)
     else b.add(u)
     setRepeatGroups(breaksToGroups(b, repeatUnits.length))
+  }
+
+
+  /**
+   * The slide editor: one box per slide, pairs draggable between them. Dropping a
+   * pair into another slide is how two lines are put on the same slide; dropping
+   * onto the trailing box splits it onto a new one. A pair always moves whole.
+   */
+  const renderSlides = (id: string): JSX.Element => {
+    const slides = slidesFor(id)
+    return (
+      <div className="ss-slidebox-list">
+        {slides.map((slideUnits, si) => (
+          <div
+            key={si}
+            className={`ss-slidebox ${overSlide === si && drag?.id === id ? 'over' : ''}`}
+            onDragOver={(e) => {
+              if (drag?.id !== id) return
+              e.preventDefault()
+              setOverSlide(si)
+            }}
+            onDragLeave={() => setOverSlide((v) => (v === si ? null : v))}
+            onDrop={(e) => {
+              e.preventDefault()
+              dropUnit(id, si, null)
+            }}
+          >
+            <div className="ss-slidebox-head">Slide {si + 1}</div>
+            {slideUnits.map((unit, ui) => (
+              <div
+                key={ui}
+                className={`ss-unit ${drag?.id === id && drag.s === si && drag.u === ui ? 'dragging' : ''}`}
+                draggable
+                onDragStart={() => setDrag({ id, s: si, u: ui })}
+                onDragEnd={() => {
+                  setDrag(null)
+                  setOverSlide(null)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  dropUnit(id, si, ui)
+                }}
+                onDragOver={(e) => {
+                  if (drag?.id !== id) return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setOverSlide(si)
+                }}
+              >
+                <span className="ss-unit-grip" title="Drag onto another slide to pair these lines with it">
+                  <Icon name="dots" />
+                </span>
+                <span className="ss-unit-lines">
+                  {unitLines(unit).map((line, k) => (
+                    <span key={k} className="ss-unit-line">
+                      {line}
+                    </span>
+                  ))}
+                </span>
+                {id !== REPEAT_ID && order.filter((o) => o !== id && included.has(o)).length > 0 && (
+                  <select
+                    className="ss-unit-to"
+                    value=""
+                    onChange={(e) => {
+                      if (!e.target.value) return
+                      const flat = slides.slice(0, si).reduce((n, x) => n + x.length, 0) + ui
+                      moveUnitTo(id, flat, e.target.value)
+                    }}
+                    title="Move these lines to another stanza"
+                  >
+                    <option value="">Move to…</option>
+                    {order
+                      .filter((o) => o !== id && included.has(o))
+                      .map((o) => (
+                        <option key={o} value={o}>
+                          {byId.get(o)?.label ?? o}
+                        </option>
+                      ))}
+                  </select>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+        <div
+          className={`ss-slidebox ss-slidebox-new ${overSlide === slides.length && drag?.id === id ? 'over' : ''}`}
+          onDragOver={(e) => {
+            if (drag?.id !== id) return
+            e.preventDefault()
+            setOverSlide(slides.length)
+          }}
+          onDragLeave={() => setOverSlide((v) => (v === slides.length ? null : v))}
+          onDrop={(e) => {
+            e.preventDefault()
+            dropUnit(id, slides.length, null)
+          }}
+        >
+          drop here for a new slide
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -376,7 +556,7 @@ export function SongStructureDialog({
               {grouping === id && (
                 <div className="ss-slides">
                   <div className="ss-slides-hint">
-                    Click a divider to split or rejoin a slide
+                    Drag a pair onto another slide to put those lines together
                     {(!!song.bilingual || isBilingualSection(sec.lines)) &&
                       ' · each Telugu line stays with its transliteration'}
                     {groups[id] && (
@@ -385,65 +565,7 @@ export function SongStructureDialog({
                       </button>
                     )}
                   </div>
-                  {units.map((unit, u) => (
-                    <div key={u}>
-                      <div className="ss-unit">
-                        <span className="ss-unit-move">
-                          <button
-                            className="icon-btn"
-                            onClick={() => moveUnit(id, u, -1)}
-                            disabled={u === 0}
-                            title="Move these lines up (Telugu and its transliteration together)"
-                          >
-                            <Icon name="chevron-up" />
-                          </button>
-                          <button
-                            className="icon-btn"
-                            onClick={() => moveUnit(id, u, 1)}
-                            disabled={u === units.length - 1}
-                            title="Move these lines down (Telugu and its transliteration together)"
-                          >
-                            <Icon name="chevron-down" />
-                          </button>
-                        </span>
-                        <span className="ss-unit-lines">
-                          {unitLines(unit).map((line, k) => (
-                            <span key={k} className="ss-unit-line">
-                              {line}
-                            </span>
-                          ))}
-                        </span>
-                        {order.filter((o) => o !== id && included.has(o)).length > 0 && (
-                          <select
-                            className="ss-unit-to"
-                            value=""
-                            onChange={(e) => {
-                              if (e.target.value) moveUnitTo(id, u, e.target.value)
-                            }}
-                            title="Move these lines to another stanza"
-                          >
-                            <option value="">Move to…</option>
-                            {order
-                              .filter((o) => o !== id && included.has(o))
-                              .map((o) => (
-                                <option key={o} value={o}>
-                                  {byId.get(o)?.label ?? o}
-                                </option>
-                              ))}
-                          </select>
-                        )}
-                      </div>
-                      {u < units.length - 1 && (
-                        <button
-                          className={`ss-divider ${breaks.has(u) ? 'on' : ''}`}
-                          onClick={() => toggleBreak(id, u)}
-                          title={breaks.has(u) ? 'Rejoin onto one slide' : 'Split onto a new slide'}
-                        >
-                          <span className="ss-divider-label">{breaks.has(u) ? 'new slide' : 'split here'}</span>
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {renderSlides(id)}
                 </div>
               )}
               {recurring === id && (
@@ -480,7 +602,7 @@ export function SongStructureDialog({
                   {repeatUnits.length > 1 && (
                     <div className="ss-slides ss-repeat-slides">
                       <div className="ss-slides-hint">
-                        How the repeat splits · {repeatBreaksGroups.length} slide
+                        How the repeat splits — drag to regroup · {repeatBreaksGroups.length} slide
                         {repeatBreaksGroups.length === 1 ? '' : 's'}
                         {repeatGroups && (
                           <button className="ss-slides-reset" onClick={() => setRepeatGroups(null)}>
@@ -488,30 +610,7 @@ export function SongStructureDialog({
                           </button>
                         )}
                       </div>
-                      {repeatUnits.map((unit, u) => (
-                        <div key={u}>
-                          <div className="ss-unit">
-                            <span className="ss-unit-lines">
-                              {unitLines(unit).map((line, k) => (
-                                <span key={k} className="ss-unit-line">
-                                  {line}
-                                </span>
-                              ))}
-                            </span>
-                          </div>
-                          {u < repeatUnits.length - 1 && (
-                            <button
-                              className={`ss-divider ${repeatBreaks.has(u) ? 'on' : ''}`}
-                              onClick={() => toggleRepeatBreak(u)}
-                              title={repeatBreaks.has(u) ? 'Rejoin onto one slide' : 'Split onto a new slide'}
-                            >
-                              <span className="ss-divider-label">
-                                {repeatBreaks.has(u) ? 'new slide' : 'split here'}
-                              </span>
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                      {renderSlides(REPEAT_ID)}
                     </div>
                   )}
                 </div>
@@ -564,7 +663,8 @@ export function SongStructureDialog({
                 background,
                 groups,
                 sectionLines: lineOverride,
-                repeatGroups: repeatGroups ?? undefined
+                repeatGroups: repeatGroups ?? undefined,
+                repeatLines: repeatLineOverride ?? undefined
               })
             }
           >

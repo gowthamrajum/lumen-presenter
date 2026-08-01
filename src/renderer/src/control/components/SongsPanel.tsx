@@ -106,10 +106,14 @@ export function SongsPanel(): JSX.Element {
     // Partial repeat: keep the FIRST occurrence of the recurring section whole,
     // and swap every LATER occurrence for a synthetic section holding only the
     // ticked lines — e.g. Pallavi in full, then just its first line each repeat.
-    if (choice.recurringId && choice.repeatLineIndices) {
+    if (choice.recurringId && (choice.repeatLineIndices || choice.repeatLines)) {
       const rec = sections.find((s) => s.id === choice.recurringId)
       if (rec) {
-        const rptLines = choice.repeatLineIndices.map((i) => rec.lines[i]).filter((l): l is string => l != null)
+        // `repeatLines` is the exact order the operator dragged the repeat into;
+        // it wins over the tick indices, which only describe which lines repeat.
+        const rptLines =
+          choice.repeatLines ??
+          (choice.repeatLineIndices ?? []).map((i) => rec.lines[i]).filter((l): l is string => l != null)
         const rptId = `${rec.id}__rpt`
         // The repeat holds a subset of the lines, so the stanza's own grouping
         // doesn't describe it — it carries the repeat's grouping instead (chosen
