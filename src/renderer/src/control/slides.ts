@@ -440,7 +440,8 @@ export function songComposedSlides(song: Song): SlideContent[] {
     .filter((s) => s.lines.length > 0)
 }
 
-/** A countdown slide targeting `minutes` from now (ticks in the output). */
+/** A countdown slide of `minutes`, held at its full duration until the slide
+ *  goes live — building the service an hour early must not spend the count. */
 export function countdownSlide(minutes: number, message?: string): SlideContent {
   const m = Math.max(0, minutes)
   return {
@@ -448,7 +449,7 @@ export function countdownSlide(minutes: number, message?: string): SlideContent 
     kind: 'countdown',
     label: 'Countdown',
     lines: [],
-    countdownTo: Date.now() + m * 60_000,
+    countdownRemainMs: m * 60_000,
     countdownMinutes: m,
     message: message?.trim() || undefined
   }

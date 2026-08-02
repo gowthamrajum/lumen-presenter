@@ -88,10 +88,15 @@ export interface SlideContent {
   label?: string
   /** body lines shown large on the audience screen */
   lines: string[]
-  /** for kind 'countdown': epoch ms the output counts down to (ticks locally) */
+  /** for kind 'countdown': epoch ms the output counts down to (ticks locally).
+   *  Set ONLY while the slide is live — a countdown runs on air and nowhere
+   *  else, so it can't quietly expire in the schedule before you reach it. */
   countdownTo?: number
-  /** for kind 'countdown': the duration in minutes, so a reopened service can
-   *  re-arm a fresh target instead of showing an expired 0:00 */
+  /** for kind 'countdown': ms left while the slide is NOT live. The countdown
+   *  holds here until the operator brings the slide back up. */
+  countdownRemainMs?: number
+  /** for kind 'countdown': the duration in minutes, so a reopened service (or a
+   *  "Save & restart") can go back to a full count instead of a spent one */
   countdownMinutes?: number
   /** optional caption shown above a countdown/clock */
   message?: string
@@ -117,6 +122,17 @@ export interface SlideContent {
   /** render the text on a single line, shrinking to fit width instead of
    *  wrapping (used by bilingual title cards). */
   singleLine?: boolean
+}
+
+/**
+ * Milliseconds left on a countdown, whether it is running (`countdownTo`) or
+ * held (`countdownRemainMs`). A slide that has never been on air has neither,
+ * and shows its full configured duration.
+ */
+export function countdownRemaining(slide: SlideContent, now: number): number {
+  if (slide.countdownTo != null) return Math.max(0, slide.countdownTo - now)
+  if (slide.countdownRemainMs != null) return Math.max(0, slide.countdownRemainMs)
+  return (slide.countdownMinutes ?? 0) * 60_000
 }
 
 export interface LiveState {

@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { DEFAULT_LINE_SPACING, GO_LIVE_LINE_SPACING, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
+import { DEFAULT_LINE_SPACING, GO_LIVE_LINE_SPACING, countdownRemaining, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
 import { AUTO_SPACING_TARGET, useFitText } from './useFitText'
 import { Icon } from './Icon'
 
@@ -19,7 +19,11 @@ function formatLyric(line: string): string {
 }
 
 /** Self-ticking countdown / clock rendered locally in each window. In preview
- *  (thumbnail) mode it renders a static snapshot — no interval. */
+ *  (thumbnail) mode it renders a static snapshot — no interval.
+ *
+ *  A countdown ticks only while it is the live slide; anywhere else it shows
+ *  the time it is holding at, with no interval running. The store decides which
+ *  by handing the slide a `countdownTo` (running) or a `countdownRemainMs`. */
 function TimerDisplay({
   slide,
   theme,
@@ -30,18 +34,20 @@ function TimerDisplay({
   preview?: boolean
 }): JSX.Element {
   const [now, setNow] = useState<number>(() => Date.now())
+  const held = slide.kind === 'countdown' && slide.countdownTo == null
   useEffect(() => {
     if (preview) return // thumbnails don't need to tick
+    if (held) return // a countdown that isn't on air has nothing to count
     // clock only changes each minute; countdown needs per-second updates
     const id = setInterval(() => setNow(Date.now()), slide.kind === 'clock' ? 1000 : 250)
     return () => clearInterval(id)
-  }, [preview, slide.kind])
+  }, [preview, held, slide.kind])
 
   let text: string
   if (slide.kind === 'clock') {
     text = new Date(now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
   } else {
-    const remain = Math.max(0, Math.round(((slide.countdownTo ?? now) - now) / 1000))
+    const remain = Math.round(countdownRemaining(slide, now) / 1000)
     const h = Math.floor(remain / 3600)
     const m = Math.floor((remain % 3600) / 60)
     const s = remain % 60

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   DEFAULT_BACKGROUND,
   DEFAULT_THEME,
+  countdownRemaining,
   type Background,
   type ComposedLine,
   type DisplayInfo,
@@ -30,18 +31,54 @@ export function uid(): string {
   return Math.random().toString(36).slice(2, 10)
 }
 
-/** Re-arm countdown slides to a fresh target (relative to `now`) so a restored
- *  or reopened service doesn't show an expired 0:00; also migrates legacy
- *  broadcast flags. Shared by openService and the session-cache restore. */
-function reArmItems(items: ServiceItem[], now: number): ServiceItem[] {
+/** Reset countdown slides to a full, held count so a restored or reopened
+ *  service doesn't show an expired 0:00 (the saved target is hours stale); also
+ *  migrates legacy broadcast flags. Shared by openService and the cache restore.
+ *  Nothing starts ticking here — that waits for the slide to go live. */
+function reArmItems(items: ServiceItem[]): ServiceItem[] {
   return items.map((it) => ({
     ...normalizeBroadcast(it),
     slides: it.slides.map((sl) =>
-      sl.kind === 'countdown' && sl.countdownMinutes != null
-        ? { ...sl, countdownTo: now + sl.countdownMinutes * 60_000 }
+      sl.kind === 'countdown'
+        ? { ...sl, countdownTo: undefined, countdownRemainMs: (sl.countdownMinutes ?? 0) * 60_000 }
         : sl
     )
   }))
+}
+
+/**
+ * A countdown runs only while its own slide is live. The slide going live
+ * resumes from whatever was left on it; the one leaving stops and keeps its
+ * remainder for next time. Everything else is returned untouched — and by
+ * identity, so navigating a service with no countdowns in it changes nothing.
+ */
+function syncCountdowns(items: ServiceItem[], liveId: string | null, now: number): ServiceItem[] {
+  let touched = false
+  const next = items.map((it) => {
+    let itemTouched = false
+    const slides = it.slides.map((sl) => {
+      if (sl.kind !== 'countdown') return sl
+      const running = sl.countdownTo != null
+      const shouldRun = sl.id === liveId
+      if (running === shouldRun) return sl
+      itemTouched = true
+      return shouldRun
+        ? { ...sl, countdownTo: now + countdownRemaining(sl, now), countdownRemainMs: undefined }
+        : { ...sl, countdownTo: undefined, countdownRemainMs: countdownRemaining(sl, now) }
+    })
+    if (!itemTouched) return it
+    touched = true
+    return { ...it, slides }
+  })
+  return touched ? next : items
+}
+
+/** A fresh copy of a slide. A running countdown is held at whatever it had left
+ *  — only the live slide counts, and a copy is never the live one. */
+function copySlide(sl: SlideContent, now: number): SlideContent {
+  const copy = { ...sl, id: uid() }
+  if (sl.kind !== 'countdown' || sl.countdownTo == null) return copy
+  return { ...copy, countdownTo: undefined, countdownRemainMs: countdownRemaining(sl, now) }
 }
 
 /** Flipped true once init() has restored any cache, so the auto-save
@@ -399,7 +436,7 @@ export const useStore = create<AppState>((set, get) => {
       // above, so don't clobber anything the operator already started.
       const cached = loadSessionCache()
       if (cached && Array.isArray(cached.items) && cached.items.length && get().items.length === 0) {
-        const items = reArmItems(cached.items, Date.now())
+        const items = reArmItems(cached.items)
         set({
           serviceId: cached.serviceId ?? null,
           serviceName: cached.serviceName || 'Untitled Service',
@@ -607,7 +644,12 @@ export const useStore = create<AppState>((set, get) => {
             if (cfg.minutes != null) {
               const m = Math.max(0, Math.min(600, cfg.minutes))
               next.countdownMinutes = m
-              next.countdownTo = now + m * 60_000
+              // restart at the full duration — ticking already if it's the slide
+              // on air, held for later if it isn't
+              const full = m * 60_000
+              const live = s.liveId === slideId
+              next.countdownTo = live ? now + full : undefined
+              next.countdownRemainMs = live ? undefined : full
             }
             if (cfg.message != null) next.message = cfg.message.trim() || undefined
             return next
@@ -632,7 +674,7 @@ export const useStore = create<AppState>((set, get) => {
         items: s.items.map((it) => {
           const idx = it.slides.findIndex((sl) => sl.id === id)
           if (idx < 0) return it
-          const copy = { ...it.slides[idx], id: uid() }
+          const copy = copySlide(it.slides[idx], Date.now())
           const slides = it.slides.slice()
           if (placement === 'end') slides.push(copy)
           else slides.splice(idx + 1, 0, copy)
@@ -716,7 +758,7 @@ export const useStore = create<AppState>((set, get) => {
           ...normalizeBroadcast(src),
           id: uid(),
           title: `${src.title} (copy)`,
-          slides: src.slides.map((sl) => ({ ...sl, id: uid() }))
+          slides: src.slides.map((sl) => copySlide(sl, Date.now()))
         }
         const items = s.items.slice()
         items.splice(i + 1, 0, copy)
@@ -790,7 +832,7 @@ export const useStore = create<AppState>((set, get) => {
       if (!service) return
       // Re-arm countdown slides to a fresh target so a reopened service doesn't
       // show an expired 0:00.
-      const items = reArmItems(service.items ?? [], Date.now())
+      const items = reArmItems(service.items ?? [])
       set({
         serviceId: service.id,
         serviceName: service.name,
@@ -834,7 +876,7 @@ export const useStore = create<AppState>((set, get) => {
       if (res.obsStyle) await window.lumen.setBroadcast({ obsStyle: res.obsStyle }).catch(() => {})
       // Fresh serviceId (null) → saving creates a NEW entry, never overwrites a
       // saved service. Re-arm countdowns so an imported deck doesn't show 0:00.
-      const items = reArmItems(svc.items ?? [], Date.now())
+      const items = reArmItems(svc.items ?? [])
       set({
         serviceId: null,
         serviceName: svc.name || 'Imported Service',
@@ -893,6 +935,9 @@ export const useStore = create<AppState>((set, get) => {
         const owner = id ? s.items.find((it) => it.slides.some((sl) => sl.id === id)) : undefined
         return {
           liveId: id,
+          // start the countdown we're going to (from where it left off) and stop
+          // the one we're leaving — a countdown only runs while it's on air.
+          items: syncCountdowns(s.items, id, Date.now()),
           selectedItemId: owner ? owner.id : s.selectedItemId,
           clearText: false,
           blackout: false,

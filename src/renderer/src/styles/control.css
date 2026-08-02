@@ -1684,35 +1684,49 @@ select:focus {
   flex-direction: column;
   gap: 6px;
 }
+/* Title gets a line to itself; the section count and the buttons share the one
+   below. Beside three buttons in a 320px rail the title had ~110px — barely two
+   words, so every Telugu name came out as "Yehovaa Naa Kaap…". Giving it the
+   full width costs one line per row, not two. */
 .song-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-2);
   padding: 7px 9px;
 }
 .song-row-main {
-  flex: 1;
   min-width: 0;
   cursor: pointer;
 }
 .song-title {
   font-weight: 700;
   font-size: 13px;
+  /* wrap rather than truncate; `anywhere` so one long word still breaks instead
+     of pushing the row wide */
+  overflow-wrap: anywhere;
+}
+.song-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.song-author {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.song-author {
-  color: var(--muted);
-  font-size: 11px;
-}
 .song-actions {
   display: flex;
   gap: 4px;
-  flex: 0 0 auto;
+  /* right-aligned even when the row has no author/section line to push against */
+  margin-left: auto;
 }
 
 /* ---------- modal + song editor ---------- */

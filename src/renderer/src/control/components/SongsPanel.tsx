@@ -232,15 +232,17 @@ export function SongsPanel(): JSX.Element {
               <div key={s.id} className="song-row">
                 <div className="song-row-main" onDoubleClick={() => void presentLocal(s.id)} title="Double-click to add & present">
                   <div className="song-title">{s.title || 'Untitled Song'}</div>
-                  {s.author && <div className="song-author">{s.author}</div>}
                 </div>
-                <div className="song-actions">
-                  <button className="btn tiny" onClick={() => void openLocal(s.id, 'slides')} title="Add to service">Add</button>
-                  <button className="btn tiny" onClick={() => void openLocal(s.id, 'canvas')} title="Add as editable Canvas slides">Canvas</button>
-                  <button className="btn tiny" onClick={() => void edit(s.id)} title="Edit song">Edit</button>
-                  <button className="btn tiny icon-btn" onClick={() => void deleteSong(s.id)} title="Delete">
-                    <Icon name="close" />
-                  </button>
+                <div className="song-meta">
+                  {s.author && <div className="song-author">{s.author}</div>}
+                  <div className="song-actions">
+                    <button className="btn tiny" onClick={() => void openLocal(s.id, 'slides')} title="Add to service">Add</button>
+                    <button className="btn tiny" onClick={() => void openLocal(s.id, 'canvas')} title="Add as editable Canvas slides">Canvas</button>
+                    <button className="btn tiny" onClick={() => void edit(s.id)} title="Edit song">Edit</button>
+                    <button className="btn tiny icon-btn" onClick={() => void deleteSong(s.id)} title="Delete">
+                      <Icon name="close" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -264,12 +266,14 @@ export function SongsPanel(): JSX.Element {
               <div key={r.song_id} className="song-row">
                 <div className="song-row-main" onDoubleClick={() => presentRemote(r)} title="Double-click to add & present">
                   <div className="song-title">{r.song_name}</div>
-                  <div className="song-author">{(r.stanzas?.length ?? 0) + (r.main_stanza ? 1 : 0)} sections</div>
                 </div>
-                <div className="song-actions">
-                  <button className="btn tiny" onClick={() => openRemote(r, 'slides')} title="Add to service">Add</button>
-                  <button className="btn tiny" onClick={() => openRemote(r, 'canvas')} title="Add as editable Canvas slides">Canvas</button>
-                  <button className="btn tiny" onClick={() => void importRemote(r)} title="Save to your library">Import</button>
+                <div className="song-meta">
+                  <div className="song-author">{(r.stanzas?.length ?? 0) + (r.main_stanza ? 1 : 0)} sections</div>
+                  <div className="song-actions">
+                    <button className="btn tiny" onClick={() => openRemote(r, 'slides')} title="Add to service">Add</button>
+                    <button className="btn tiny" onClick={() => openRemote(r, 'canvas')} title="Add as editable Canvas slides">Canvas</button>
+                    <button className="btn tiny" onClick={() => void importRemote(r)} title="Save to your library">Import</button>
+                  </div>
                 </div>
               </div>
             ))}
