@@ -98,6 +98,11 @@ export interface SlideContent {
   /** for kind 'countdown': the duration in minutes, so a reopened service (or a
    *  "Save & restart") can go back to a full count instead of a spent one */
   countdownMinutes?: number
+  /** for kind 'clock': show seconds as well as the hour and minute */
+  clockSeconds?: boolean
+  /** for kind 'clock': IANA zone to read the time in, e.g. "Asia/Kolkata".
+   *  Absent = whatever the machine showing the slide is set to. */
+  clockTimeZone?: string
   /** optional caption shown above a countdown/clock */
   message?: string
   /** small caption rendered at the bottom of the audience screen */
@@ -129,6 +134,30 @@ export interface SlideContent {
  * held (`countdownRemainMs`). A slide that has never been on air has neither,
  * and shows its full configured duration.
  */
+/**
+ * The wall time a clock slide should show, formatted. A zone the platform
+ * doesn't know (a hand-edited or imported service) falls back to local time
+ * rather than throwing — a clock that is an hour wrong still beats a blank
+ * screen mid-service.
+ */
+export function formatClock(slide: SlideContent, now: number): string {
+  const opts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
+  if (slide.clockSeconds) opts.second = '2-digit'
+  if (slide.clockTimeZone) {
+    try {
+      return new Date(now).toLocaleTimeString([], { ...opts, timeZone: slide.clockTimeZone })
+    } catch {
+      /* unknown zone — fall through to local */
+    }
+  }
+  return new Date(now).toLocaleTimeString([], opts)
+}
+
+/** "Asia/Kolkata" -> "Kolkata", for labelling a clock slide by its zone. */
+export function timeZoneLabel(tz: string): string {
+  return (tz.split('/').pop() ?? tz).replace(/_/g, ' ')
+}
+
 export function countdownRemaining(slide: SlideContent, now: number): number {
   if (slide.countdownTo != null) return Math.max(0, slide.countdownTo - now)
   if (slide.countdownRemainMs != null) return Math.max(0, slide.countdownRemainMs)

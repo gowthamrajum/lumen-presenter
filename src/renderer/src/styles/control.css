@@ -1894,6 +1894,30 @@ select:focus {
   width: 130px;
   font-variant-numeric: tabular-nums;
 }
+/* checkbox beside its label rather than under it */
+.timer-field.row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.timer-field.row input[type='checkbox'] {
+  width: auto;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.timer-field .tz-select {
+  max-width: none;
+  width: 100%;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+}
+/* the add-panel's zone picker takes the rest of the row beside the Seconds box */
+.timer-row .tz-select {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
 .timer-hint {
   margin: 0;
   font-size: 11.5px;

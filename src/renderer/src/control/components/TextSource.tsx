@@ -4,6 +4,7 @@ import { useStore, uid } from '../../store/useStore'
 import { textSlides, countdownSlide, clockSlide } from '../slides'
 import { SCENES, type Scene } from '../scenes'
 import { announcements } from '../templates'
+import { TimeZoneSelect } from './TimeZoneSelect'
 
 export function TextSource(): JSX.Element {
   const addItem = useStore((s) => s.addItem)
@@ -12,6 +13,9 @@ export function TextSource(): JSX.Element {
   const [body, setBody] = useState('')
   const [minutes, setMinutes] = useState(5)
   const [timerMsg, setTimerMsg] = useState('Service starts in')
+  const [clockSeconds, setClockSeconds] = useState(false)
+  /** '' = this computer's zone */
+  const [clockTz, setClockTz] = useState('')
 
   const add = (goLive: boolean): void => {
     if (!body.trim()) return
@@ -42,8 +46,10 @@ export function TextSource(): JSX.Element {
       { title: `Countdown ${minutes}m`, kind: 'countdown', slides: [countdownSlide(minutes, timerMsg)] },
       true
     )
-  const addClock = (): void =>
-    addItem({ title: 'Clock', kind: 'countdown', slides: [clockSlide()] }, true)
+  const addClock = (): void => {
+    const slide = clockSlide(undefined, { seconds: clockSeconds, timeZone: clockTz })
+    addItem({ title: slide.label ?? 'Clock', kind: 'countdown', slides: [slide] }, true)
+  }
 
   return (
     <div className="source text-source">
@@ -89,6 +95,21 @@ export function TextSource(): JSX.Element {
         <button className="btn" onClick={addClock}>
           + Clock
         </button>
+      </div>
+      <div className="timer-row">
+        <label className="chk" title="Show seconds on the clock">
+          <input
+            type="checkbox"
+            checked={clockSeconds}
+            onChange={(e) => setClockSeconds(e.target.checked)}
+          />
+          Seconds
+        </label>
+        <TimeZoneSelect value={clockTz} onChange={setClockTz} />
+      </div>
+      <div className="source-hint">
+        Seconds and time zone apply to <b>+ Clock</b>; both stay editable from the slide&apos;s
+        timer settings.
       </div>
 
       <div className="section-label">Custom text</div>

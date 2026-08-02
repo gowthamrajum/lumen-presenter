@@ -597,10 +597,17 @@
     var h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
     return h > 0 ? (h + ':' + pad2(m) + ':' + pad2(s)) : (m + ':' + pad2(s));
   }
-  function fmtClock() {
-    var d = new Date(), h = d.getHours(), m = d.getMinutes();
-    var ap = h >= 12 ? 'PM' : 'AM', h12 = h % 12; if (h12 === 0) h12 = 12;
-    return h12 + ':' + pad2(m) + ' ' + ap;
+  // Mirrors formatClock() in the desktop app: optional seconds, optional zone.
+  // An unknown zone falls back to this machine's rather than throwing.
+  function fmtClock(slide) {
+    var opts = { hour: 'numeric', minute: '2-digit' };
+    if (slide && slide.clockSeconds) opts.second = '2-digit';
+    if (slide && slide.clockTimeZone) {
+      try {
+        return new Date().toLocaleTimeString([], Object.assign({}, opts, { timeZone: slide.clockTimeZone }));
+      } catch (e) { /* unknown zone — fall through to local */ }
+    }
+    return new Date().toLocaleTimeString([], opts);
   }
   function isTimer(slide) { return slide && (slide.kind === 'countdown' || slide.kind === 'clock'); }
   function renderTimer(slide, scale) {
@@ -612,7 +619,7 @@
     lyricsEl.innerHTML = '';
     var span = document.createElement('span');
     span.className = 'line';
-    span.textContent = slide.kind === 'clock' ? fmtClock() : fmtCountdown(slide.countdownTo);
+    span.textContent = slide.kind === 'clock' ? fmtClock(slide) : fmtCountdown(slide.countdownTo);
     lyricsEl.appendChild(span);
     if (mode === 'audience') lyricsEl.style.fontSize = sizeFor(1, (scale || 1) * 1.6);
     var cap = slide.message || '';

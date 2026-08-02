@@ -3,6 +3,7 @@ import {
   DEFAULT_BACKGROUND,
   DEFAULT_THEME,
   countdownRemaining,
+  timeZoneLabel,
   type Background,
   type ComposedLine,
   type DisplayInfo,
@@ -213,7 +214,10 @@ interface AppState {
   /** reconfigure a countdown/clock slide: `minutes` re-arms the countdown from now
    *  (and stores the duration so a reopened service re-arms too); `message` sets
    *  the caption. Updates the live output immediately when the slide is on air. */
-  setTimer: (slideId: string, cfg: { minutes?: number; message?: string }) => void
+  setTimer: (
+    slideId: string,
+    cfg: { minutes?: number; message?: string; seconds?: boolean; timeZone?: string }
+  ) => void
 
   // song library (persisted)
   refreshSongs: () => Promise<void>
@@ -636,9 +640,10 @@ export const useStore = create<AppState>((set, get) => {
     setTimer: (slideId, cfg) => {
       const now = Date.now()
       set((s) => ({
-        items: s.items.map((it) => ({
-          ...it,
-          slides: it.slides.map((sl) => {
+        items: s.items.map((it) => {
+          if (!it.slides.some((sl) => sl.id === slideId)) return it
+          let renameTo: string | null = null
+          const slides = it.slides.map((sl) => {
             if (sl.id !== slideId) return sl
             const next = { ...sl }
             if (cfg.minutes != null) {
@@ -652,9 +657,19 @@ export const useStore = create<AppState>((set, get) => {
               next.countdownRemainMs = live ? undefined : full
             }
             if (cfg.message != null) next.message = cfg.message.trim() || undefined
+            if (cfg.seconds != null) next.clockSeconds = cfg.seconds || undefined
+            if (cfg.timeZone != null) {
+              next.clockTimeZone = cfg.timeZone || undefined
+              // keep the label in step so two clocks stay tellable apart
+              next.label = cfg.timeZone ? `Clock · ${timeZoneLabel(cfg.timeZone)}` : 'Clock'
+              // and let the schedule entry follow — but only while it still reads
+              // as the name we generated, never over one the operator typed.
+              if (it.title === sl.label) renameTo = next.label
+            }
             return next
           })
-        }))
+          return renameTo ? { ...it, title: renameTo, slides } : { ...it, slides }
+        })
       }))
       if (get().liveId === slideId) push()
     },

@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { DEFAULT_LINE_SPACING, GO_LIVE_LINE_SPACING, countdownRemaining, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
+import { DEFAULT_LINE_SPACING, GO_LIVE_LINE_SPACING, countdownRemaining, formatClock, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
 import { AUTO_SPACING_TARGET, useFitText } from './useFitText'
 import { Icon } from './Icon'
 
@@ -35,17 +35,20 @@ function TimerDisplay({
 }): JSX.Element {
   const [now, setNow] = useState<number>(() => Date.now())
   const held = slide.kind === 'countdown' && slide.countdownTo == null
+  // A clock without seconds only changes each minute; one with seconds is polled
+  // faster than it ticks so the digit turns within a frame of the real second
+  // rather than drifting up to a second behind it.
+  const coarse = slide.kind === 'clock' && !slide.clockSeconds
   useEffect(() => {
     if (preview) return // thumbnails don't need to tick
     if (held) return // a countdown that isn't on air has nothing to count
-    // clock only changes each minute; countdown needs per-second updates
-    const id = setInterval(() => setNow(Date.now()), slide.kind === 'clock' ? 1000 : 250)
+    const id = setInterval(() => setNow(Date.now()), coarse ? 1000 : 250)
     return () => clearInterval(id)
-  }, [preview, held, slide.kind])
+  }, [preview, held, coarse, slide.kind])
 
   let text: string
   if (slide.kind === 'clock') {
-    text = new Date(now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    text = formatClock(slide, now)
   } else {
     const remain = Math.round(countdownRemaining(slide, now) / 1000)
     const h = Math.floor(remain / 3600)

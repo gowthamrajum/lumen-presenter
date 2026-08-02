@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../../store/useStore'
+import { TimeZoneSelect } from './TimeZoneSelect'
 
 /**
  * Settings for a pre-service timer (countdown or clock). Opened from a
@@ -21,6 +22,8 @@ export function CountdownDialog(): JSX.Element | null {
 
   const [minutes, setMinutes] = useState(5)
   const [message, setMessage] = useState('')
+  const [seconds, setSeconds] = useState(false)
+  const [timeZone, setTimeZone] = useState('')
   const minutesRef = useRef<HTMLInputElement>(null)
 
   // Seed the fields from the slide each time the dialog opens on a new slide.
@@ -28,13 +31,19 @@ export function CountdownDialog(): JSX.Element | null {
     if (!slide) return
     setMinutes(slide.countdownMinutes ?? 5)
     setMessage(slide.message ?? '')
+    setSeconds(!!slide.clockSeconds)
+    setTimeZone(slide.clockTimeZone ?? '')
     // focus the most-edited field
     setTimeout(() => minutesRef.current?.focus(), 0)
   }, [timerSlideId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = (): void => {
     if (!slide) return
-    setTimer(slide.id, { minutes: isClock ? undefined : minutes, message })
+    setTimer(slide.id, {
+      minutes: isClock ? undefined : minutes,
+      message,
+      ...(isClock ? { seconds, timeZone } : {})
+    })
     close()
   }
 
@@ -76,6 +85,22 @@ export function CountdownDialog(): JSX.Element | null {
                 onChange={(e) => setMinutes(Math.max(0, Math.min(600, Number(e.target.value) || 0)))}
               />
             </label>
+          )}
+          {isClock && (
+            <>
+              <label className="timer-field row">
+                <input
+                  type="checkbox"
+                  checked={seconds}
+                  onChange={(e) => setSeconds(e.target.checked)}
+                />
+                <span>Show seconds</span>
+              </label>
+              <label className="timer-field">
+                <span>Time zone</span>
+                <TimeZoneSelect value={timeZone} onChange={setTimeZone} />
+              </label>
+            </>
           )}
           <label className="timer-field">
             <span>Message {isClock ? '' : '(shown above the count)'}</span>

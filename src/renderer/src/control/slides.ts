@@ -1,4 +1,5 @@
 import type { Background, PptxImport, PsalmVerse, SlideContent, Song, SongSection } from '@shared/types'
+import { timeZoneLabel } from '@shared/types'
 import type { BibleVerse } from '@shared/bible'
 import { referenceOf } from '@shared/bible'
 import { uid } from '../store/useStore'
@@ -455,9 +456,22 @@ export function countdownSlide(minutes: number, message?: string): SlideContent 
   }
 }
 
-/** A live clock slide. */
-export function clockSlide(message?: string): SlideContent {
-  return { id: uid(), kind: 'clock', label: 'Clock', lines: [], message: message?.trim() || undefined }
+/** A live clock slide. Labelled with its zone when it isn't this machine's, so
+ *  a service running a local and an overseas clock tells them apart at a glance. */
+export function clockSlide(
+  message?: string,
+  opts?: { seconds?: boolean; timeZone?: string }
+): SlideContent {
+  const tz = opts?.timeZone || undefined
+  return {
+    id: uid(),
+    kind: 'clock',
+    label: tz ? `Clock · ${timeZoneLabel(tz)}` : 'Clock',
+    lines: [],
+    clockSeconds: opts?.seconds || undefined,
+    clockTimeZone: tz,
+    message: message?.trim() || undefined
+  }
 }
 
 /** A blank slide with a solid color (useful as an intentional interstitial). */
