@@ -15,6 +15,15 @@ export const BACKGROUND_CATEGORIES = ['Worship', 'Easter', 'Palm Sunday', 'Good 
 // desktop output, web audience and OBS overlay all load the same stable URLs:
 // grey-gratis-ice.onrender.com/backgrounds/<category>/<file>.
 const BG_HOST = 'https://grey-gratis-ice.onrender.com/backgrounds'
+/** The Easter set's Communion plate — bread and cup in watercolour. Named
+ *  because the Communion scene uses this exact background, and a scene and a
+ *  picker entry that drift apart are two different Communion screens. */
+export const COMMUNION_BG: Background = {
+  type: 'image',
+  value: `${BG_HOST}/easter/communion_easter.jpg`,
+  fit: 'cover'
+}
+
 const photo = (id: string, name: string, category: string, src: string): BackgroundPreset => ({
   id,
   name,
@@ -39,7 +48,7 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   // ---- seasonal photo themes (rehosted from worshipReady) ----
   photo('wr-easter-green', 'Green', 'Easter', '/easter/green_easter.jpg'),
   photo('wr-easter-colorful', 'Colorful', 'Easter', '/easter/colorful_easter.jpg'),
-  photo('wr-easter-communion', 'Communion', 'Easter', '/easter/communion_easter.jpg'),
+  { id: 'wr-easter-communion', name: 'Communion', category: 'Easter', background: COMMUNION_BG },
   photo('wr-easter-neon', 'Neon', 'Easter', '/easter/neon_blank_easter.jpg'),
   photo('wr-easter-vibrant', 'Vibrant', 'Easter', '/easter/vibrant_easter.jpg'),
   photo('wr-palm-leafy', 'Leafy', 'Palm Sunday', '/palm-sunday/leafy-leaf.jpg'),

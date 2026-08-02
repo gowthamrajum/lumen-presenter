@@ -1060,6 +1060,16 @@ select,
 .auto-advance-text b {
   font-variant-numeric: tabular-nums;
 }
+.timer-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.timer-msg > span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
 .timer-row {
   display: flex;
   gap: 8px;

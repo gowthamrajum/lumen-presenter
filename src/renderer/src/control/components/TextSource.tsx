@@ -72,12 +72,18 @@ export function TextSource(): JSX.Element {
       </div>
 
       <div className="section-label">Pre-service timers</div>
-      <input
-        className="search"
-        placeholder="Countdown message"
-        value={timerMsg}
-        onChange={(e) => setTimerMsg(e.target.value)}
-      />
+      {/* Labelled, not just placeholdered: the box arrives pre-filled, so a
+          placeholder would never show and the line above the count would look
+          fixed. A countdown gets used for more than the service starting. */}
+      <label className="timer-msg">
+        <span>Line above the count</span>
+        <input
+          className="search"
+          placeholder="e.g. Service starts in"
+          value={timerMsg}
+          onChange={(e) => setTimerMsg(e.target.value)}
+        />
+      </label>
       <div className="timer-row">
         <label className="song-lpp">
           Minutes

@@ -1,4 +1,5 @@
 import type { Background, ThemeStyle } from '@shared/types'
+import { COMMUNION_BG } from './presets'
 
 /**
  * A "scene" is a one-click starter: a titled text slide plus a matching
@@ -24,18 +25,6 @@ const FLOW: Background = {
   anim: 'flow'
 }
 /**
- * Deep wine for the Lord's Table — the cup, and set apart from the blues and
- * violets every other scene uses so Communion reads as its own moment. Carried
- * on `flow`, whose drifting glow is warm amber; `aurora`'s is violet and fights
- * the red.
- */
-const TABLE: Background = {
-  type: 'gradient',
-  value: 'linear-gradient(120deg, #3f1020, #6d1a2f, #26060f, #8f2038, #26060f, #6d1a2f, #3f1020)',
-  anim: 'flow'
-}
-
-/**
  * The Lord's Table card. Named and exported because the Sunday template drops
  * the same card in on a first Sunday — the wording and the background have to
  * match however it reached the schedule.
@@ -47,10 +36,14 @@ export const COMMUNION: Scene = {
   // transliteration belongs on song slides, not here — beside the script it
   // says nothing to either reader.
   lines: ['బల్లారాధన', 'Communion'],
-  background: TABLE,
+  // The church's own Communion artwork, the Easter set's bread-and-cup plate.
+  background: COMMUNION_BG,
+  // That plate is a pale watercolour, so the words go dark over it — white text
+  // would need a scrim heavy enough to bury the artwork it was chosen for. No
+  // shadow either: a dark glow under dark type on a light ground just smudges.
   // Not uppercase: it does nothing to Telugu and shouts the English, which is
   // the wrong voice for the table.
-  theme: { textColor: '#fdf0e4', captionColor: '#f0c37a', scrim: 0.26, uppercase: false, shadow: true }
+  theme: { textColor: '#4a1220', captionColor: '#7a1a2c', scrim: 0, uppercase: false, shadow: false }
 }
 
 export const SCENES: Scene[] = [
