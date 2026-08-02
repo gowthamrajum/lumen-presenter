@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { DEFAULT_LINE_SPACING, GO_LIVE_LINE_SPACING, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
-import { useFitText } from './useFitText'
+import { AUTO_SPACING_TARGET, useFitText } from './useFitText'
 import { Icon } from './Icon'
 
 function pad(n: number): string {
@@ -133,10 +133,12 @@ export function Stage({
   // carries the version marker (covers decks built before this change).
   const caption = (slide?.caption ?? '').replace(/\s*\(ESV\)\s*$/i, '')
 
-  // Go Live screen only — everywhere else renders at the shared default.
-  // A service saved before Spacing existed has no lineSpacing, and should still
-  // get the roomier Go Live default rather than the compact one.
-  const lineHeight = live ? theme.lineSpacing ?? GO_LIVE_LINE_SPACING : DEFAULT_LINE_SPACING
+  // The Go Live screen spaces itself: with the text auto-fitted, a fixed line
+  // spacing just trades font size for air and leaves whatever room is spare
+  // unused. `lineSpacing` undefined = auto (the default); a value means the
+  // operator deliberately overrode it. Every other surface stays fixed.
+  const autoSpacing = !!live && theme.lineSpacing == null
+  const fixedLineHeight = live ? theme.lineSpacing ?? GO_LIVE_LINE_SPACING : DEFAULT_LINE_SPACING
 
   /**
    * The same Spacing setting, as a factor, for composed (Canvas) slides. Those
@@ -147,7 +149,10 @@ export function Stage({
    * line off the slide.
    */
   const composedSpread = (): number => {
-    const want = lineHeight / DEFAULT_LINE_SPACING
+    // Canvas slides carry absolute positions, so auto spacing reaches them as a
+    // stretch about the block's centre — using the same target the fitted text
+    // aims for, otherwise a Canvas song would sit tight beside an airy one.
+    const want = (autoSpacing ? AUTO_SPACING_TARGET : fixedLineHeight) / DEFAULT_LINE_SPACING
     if (want === 1 || !composed || composed.length < 2) return 1
     const ys = composed.map((l) => l.y)
     const half = (Math.max(...ys) - Math.min(...ys)) / 2
@@ -168,7 +173,7 @@ export function Stage({
     textAlign: theme.textAlign,
     textTransform: theme.uppercase ? 'uppercase' : 'none',
     textShadow: theme.shadow ? '0 2px 18px rgba(0,0,0,0.65)' : 'none',
-    lineHeight,
+    lineHeight: fixedLineHeight,
     fontWeight: 700
   }
 
@@ -180,9 +185,18 @@ export function Stage({
   // the screen, and one 142-character verse dragged a whole psalm down with it.
   // Pressing through a song now varies in size, which is the accepted trade for
   // each slide actually using the screen.
-  const { ref, fontSize } = useFitText(
-    [lines.join('\n'), theme.fontScale, theme.uppercase, slide?.singleLine, !!qr, lineHeight, live],
-    { scale: theme.fontScale }
+  const { ref, fontSize, lineHeight } = useFitText(
+    [
+      lines.join('\n'),
+      theme.fontScale,
+      theme.uppercase,
+      slide?.singleLine,
+      !!qr,
+      fixedLineHeight,
+      autoSpacing,
+      live
+    ],
+    { scale: theme.fontScale, autoSpacing, lineHeight: fixedLineHeight }
   )
 
   return (
@@ -238,7 +252,11 @@ export function Stage({
       {showText && (
         <div className="stage-textwrap">
           <div className="stage-fitbox">
-            <div ref={ref} className={`stage-text${slide?.singleLine ? ' oneline' : ''}`} style={{ ...textStyle, fontSize }}>
+            <div
+              ref={ref}
+              className={`stage-text${slide?.singleLine ? ' oneline' : ''}`}
+              style={{ ...textStyle, fontSize, lineHeight }}
+            >
               {lines.map((l, i) => (
                 <div key={i}>{formatLyric(l) || ' '}</div>
               ))}

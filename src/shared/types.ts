@@ -471,8 +471,8 @@ export const DEFAULT_THEME: ThemeStyle = {
   textAlign: 'center',
   shadow: true,
   uppercase: false,
-  scrim: 0.35,
-  lineSpacing: GO_LIVE_LINE_SPACING
+  scrim: 0.35
+  // lineSpacing intentionally absent: the Go Live screen spaces itself.
 }
 
 export const DEFAULT_OBS_STYLE: ObsStyle = {
