@@ -4,6 +4,7 @@ import { SlidesPanel } from './components/SlidesPanel'
 import { LivePanel } from './components/LivePanel'
 import { SlideComposer } from './components/SlideComposer'
 import { CountdownDialog } from './components/CountdownDialog'
+import { ParityDisplay } from './components/ParityDisplay'
 import { useRemoteControl } from './useRemoteControl'
 import { useVerseAutoAdvance } from './useVerseAutoAdvance'
 
@@ -26,6 +27,7 @@ export function App(): JSX.Element {
       </div>
       <SlideComposer />
       <CountdownDialog />
+      <ParityDisplay />
     </div>
   )
 }

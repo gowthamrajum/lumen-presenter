@@ -111,6 +111,8 @@ interface AppState {
   composerSlideId: string | null
   /** countdown/clock slide id currently open in the timer settings dialog, or null */
   timerSlideId: string | null
+  /** the Parity Display (all three output views side by side) is open */
+  parityOpen: boolean
 
   screens: ScreenInfo[]
   displays: DisplayInfo[]
@@ -169,6 +171,8 @@ interface AppState {
   // pre-service timer (countdown / clock) settings
   openTimerConfig: (slideId: string) => void
   closeTimerConfig: () => void
+  /** show/hide the Parity Display */
+  setParityOpen: (open: boolean) => void
   /** reconfigure a countdown/clock slide: `minutes` re-arms the countdown from now
    *  (and stores the duration so a reopened service re-arms too); `message` sets
    *  the caption. Updates the live output immediately when the slide is on air. */
@@ -367,6 +371,7 @@ export const useStore = create<AppState>((set, get) => {
     songs: [],
     composerSlideId: null,
     timerSlideId: null,
+    parityOpen: false,
 
     remoteSongs: [],
     remoteState: 'idle',
@@ -588,6 +593,8 @@ export const useStore = create<AppState>((set, get) => {
 
     openTimerConfig: (slideId) => set({ timerSlideId: slideId }),
     closeTimerConfig: () => set({ timerSlideId: null }),
+
+    setParityOpen: (open) => set({ parityOpen: open }),
 
     setTimer: (slideId, cfg) => {
       const now = Date.now()

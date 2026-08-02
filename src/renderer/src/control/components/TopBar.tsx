@@ -18,6 +18,7 @@ export function TopBar(): JSX.Element {
   const toggleLogo = useStore((s) => s.toggleLogo)
 
   const [open, setOpen] = useState(false)
+  const setParityOpen = useStore((s) => s.setParityOpen)
   const [themeMode, toggleTheme] = useAppTheme()
 
   const roleOf = (displayId: number): ScreenRole =>
@@ -89,6 +90,13 @@ export function TopBar(): JSX.Element {
             </>
           )}
         </div>
+        <button
+          className="btn with-ico"
+          onClick={() => setParityOpen(true)}
+          title="See the live slide as all three outputs will show it"
+        >
+          <Icon name="tv" /> Parity
+        </button>
         <BroadcastMenu />
       </div>
 
