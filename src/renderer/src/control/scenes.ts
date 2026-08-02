@@ -23,6 +23,17 @@ const FLOW: Background = {
   value: 'linear-gradient(120deg, #3a2b6b, #1c1440, #4b2e83, #0d3b66, #1c1440, #3a2b6b)',
   anim: 'flow'
 }
+/**
+ * Deep wine for the Lord's Table — the cup, and set apart from the blues and
+ * violets every other scene uses so Communion reads as its own moment. Carried
+ * on `flow`, whose drifting glow is warm amber; `aurora`'s is violet and fights
+ * the red.
+ */
+const TABLE: Background = {
+  type: 'gradient',
+  value: 'linear-gradient(120deg, #3f1020, #6d1a2f, #26060f, #8f2038, #26060f, #6d1a2f, #3f1020)',
+  anim: 'flow'
+}
 
 export const SCENES: Scene[] = [
   {
@@ -38,6 +49,16 @@ export const SCENES: Scene[] = [
     lines: ['Announcements'],
     background: FLOW,
     theme: { textColor: '#ffffff', captionColor: '#ffd27f', scrim: 0.35, uppercase: true, shadow: true }
+  },
+  {
+    id: 'communion',
+    name: 'Communion',
+    // Telugu above the transliteration, the way the congregation reads it.
+    lines: ['బల్లారాధన', 'Ballaaraadhana'],
+    background: TABLE,
+    // Not uppercase: it does nothing to Telugu and shouts the English, which is
+    // the wrong voice for the table.
+    theme: { textColor: '#fdf0e4', captionColor: '#f0c37a', scrim: 0.26, uppercase: false, shadow: true }
   },
   {
     id: 'blessing',
