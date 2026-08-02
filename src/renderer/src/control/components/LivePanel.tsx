@@ -12,9 +12,10 @@ const ALIGN_ICON: Record<'left' | 'center' | 'right', IconName> = {
   right: 'align-right'
 }
 
-/** Live countdown shown while a Bible verse is set to auto-advance to the Sermon.
- *  Lets the operator add time or hold it. Renders nothing when nothing is pending. */
-function SermonCountdown(): JSX.Element | null {
+/** Live countdown shown while a scripture slide is holding before it advances to
+ *  the next one. Lets the operator add time or stop it. Renders nothing when
+ *  nothing is pending. */
+function AdvanceCountdown(): JSX.Element | null {
   const autoAdvanceAt = useStore((s) => s.autoAdvanceAt)
   const extend = useStore((s) => s.extendAutoAdvance)
   const cancel = useStore((s) => s.cancelAutoAdvance)
@@ -32,16 +33,16 @@ function SermonCountdown(): JSX.Element | null {
     <div className="auto-advance">
       <Icon name="timer" />
       <span className="auto-advance-text">
-        Sermon in <b>{remain}s</b>
+        Next slide in <b>{remain}s</b>
       </span>
       <button
         className="btn tiny"
         onClick={() => extend(VERSE_EXTEND_MS)}
-        title={`Hold the verse ${VERSE_EXTEND_MS / 1000}s longer`}
+        title={`Hold this slide ${VERSE_EXTEND_MS / 1000}s longer`}
       >
         +{VERSE_EXTEND_MS / 1000}s
       </button>
-      <button className="btn tiny" onClick={cancel} title="Stop the auto-advance and stay on the verse">
+      <button className="btn tiny" onClick={cancel} title="Stop the auto-advance and stay on this slide">
         Hold
       </button>
     </div>
@@ -105,7 +106,7 @@ export function LivePanel(): JSX.Element {
             Next <Icon name="chevron-right" />
           </button>
         </div>
-        <SermonCountdown />
+        <AdvanceCountdown />
       </div>
 
       <div className="live-section">

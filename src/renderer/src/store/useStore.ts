@@ -247,11 +247,7 @@ interface AppState {
   goLive: (id: string | null) => void
   goNext: () => void
   goPrev: () => void
-  /** Jump live to the service's Sermon slide (the item titled "Sermon" /
-   *  "వాక్యోపదేశం"). Used by the verse auto-advance. No-op if there's no such
-   *  item or its slide is already live. Returns true if it moved. */
-  goToSermon: () => boolean
-  /** epoch ms when the live Bible verse will auto-advance to the Sermon, or null
+  /** epoch ms when the live scripture slide advances to the next one, or null
    *  when no auto-advance is pending. The operator can extend or hold it. */
   autoAdvanceAt: number | null
   /** (re)arm the auto-advance to fire `ms` from now */
@@ -960,17 +956,6 @@ export const useStore = create<AppState>((set, get) => {
         }
       })
       push()
-    },
-
-    goToSermon: () => {
-      const s = get()
-      // Match the Sermon item by title (English or Telugu), as built by the
-      // service templates and typically named by the operator.
-      const sermon = s.items.find((it) => /sermon|వాక్యోపదేశం/i.test(it.title))
-      const target = sermon?.slides[0]?.id
-      if (!target || target === s.liveId) return false
-      get().goLive(target)
-      return true
     },
 
     armAutoAdvance: (ms) => set({ autoAdvanceAt: Date.now() + ms }),

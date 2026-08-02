@@ -1,34 +1,41 @@
 import { useEffect } from 'react'
 import { useStore } from '../store/useStore'
 
-/** How long a Bible verse stays live before auto-advancing to the Sermon slide. */
-export const VERSE_TTL_MS = 50_000
+/** How long a scripture slide holds before advancing to the next one. */
+export const SLIDE_HOLD_MS = 60_000
 /** How much each operator "Extend" click pushes the auto-advance back. */
 export const VERSE_EXTEND_MS = 30_000
 
 /**
- * When a Bible passage (an item tagged `autoAdvance`) goes live, keep it up for
- * VERSE_TTL_MS and then jump to the service's Sermon slide — so the reading holds
- * for ~50s and hands off to the message without the operator clicking. Psalms /
- * responsive readings are NOT tagged, so they never auto-advance. The operator can
- * Extend or Hold the countdown from the Live panel.
+ * A Bible passage reads itself through: each slide of an item tagged
+ * `autoAdvance` holds for SLIDE_HOLD_MS and then moves to the NEXT slide, so a
+ * reading can be put up and left. Psalms / responsive readings are not tagged,
+ * so they never advance on their own.
+ *
+ * The clock only runs on the slide that is actually live — it's armed when a
+ * slide goes live and thrown away when it stops being live, so a passage sitting
+ * further down the schedule never quietly spends its minute, and stepping away
+ * and back starts the minute over. The operator can Extend or Hold from the Live
+ * panel.
  *
  * Two effects: one arms/cancels when the live slide changes; the other schedules
- * (and reschedules, after an Extend) the actual jump off the store's target time.
+ * (and reschedules, after an Extend) the actual advance off the store's target.
  */
 export function useVerseAutoAdvance(): void {
   const liveId = useStore((s) => s.liveId)
   const autoAdvanceAt = useStore((s) => s.autoAdvanceAt)
 
-  // Arm only for Bible passages; cancel for anything else (or nothing live).
+  // Arm only for the live slide of a passage; cancel for anything else.
   useEffect(() => {
     const s = useStore.getState()
     const item = s.liveId ? s.items.find((it) => it.slides.some((sl) => sl.id === s.liveId)) : undefined
-    const isBibleVerse = !!item && item.kind === 'scripture' && item.autoAdvance === true
-    // Only arm when there's actually a Sermon slide to advance to, so the operator
-    // never sees a countdown that leads nowhere.
-    const hasSermon = s.items.some((it) => /sermon|వాక్యోపదేశం/i.test(it.title))
-    if (isBibleVerse && hasSermon) s.armAutoAdvance(VERSE_TTL_MS)
+    const isPassage = !!item && item.kind === 'scripture' && item.autoAdvance === true
+    // Nothing to advance to on the last slide of the service — don't run a
+    // countdown that leads nowhere.
+    const deck = s.items.flatMap((it) => it.slides)
+    const i = deck.findIndex((d) => d.id === s.liveId)
+    const hasNext = i >= 0 && i < deck.length - 1
+    if (isPassage && hasNext) s.armAutoAdvance(SLIDE_HOLD_MS)
     else s.cancelAutoAdvance()
   }, [liveId])
 
@@ -39,7 +46,7 @@ export function useVerseAutoAdvance(): void {
     const t = setTimeout(() => {
       const s = useStore.getState()
       s.cancelAutoAdvance()
-      s.goToSermon()
+      s.goNext()
     }, delay)
     return () => clearTimeout(t)
   }, [autoAdvanceAt])

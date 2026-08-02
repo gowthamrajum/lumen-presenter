@@ -121,7 +121,15 @@ export function BibleSource(): JSX.Element {
   }
 
   const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (suggestions.length === 0) return
+    if (suggestions.length === 0) {
+      // No book list in the way, so a reference is fully typed ("John 3",
+      // "John 3:16", "John 3:16-18"): Enter puts it on screen straight away.
+      if (e.key === 'Enter' && verses.length > 0) {
+        e.preventDefault()
+        addSelected(true)
+      }
+      return
+    }
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setActiveSuggestion((i) => (i + 1) % suggestions.length)
