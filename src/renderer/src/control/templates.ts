@@ -196,7 +196,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
     id: 'sunday-worship',
     name: 'Sunday Worship Service',
     description:
-      'Welcome, clock, Sunday School, the Word, offerings, announcements and a closing thank-you. Communion is added on the first Sunday of the month.',
+      'Welcome, clock, Sunday School, the Word, offerings, the blessing, announcements and a closing thank-you. Communion is added on the first Sunday of the month.',
     build: () => [
       clip('Welcome', 'welcome.mp4'),
       clock(),
@@ -205,6 +205,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
       // The Table is served on the first Sunday, immediately before the offering.
       ...(isFirstSunday() ? [communion()] : []),
       { ...offerings(), ...ON_AIR },
+      { ...section('Benediction', 'text', 'దీవెన', 'Go in peace'), ...ON_AIR },
       { ...announcements(), ...ON_AIR },
       clip('Thank You', 'thank-you.mp4')
     ]
