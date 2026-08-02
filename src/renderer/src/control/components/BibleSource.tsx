@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bible, referenceOf, compactVerses, type BibleBook, type BibleVerse } from '@shared/bible'
+import { romanizeTelugu, romanMatches } from '@shared/bible/translit'
 import { useStore } from '../../store/useStore'
 import { bilingualScriptureSlides, type PsalmLang } from '../slides'
 import { LangToggle } from './LangToggle'
@@ -79,22 +80,63 @@ export function BibleSource(): JSX.Element {
   // localized display name and the English key; hidden once a chapter is typed or
   // the name is already complete.
   const searchRef = useRef<HTMLInputElement>(null)
+
+  // Romanised Telugu names, so every book is reachable from a Latin keyboard
+  // ("kee" -> Psalms, "pra" -> Prasangi). Always taken from the Telugu
+  // translation, so it works whichever language is being browsed.
+  const romanNames = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const b of telugu?.books() ?? []) m.set(b.book, romanizeTelugu(b.display))
+    return m
+  }, [telugu])
+
   const bookSuggestions = useMemo<BibleBook[]>(() => {
     const m = query.trim().match(/^(.+?)\s*(\d+\s*(?::[\d\s,-]+)?)?$/)
     const bq = m?.[1]?.trim().toLowerCase() ?? ''
     if (!bq || m?.[2]) return [] // nothing typed yet, or a chapter is already present
     const hits = books.filter(
-      (b) => b.display.toLowerCase().startsWith(bq) || b.book.toLowerCase().startsWith(bq)
+      (b) =>
+        b.display.toLowerCase().startsWith(bq) ||
+        b.book.toLowerCase().startsWith(bq) ||
+        romanMatches(romanNames.get(b.book) ?? '', bq)
     )
     // Don't dangle a single suggestion that just echoes a fully-typed name.
     if (hits.length === 1 && (hits[0].display.toLowerCase() === bq || hits[0].book.toLowerCase() === bq)) return []
     return hits.slice(0, 8)
-  }, [query, books])
+  }, [query, books, romanNames])
+
+  // Keyboard walk of the suggestions: Down/Up move, Enter picks, Escape hides.
+  const [activeSuggestion, setActiveSuggestion] = useState(0)
+  const [suggestOpen, setSuggestOpen] = useState(true)
+  const suggestions = suggestOpen ? bookSuggestions : []
+  useEffect(() => {
+    setActiveSuggestion(0)
+  }, [query])
 
   const pickBook = (b: BibleBook): void => {
     setQuery(`${b.display} `) // leave a trailing space so the operator types "3:16" next
     setSelected(new Set())
+    setSuggestOpen(false)
     searchRef.current?.focus()
+  }
+
+  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (suggestions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveSuggestion((i) => (i + 1) % suggestions.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveSuggestion((i) => (i - 1 + suggestions.length) % suggestions.length)
+    } else if (e.key === 'Enter') {
+      // Only claim Enter while a suggestion is highlighted; otherwise it stays a
+      // plain text search.
+      e.preventDefault()
+      pickBook(suggestions[Math.min(activeSuggestion, suggestions.length - 1)])
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setSuggestOpen(false)
+    }
   }
   const chapters = useMemo(() => (primary && book ? primary.chaptersFor(book) : []), [primary, book])
   const maxChapter = chapters.length ? chapters[chapters.length - 1] : 1
@@ -196,19 +238,25 @@ export function BibleSource(): JSX.Element {
           value={query}
           onChange={(e) => {
             setQuery(e.target.value)
+            setSuggestOpen(true)
             setSelected(new Set()) // selection is scoped to the visible list
           }}
+          onKeyDown={onSearchKeyDown}
           disabled={loading}
         />
-        {bookSuggestions.length > 0 && (
+        {suggestions.length > 0 && (
           <div className="book-suggest" role="listbox">
-            {bookSuggestions.map((b) => (
+            {suggestions.map((b, i) => (
               <button
                 key={b.book}
                 type="button"
                 role="option"
-                aria-selected={false}
-                className="book-suggest-item"
+                aria-selected={i === activeSuggestion}
+                className={`book-suggest-item ${i === activeSuggestion ? 'active' : ''}`}
+                ref={(el) => {
+                  if (i === activeSuggestion) el?.scrollIntoView({ block: 'nearest' })
+                }}
+                onMouseEnter={() => setActiveSuggestion(i)}
                 // onMouseDown (not onClick) so the pick lands before the input blurs.
                 onMouseDown={(e) => {
                   e.preventDefault()
