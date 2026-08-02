@@ -297,6 +297,9 @@
 .stage.is-live .stage-textwrap {
   padding: 2.5% 3.5%;
 }
-.stage.is-live .stage-text {
+/* NOT .oneline: those deliberately carry no max-width so the element sizes to
+   its nowrap content and useFitText can measure scrollWidth honestly. Capping
+   them here made the fit under-shrink and the last glyphs clip. */
+.stage.is-live .stage-text:not(.oneline) {
   max-width: 97%;
 }
