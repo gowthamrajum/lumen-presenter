@@ -53,8 +53,10 @@ export const SCENES: Scene[] = [
   {
     id: 'communion',
     name: 'Communion',
-    // Telugu above the transliteration, the way the congregation reads it.
-    lines: ['బల్లారాధన', 'Ballaaraadhana'],
+    // Telugu above the English, as everywhere else in the service. The
+    // transliteration belongs on song slides, not here — beside the script it
+    // says nothing to either reader.
+    lines: ['బల్లారాధన', 'Communion'],
     background: TABLE,
     // Not uppercase: it does nothing to Telugu and shouts the English, which is
     // the wrong voice for the table.
