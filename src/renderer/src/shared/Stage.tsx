@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { DEFAULT_LINE_SPACING, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
+import { DEFAULT_LINE_SPACING, GO_LIVE_LINE_SPACING, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
 import { useFitText } from './useFitText'
 import { Icon } from './Icon'
 
@@ -134,7 +134,9 @@ export function Stage({
   const caption = (slide?.caption ?? '').replace(/\s*\(ESV\)\s*$/i, '')
 
   // Go Live screen only — everywhere else renders at the shared default.
-  const lineHeight = live ? theme.lineSpacing ?? DEFAULT_LINE_SPACING : DEFAULT_LINE_SPACING
+  // A service saved before Spacing existed has no lineSpacing, and should still
+  // get the roomier Go Live default rather than the compact one.
+  const lineHeight = live ? theme.lineSpacing ?? GO_LIVE_LINE_SPACING : DEFAULT_LINE_SPACING
 
   /**
    * The same Spacing setting, as a factor, for composed (Canvas) slides. Those
@@ -177,8 +179,10 @@ export function Stage({
   // the run's busiest slide. The rendered size sits between them.
   const sample = slide?.fitSample
   const deps = [theme.fontScale, theme.uppercase, slide?.singleLine, !!qr, lineHeight]
-  const own = useFitText([lines.join('\n'), ...deps], { scale: theme.fontScale })
-  const busiest = useFitText([(sample ?? lines).join('\n'), ...deps], { scale: theme.fontScale })
+  // `live` is a dep because the Go Live screen fits inside wider insets.
+  const fitOpts = { scale: theme.fontScale }
+  const own = useFitText([lines.join('\n'), ...deps, live], fitOpts)
+  const busiest = useFitText([(sample ?? lines).join('\n'), ...deps, live], fitOpts)
 
   /**
    * How far a slide may be shrunk to match its neighbours. Sizing purely to the
@@ -195,7 +199,7 @@ export function Stage({
     : own.fontSize
 
   return (
-    <div className={`stage${qr ? ' has-qr' : ''}`}>
+    <div className={`stage${qr ? ' has-qr' : ''}${live ? ' is-live' : ''}`}>
       <BackgroundLayer bg={bg} />
       {!state.blackout && theme.scrim > 0 && (
         <div className="stage-scrim" style={{ opacity: theme.scrim }} />

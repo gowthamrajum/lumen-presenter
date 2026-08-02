@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import { Icon, type IconName } from '../../shared/Icon'
-import { DEFAULT_LINE_SPACING, type LiveState } from '@shared/types'
+import { GO_LIVE_LINE_SPACING, type LiveState } from '@shared/types'
 import { THEME_PRESETS } from '../presets'
 import { VERSE_EXTEND_MS } from '../useVerseAutoAdvance'
 
@@ -154,10 +154,10 @@ export function LivePanel(): JSX.Element {
             min={0.9}
             max={2}
             step={0.05}
-            value={theme.lineSpacing ?? DEFAULT_LINE_SPACING}
+            value={theme.lineSpacing ?? GO_LIVE_LINE_SPACING}
             onChange={(e) => setTheme({ lineSpacing: Number(e.target.value) })}
           />
-          <span className="look-val">{(theme.lineSpacing ?? DEFAULT_LINE_SPACING).toFixed(2)}</span>
+          <span className="look-val">{(theme.lineSpacing ?? GO_LIVE_LINE_SPACING).toFixed(2)}</span>
         </label>
 
         <label className="look-row">

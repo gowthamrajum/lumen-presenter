@@ -286,3 +286,17 @@
   letter-spacing: 0.35em;
   padding-left: 0.35em;
 }
+
+/* The Go Live screen gets more of the slide than the compact surfaces do.
+   Text here is WIDTH-bound — the longest line has to fit — so the usable width
+   is what actually sets the size, not the line height or the size ceiling.
+   Default padding + a 92% cap leaves lines only ~81% of the screen; a projector
+   is viewed from across a hall and can afford to use more of it. Previews, the
+   stage monitor, the export and (via the relay) web and OBS keep the safer
+   insets. */
+.stage.is-live .stage-textwrap {
+  padding: 2.5% 3.5%;
+}
+.stage.is-live .stage-text {
+  max-width: 97%;
+}

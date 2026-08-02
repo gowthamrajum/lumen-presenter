@@ -19,14 +19,31 @@ export interface ThemeStyle {
    * and the stage monitor render at DEFAULT_LINE_SPACING, and the publisher
    * strips this field from the relay payload so the web audience mirror, the OBS
    * lower-third and the phone remote keep their own spacing. Undefined on themes
-   * saved before this existed — always read it through DEFAULT_LINE_SPACING.
+   * saved before this existed — read it through GO_LIVE_LINE_SPACING so an older
+   * service still gets the roomier projector default.
    */
   lineSpacing?: number
 }
 
-/** Slide-text line-height everywhere except the Go Live screen (and the Go Live
- *  screen's own default). Was hard-coded in Stage before `lineSpacing`. */
+/** Slide-text line-height for the compact surfaces: the operator previews, the
+ *  stage monitor, the PowerPoint export — and, via the relay, the Cantica Web
+ *  mirror and the OBS lower third. Phones and a YouTube overlay want the lines
+ *  close together. Was hard-coded in Stage before `lineSpacing`. */
 export const DEFAULT_LINE_SPACING = 1.22
+
+/**
+ * Slide-text line-height the Go Live screen starts at. Held at the compact value
+ * on purpose: because the text is auto-fitted, every step of extra air is paid
+ * for directly in size. Measured on a 4-line bilingual song slide —
+ *
+ *   spacing  1.00  1.10  1.22  1.40  1.60
+ *   font px  47.6  45.4  42.2  37.0  32.8
+ *
+ * — so defaulting the projector to a roomier value made its text SMALLER than
+ * the phone mirror's. The Spacing slider is there for an operator who wants that
+ * trade on a given service; it should not be made silently.
+ */
+export const GO_LIVE_LINE_SPACING = DEFAULT_LINE_SPACING
 
 export type BackgroundType = 'color' | 'gradient' | 'image' | 'video'
 
@@ -467,7 +484,7 @@ export const DEFAULT_THEME: ThemeStyle = {
   shadow: true,
   uppercase: false,
   scrim: 0.35,
-  lineSpacing: DEFAULT_LINE_SPACING
+  lineSpacing: GO_LIVE_LINE_SPACING
 }
 
 export const DEFAULT_OBS_STYLE: ObsStyle = {
