@@ -1379,16 +1379,23 @@ select:focus {
   border-color: var(--accent);
   box-shadow: inset 4px 0 0 -1px var(--accent);
 }
+/* The preview is a picture of the slide, never a control: let every click fall
+   through to the thumb and its buttons. Without this the slide's own text layer
+   (.stage-textwrap, z-index 3) swallows them — it used to be trapped inside
+   .stage's stacking context, but `container-type` no longer creates one, so it
+   now paints over the thumb's controls and ate the clicks on Duplicate, Compose,
+   Remove and the move arrows alike. */
 .thumb-stage {
   position: relative;
   aspect-ratio: 16 / 9;
   background: #000;
+  pointer-events: none;
 }
 .thumb-index {
   position: absolute;
   top: 6px;
   left: 6px;
-  z-index: 2;
+  z-index: 4;
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   font-size: 11px;
@@ -1400,7 +1407,7 @@ select:focus {
   position: absolute;
   top: 5px;
   right: 5px;
-  z-index: 2;
+  z-index: 4;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -1424,7 +1431,7 @@ select:focus {
   position: absolute;
   left: 5px;
   bottom: 34px;
-  z-index: 2;
+  z-index: 4;
   display: flex;
   gap: 4px;
   opacity: 0;
@@ -2411,7 +2418,7 @@ select:focus {
   position: absolute;
   top: 5px;
   right: 33px;
-  z-index: 2;
+  z-index: 4;
   width: 22px;
   height: 22px;
   border-radius: 50%;
