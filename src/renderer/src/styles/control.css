@@ -1684,29 +1684,50 @@ select:focus {
   flex-direction: column;
   gap: 6px;
 }
-/* Title gets a line to itself; the section count and the buttons share the one
-   below. Beside three buttons in a 320px rail the title had ~110px — barely two
-   words, so every Telugu name came out as "Yehovaa Naa Kaap…". Giving it the
-   full width costs one line per row, not two. */
+/* A song reads as a small card: the transliterated name it's filed under, the
+   Telugu line the congregation actually sings, then the actions. The name gets
+   a line to itself — beside three buttons in a 320px rail it had ~110px, barely
+   two words, so every Telugu name came out as "Yehovaa Naa Kaap…". */
 .song-row {
   display: flex;
   flex-direction: column;
   gap: 4px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-2);
-  padding: 7px 9px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 8px 10px;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+.song-row:hover {
+  border-color: var(--line-strong);
+  background: var(--panel-hi);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 .song-row-main {
   min-width: 0;
   cursor: pointer;
 }
 .song-title {
-  font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--text);
   /* wrap rather than truncate; `anywhere` so one long word still breaks instead
      of pushing the row wide */
   overflow-wrap: anywhere;
+}
+/* The song as it's sung. Anek Telugu is the app's default face, so this needs no
+   font of its own. Two lines is enough for every title in the catalogue; the
+   rest of the first stanza isn't a name. */
+.song-telugu {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .song-meta {
   display: flex;
@@ -1727,6 +1748,33 @@ select:focus {
   gap: 4px;
   /* right-aligned even when the row has no author/section line to push against */
   margin-left: auto;
+}
+/* Add is the everyday action and carries the accent; the others drop their
+   outline until you reach for them, so the eye lands on the name first and one
+   soft chip second — not on three boxes per row, four hundred rows deep. */
+.song-actions .btn.tiny {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-2);
+  font-weight: 500;
+  padding: 3px 7px;
+}
+.song-actions .btn.tiny:hover {
+  background: var(--btn-hover);
+  color: var(--text);
+}
+.song-actions .btn.tiny.song-add {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+  font-weight: 600;
+}
+.song-actions .btn.tiny.song-add:hover {
+  background: var(--accent);
+  color: #fff;
+}
+.song-actions .btn.tiny.icon-btn:hover {
+  color: var(--danger);
 }
 
 /* ---------- modal + song editor ---------- */

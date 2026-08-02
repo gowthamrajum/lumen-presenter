@@ -12,6 +12,18 @@ import type { Background, RemoteSong, SlideContent, Song } from '@shared/types'
 
 type AddMode = 'slides' | 'canvas'
 
+/**
+ * The song's own Telugu line, shown under the transliterated name in the online
+ * list. Every song in the catalogue opens its main stanza with it, and it is the
+ * title as the congregation actually knows the song — the transliteration alone
+ * ("Yehovaa Naa Kaapari") is the searchable spelling, not the name they sing.
+ * A trailing "(2)" is a sing-it-twice marker rather than part of the line.
+ */
+function teluguTitle(r: RemoteSong): string {
+  const line = r.main_stanza?.telugu?.[0] ?? r.stanzas?.[0]?.telugu?.[0] ?? ''
+  return line.replace(/\s*\(\d+\)\s*$/, '').trim()
+}
+
 function newSong(): Song {
   return {
     id: uid(),
@@ -133,7 +145,9 @@ export function SongsPanel(): JSX.Element {
   }
 
   // ----- local library -----
-  const localFiltered = q ? songs.filter((s) => `${s.title} ${s.author ?? ''}`.toLowerCase().includes(q)) : songs
+  const localFiltered = q
+    ? songs.filter((s) => `${s.title} ${s.author ?? ''} ${s.telugu ?? ''}`.toLowerCase().includes(q))
+    : songs
   const openLocal = async (id: string, mode: AddMode): Promise<void> => {
     const song = await window.lumen.loadSong(id)
     if (song) queueAdd(song, mode)
@@ -148,8 +162,15 @@ export function SongsPanel(): JSX.Element {
   }
 
   // ----- remote catalog -----
+  // Match the Telugu line as well as the transliteration: it's on screen now, so
+  // typing (or pasting) "యెహోవా" should find the song the same way "Yehovaa" does.
   const remoteFiltered = (
-    q ? remoteSongs.filter((r) => String(r.song_name ?? '').toLowerCase().includes(q)) : remoteSongs
+    q
+      ? remoteSongs.filter(
+          (r) =>
+            String(r.song_name ?? '').toLowerCase().includes(q) || teluguTitle(r).toLowerCase().includes(q)
+        )
+      : remoteSongs
   ).slice(0, 400)
   const openRemote = (r: RemoteSong, mode: AddMode): void => queueAdd(remoteToSong(r, lang), mode)
   const presentRemote = (r: RemoteSong): void => void doAdd(remoteToSong(r, lang), 'slides', true)
@@ -232,11 +253,12 @@ export function SongsPanel(): JSX.Element {
               <div key={s.id} className="song-row">
                 <div className="song-row-main" onDoubleClick={() => void presentLocal(s.id)} title="Double-click to add & present">
                   <div className="song-title">{s.title || 'Untitled Song'}</div>
+                  {s.telugu && <div className="song-telugu">{s.telugu}</div>}
                 </div>
                 <div className="song-meta">
                   {s.author && <div className="song-author">{s.author}</div>}
                   <div className="song-actions">
-                    <button className="btn tiny" onClick={() => void openLocal(s.id, 'slides')} title="Add to service">Add</button>
+                    <button className="btn tiny song-add" onClick={() => void openLocal(s.id, 'slides')} title="Add to service">Add</button>
                     <button className="btn tiny" onClick={() => void openLocal(s.id, 'canvas')} title="Add as editable Canvas slides">Canvas</button>
                     <button className="btn tiny" onClick={() => void edit(s.id)} title="Edit song">Edit</button>
                     <button className="btn tiny icon-btn" onClick={() => void deleteSong(s.id)} title="Delete">
@@ -266,11 +288,12 @@ export function SongsPanel(): JSX.Element {
               <div key={r.song_id} className="song-row">
                 <div className="song-row-main" onDoubleClick={() => presentRemote(r)} title="Double-click to add & present">
                   <div className="song-title">{r.song_name}</div>
+                  {teluguTitle(r) && <div className="song-telugu">{teluguTitle(r)}</div>}
                 </div>
                 <div className="song-meta">
                   <div className="song-author">{(r.stanzas?.length ?? 0) + (r.main_stanza ? 1 : 0)} sections</div>
                   <div className="song-actions">
-                    <button className="btn tiny" onClick={() => openRemote(r, 'slides')} title="Add to service">Add</button>
+                    <button className="btn tiny song-add" onClick={() => openRemote(r, 'slides')} title="Add to service">Add</button>
                     <button className="btn tiny" onClick={() => openRemote(r, 'canvas')} title="Add as editable Canvas slides">Canvas</button>
                     <button className="btn tiny" onClick={() => void importRemote(r)} title="Save to your library">Import</button>
                   </div>

@@ -326,6 +326,9 @@ export interface SongMeta {
   id: string
   title: string
   author?: string
+  /** the song's first Telugu line — the title as the congregation knows it,
+   *  shown under the transliterated name in the library list */
+  telugu?: string
   savedAt?: string
 }
 

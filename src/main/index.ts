@@ -530,6 +530,16 @@ function songsDir(): string {
 function songFile(id: string): string {
   return join(songsDir(), `${id}.json`)
 }
+/** The song's first line in Telugu script, for the library list's subtitle. A
+ *  trailing "(2)" is a sing-it-twice marker rather than part of the line. */
+function firstTeluguLine(s: Song): string | undefined {
+  for (const sec of s.sections ?? []) {
+    const hit = sec.lines?.find((l) => /[ఀ-౿]/.test(l))
+    if (hit) return hit.replace(/\s*\(\d+\)\s*$/, '').trim()
+  }
+  return undefined
+}
+
 async function listSongs(): Promise<SongMeta[]> {
   try {
     const files = (await readdir(songsDir())).filter((f) => f.endsWith('.json'))
@@ -537,7 +547,13 @@ async function listSongs(): Promise<SongMeta[]> {
       files.map(async (f): Promise<SongMeta | null> => {
         try {
           const s: Song = JSON.parse(await readFile(join(songsDir(), f), 'utf8'))
-          return { id: s.id, title: String(s.title ?? 'Untitled'), author: s.author, savedAt: s.savedAt }
+          return {
+            id: s.id,
+            title: String(s.title ?? 'Untitled'),
+            author: s.author,
+            telugu: firstTeluguLine(s),
+            savedAt: s.savedAt
+          }
         } catch {
           return null
         }
