@@ -172,31 +172,18 @@ export function Stage({
     fontWeight: 700
   }
 
-  // lineHeight is a dep: it changes scrollHeight, so the auto-fit has to re-solve
-  // (looser spacing => smaller font) or the text overflows its box.
+  // lineHeight and `live` are deps: each changes the space the text has to fit
+  // into, so the auto-fit has to re-solve or the text overflows its box.
   //
-  // Auto-size normalisation measures TWO hidden probes: this slide's own text and
-  // the run's busiest slide. The rendered size sits between them.
-  const sample = slide?.fitSample
-  const deps = [theme.fontScale, theme.uppercase, slide?.singleLine, !!qr, lineHeight]
-  // `live` is a dep because the Go Live screen fits inside wider insets.
-  const fitOpts = { scale: theme.fontScale }
-  const own = useFitText([lines.join('\n'), ...deps, live], fitOpts)
-  const busiest = useFitText([(sample ?? lines).join('\n'), ...deps, live], fitOpts)
-
-  /**
-   * How far a slide may be shrunk to match its neighbours. Sizing purely to the
-   * busiest slide made a whole reading render at its worst verse — Psalm 102's
-   * verse 26 is 142 characters against verse 27's 52, so every slide took the
-   * 142-character size. The floor keeps the run visually even while stopping one
-   * outlier from shrinking everything: at most a ~1.4x spread remains.
-   */
-  const NORMALISE_FLOOR = 0.72
-  // Never above `own` — that is the largest this slide's own text can take
-  // without overflowing.
-  const fontSize = sample
-    ? Math.min(own.fontSize, Math.max(busiest.fontSize, own.fontSize * NORMALISE_FLOOR))
-    : own.fontSize
+  // Each slide is sized to its OWN text. Matching every slide in a run to its
+  // busiest sibling was tried and removed: it left slides filling only ~64% of
+  // the screen, and one 142-character verse dragged a whole psalm down with it.
+  // Pressing through a song now varies in size, which is the accepted trade for
+  // each slide actually using the screen.
+  const { ref, fontSize } = useFitText(
+    [lines.join('\n'), theme.fontScale, theme.uppercase, slide?.singleLine, !!qr, lineHeight, live],
+    { scale: theme.fontScale }
+  )
 
   return (
     <div className={`stage${qr ? ' has-qr' : ''}${live ? ' is-live' : ''}`}>
@@ -251,21 +238,7 @@ export function Stage({
       {showText && (
         <div className="stage-textwrap">
           <div className="stage-fitbox">
-            {/* Measured, never seen: this slide's own text, and the run's
-                busiest slide. The visible text takes the size derived above. */}
-            <div ref={own.ref} aria-hidden className={`stage-text stage-fitsample${slide?.singleLine ? ' oneline' : ''}`} style={textStyle}>
-              {lines.map((l, i) => (
-                <div key={i}>{formatLyric(l) || ' '}</div>
-              ))}
-            </div>
-            {sample && (
-              <div ref={busiest.ref} aria-hidden className={`stage-text stage-fitsample${slide?.singleLine ? ' oneline' : ''}`} style={textStyle}>
-                {sample.map((l, i) => (
-                  <div key={i}>{formatLyric(l) || ' '}</div>
-                ))}
-              </div>
-            )}
-            <div className={`stage-text${slide?.singleLine ? ' oneline' : ''}`} style={{ ...textStyle, fontSize }}>
+            <div ref={ref} className={`stage-text${slide?.singleLine ? ' oneline' : ''}`} style={{ ...textStyle, fontSize }}>
               {lines.map((l, i) => (
                 <div key={i}>{formatLyric(l) || ' '}</div>
               ))}
