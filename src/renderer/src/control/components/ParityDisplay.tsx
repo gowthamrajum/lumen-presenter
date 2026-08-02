@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useStore } from '../../store/useStore'
+import { useStore, suppressedOn } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import { Icon } from '../../shared/Icon'
 import { DEFAULT_OBS_STYLE, type LiveState, type ObsStyle, type SlideContent } from '@shared/types'
@@ -122,6 +122,14 @@ export function ParityDisplay(): JSX.Element | null {
   const deck = useMemo(() => items.flatMap((it) => it.slides), [items])
   const slide = deck.find((d) => d.id === liveId) ?? null
 
+  // An item turned off for a channel sends that channel no slide at all, so the
+  // panes have to show that too — otherwise Parity claims the congregation's
+  // phones are showing lyrics that the relay is deliberately withholding.
+  // `suppressedOn` is the same check the broadcast payload is built from.
+  const liveItem = items.find((it) => it.slides.some((sl) => sl.id === liveId))
+  const offUsers = suppressedOn(liveItem, 'users')
+  const offStream = suppressedOn(liveItem, 'stream')
+
   if (!open) return null
 
   const live: LiveState = {
@@ -132,6 +140,10 @@ export function ParityDisplay(): JSX.Element | null {
     showLogo,
     theme
   }
+  // What each channel actually receives: the relay sends `slide: null` for a
+  // suppressed item, so mirror that rather than inventing a placeholder.
+  const usersLive: LiveState = offUsers ? { ...live, slide: null } : live
+  const streamLive: LiveState = offStream ? { ...live, slide: null } : live
 
   return (
     <div className="modal-backdrop" onClick={() => setOpen(false)}>
@@ -156,21 +168,31 @@ export function ParityDisplay(): JSX.Element | null {
 
           <div className="parity-pane">
             <div className="parity-label">
-              Viewer · Cantica Web <span className="parity-note">phones &amp; browsers · both languages</span>
+              Viewer · Cantica Web{' '}
+              {offUsers ? (
+                <span className="parity-off">Off air for this item</span>
+              ) : (
+                <span className="parity-note">phones &amp; browsers · both languages</span>
+              )}
             </div>
             <div className="parity-frame">
-              <Stage state={live} />
+              <Stage state={usersLive} />
             </div>
           </div>
 
           <div className="parity-pane">
             <div className="parity-label">
-              OBS <span className="parity-note">
-                transparent · {slide?.kind === 'scripture' ? 'Telugu' : 'transliteration'} only
-              </span>
+              OBS{' '}
+              {offStream ? (
+                <span className="parity-off">Off air for this item</span>
+              ) : (
+                <span className="parity-note">
+                  transparent · {slide?.kind === 'scripture' ? 'Telugu' : 'transliteration'} only
+                </span>
+              )}
             </div>
             <div className="parity-frame checker">
-              <ObsPane state={live} style={obsStyle} />
+              <ObsPane state={streamLive} style={obsStyle} />
             </div>
           </div>
         </div>

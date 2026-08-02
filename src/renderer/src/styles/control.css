@@ -3049,6 +3049,19 @@ select:focus {
   color: var(--muted);
   font-size: 10px;
 }
+/* This channel is switched off for the live item, so its pane is blank on
+   purpose — say so, or a blank frame reads as a fault. */
+.parity-off {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--warn-text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
 .parity-frame {
   aspect-ratio: 16 / 9;
   border: 1px solid var(--line);
