@@ -124,6 +124,9 @@ export interface SlideContent {
    * on both the local output and the web broadcast.
    */
   qr?: string
+  /** a line sitting directly above the QR, telling people what it's for.
+   *  Separate from `lines`, which sit beside the code rather than over it. */
+  qrLabel?: string
   /** render the text on a single line, shrinking to fit width instead of
    *  wrapping (used by bilingual title cards). */
   singleLine?: boolean

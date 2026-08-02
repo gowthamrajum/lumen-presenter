@@ -186,7 +186,8 @@ function offerings(): ServiceItem {
     label: 'Offerings',
     lines: ['కానుకలు', 'Offerings'], // Telugu line, then English line
     singleLine: true,
-    qr: QR_DONATIONS
+    qr: QR_DONATIONS,
+    qrLabel: 'Know ways to contribute'
   }
   return { id: uid(), title: 'Offerings', kind: 'text', slides: [slide], ...broadcastDefaults('text') }
 }

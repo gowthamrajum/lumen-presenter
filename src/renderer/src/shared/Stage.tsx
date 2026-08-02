@@ -138,6 +138,7 @@ export function Stage({
   const showText = visible && !isTimer && !hasComposed && lines.length > 0
   const showTimer = visible && isTimer && !!slide
   const qr = visible && !isTimer ? slide?.qr : undefined
+  const qrLabel = qr ? slide?.qrLabel : undefined
   // Drop a trailing "(ESV)" version tag from the caption — the footer no longer
   // carries the version marker (covers decks built before this change).
   const caption = (slide?.caption ?? '').replace(/\s*\(ESV\)\s*$/i, '')
@@ -278,6 +279,11 @@ export function Stage({
           )}
           {qr && (
             <div className="stage-qr">
+              {qrLabel && (
+                <div className="stage-qr-label" style={{ color: theme.captionColor, fontFamily: theme.fontFamily }}>
+                  {qrLabel}
+                </div>
+              )}
               <img src={qr} alt="QR code" />
             </div>
           )}
@@ -287,6 +293,11 @@ export function Stage({
       {qr && !showText && !hasComposed && (
         <div className="stage-textwrap">
           <div className="stage-qr solo">
+            {qrLabel && (
+              <div className="stage-qr-label" style={{ color: theme.captionColor, fontFamily: theme.fontFamily }}>
+                {qrLabel}
+              </div>
+            )}
             <img src={qr} alt="QR code" />
           </div>
         </div>

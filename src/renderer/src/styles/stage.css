@@ -181,8 +181,23 @@
 .stage-qr {
   flex: 0 0 auto;
   display: flex;
+  /* column so a label can sit over the code; with no label this centres the
+     image exactly as before */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1.8cqh;
+}
+/* Says what the code is for. Sized in cqmin so it holds its proportion from a
+   thumbnail up to the projector, and capped to the code's own width so it wraps
+   above it rather than widening the column. */
+.stage-qr-label {
+  font-size: 3.2cqmin;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  max-width: 44cqh;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
 }
 .stage-qr img {
   width: 40cqh;
