@@ -1,6 +1,8 @@
-import type { ComposedLine, ItemKind, ServiceItem, SlideContent } from '@shared/types'
-import { uid, broadcastDefaults, worshipBookend } from '../store/useStore'
-import { blankSlide, countdownSlide } from './slides'
+import type { Background, ComposedLine, ItemKind, ServiceItem, SlideContent } from '@shared/types'
+import { uid, broadcastDefaults } from '../store/useStore'
+import { blankSlide, clockSlide, countdownSlide } from './slides'
+import { COMMUNION } from './scenes'
+import { isFirstSunday } from './firstSunday'
 import { QR_DONATIONS } from './assets/qrDonations'
 
 /**
@@ -53,25 +55,50 @@ function welcome(english: string): ServiceItem {
   return section('Welcome', 'text', 'స్వాగతం', english)
 }
 
-/** A placeholder welcome-video item. The operator attaches the real clip with
- *  the "Add media" button on the Slides panel. */
-function welcomeVideo(): ServiceItem {
-  // A visible placeholder word until the operator attaches the real clip with
-  // "Add media" (which clears the text and sets the video background). Broadcasts
-  // by default (video kind).
+/** The church site serves the service clips; they need a direct URL because the
+ *  projector, the phones and OBS each load them into a plain <video>. */
+const MEDIA_BASE = 'https://cantica-web.onrender.com/media'
+
+/**
+ * Sunday's broadcast rule: every item reaches the projector and the
+ * congregation's phones, and only the clock also goes out on the stream. Set
+ * explicitly rather than via broadcastDefaults, which keys off item kind and
+ * can't say "on for Users, off for OBS".
+ */
+const ON_AIR = { noBroadcastUsers: false, noBroadcastStream: true }
+const ON_AIR_WITH_OBS = { noBroadcastUsers: false, noBroadcastStream: false }
+
+/** A hosted clip, attached exactly as "Add media by URL" would build it — so it
+ *  reaches the web broadcast and not only the local output. */
+function clip(title: string, file: string): ServiceItem {
+  const background: Background = { type: 'video', value: `${MEDIA_BASE}/${file}`, fit: 'cover' }
   return {
     id: uid(),
-    title: 'Welcome Video',
+    title,
     kind: 'video',
-    slides: [{ id: uid(), kind: 'text', label: 'Welcome Video', lines: ['Welcome'] }],
-    ...broadcastDefaults('video')
+    slides: [{ id: uid(), kind: 'media', label: title, lines: [], background }],
+    ...ON_AIR
   }
 }
 
-/** A Praise & Worship bookend — broadcasts to the audience (Users) only; OBS is
- *  empty. Same card the Songs source wraps a song with. */
-function praiseWorship(): ServiceItem {
-  return worshipBookend()
+/** The pre-service clock — the one item the stream carries. */
+function clock(): ServiceItem {
+  return { id: uid(), title: 'Clock', kind: 'countdown', slides: [clockSlide()], ...ON_AIR_WITH_OBS }
+}
+
+/** The Lord's Table card, same wording and background as the quick scene. */
+function communion(): ServiceItem {
+  const slide: SlideContent = {
+    id: uid(),
+    kind: 'text',
+    label: COMMUNION.name,
+    lines: COMMUNION.lines,
+    singleLine: true,
+    // carried on the slide, so the wine background belongs to this card alone
+    // and doesn't repaint the rest of the service
+    background: COMMUNION.background
+  }
+  return { id: uid(), title: COMMUNION.name, kind: 'text', slides: [slide], ...ON_AIR }
 }
 
 /** A composed (freely-positioned) line on the 960×540 reference canvas — the same
@@ -168,18 +195,18 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
   {
     id: 'sunday-worship',
     name: 'Sunday Worship Service',
-    description: 'Welcome video, countdown, worship, the Word (Vaakyopadesam), offerings and benediction.',
+    description:
+      'Welcome, clock, Sunday School, the Word, offerings, announcements and a closing thank-you. Communion is added on the first Sunday of the month.',
     build: () => [
-      welcomeVideo(),
-      countdown(5, 'Service begins soon'),
-      // A plain worship *slot* — no pre-baked "Praise & Worship" cards. Those are
-      // added automatically (as bookends) only when the operator adds a song.
-      section('Worship', 'song', 'ఆరాధన', 'Worship'),
-      section('Sermon', 'text', 'వాక్యోపదేశం', 'Sermon'),
-      offerings(),
-      announcements(),
-      section('Benediction', 'text', 'దీవెన', 'Go in peace'),
-      section('Closing Worship', 'song', 'ముగింపు ఆరాధన', 'Closing Worship')
+      clip('Welcome', 'welcome.mp4'),
+      clock(),
+      clip('Sunday School', 'sunday-school.mp4'),
+      { ...section('Sermon', 'text', 'వాక్యోపదేశం', 'Sermon'), ...ON_AIR },
+      // The Table is served on the first Sunday, immediately before the offering.
+      ...(isFirstSunday() ? [communion()] : []),
+      { ...offerings(), ...ON_AIR },
+      { ...announcements(), ...ON_AIR },
+      clip('Thank You', 'thank-you.mp4')
     ]
   },
   {

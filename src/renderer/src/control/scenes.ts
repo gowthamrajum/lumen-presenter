@@ -35,6 +35,24 @@ const TABLE: Background = {
   anim: 'flow'
 }
 
+/**
+ * The Lord's Table card. Named and exported because the Sunday template drops
+ * the same card in on a first Sunday — the wording and the background have to
+ * match however it reached the schedule.
+ */
+export const COMMUNION: Scene = {
+  id: 'communion',
+  name: 'Communion',
+  // Telugu above the English, as everywhere else in the service. The
+  // transliteration belongs on song slides, not here — beside the script it
+  // says nothing to either reader.
+  lines: ['బల్లారాధన', 'Communion'],
+  background: TABLE,
+  // Not uppercase: it does nothing to Telugu and shouts the English, which is
+  // the wrong voice for the table.
+  theme: { textColor: '#fdf0e4', captionColor: '#f0c37a', scrim: 0.26, uppercase: false, shadow: true }
+}
+
 export const SCENES: Scene[] = [
   {
     id: 'welcome',
@@ -50,18 +68,7 @@ export const SCENES: Scene[] = [
     background: FLOW,
     theme: { textColor: '#ffffff', captionColor: '#ffd27f', scrim: 0.35, uppercase: true, shadow: true }
   },
-  {
-    id: 'communion',
-    name: 'Communion',
-    // Telugu above the English, as everywhere else in the service. The
-    // transliteration belongs on song slides, not here — beside the script it
-    // says nothing to either reader.
-    lines: ['బల్లారాధన', 'Communion'],
-    background: TABLE,
-    // Not uppercase: it does nothing to Telugu and shouts the English, which is
-    // the wrong voice for the table.
-    theme: { textColor: '#fdf0e4', captionColor: '#f0c37a', scrim: 0.26, uppercase: false, shadow: true }
-  },
+  COMMUNION,
   {
     id: 'blessing',
     name: 'Blessing',
