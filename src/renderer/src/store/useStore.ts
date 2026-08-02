@@ -26,6 +26,7 @@ import {
   type ThemeStyle
 } from '@shared/types'
 import { SERVICE_TEMPLATES } from '../control/templates'
+import { mergeBySlot } from '../control/mergeImport'
 import { loadSessionCache, saveSessionCache } from './sessionCache'
 
 export function uid(): string {
@@ -888,6 +889,19 @@ export const useStore = create<AppState>((set, get) => {
       // Fresh serviceId (null) → saving creates a NEW entry, never overwrites a
       // saved service. Re-arm countdowns so an imported deck doesn't show 0:00.
       const items = reArmItems(svc.items ?? [])
+
+      // A Service Builder file stamps its items with a slot: it's a pick-list to
+      // drop INTO the order on screen, not a service to replace it with. Merge
+      // when there's somewhere to merge into; otherwise fall through and load it
+      // as the service, which is what a file exported from Cantica wants.
+      if (items.some((it) => it.slot)) {
+        const merged = mergeBySlot(get().items, items)
+        if (merged) {
+          set({ items: merged, selectedItemId: merged[0]?.id ?? null })
+          push()
+          return res
+        }
+      }
       set({
         serviceId: null,
         serviceName: svc.name || 'Imported Service',

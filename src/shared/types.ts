@@ -249,6 +249,13 @@ export interface ServiceItem {
   /** When live, this item's verse auto-advances to the Sermon slide after a TTL.
    *  Set on Bible passages only (not psalms / responsive readings). */
   autoAdvance?: boolean
+  /**
+   * Where an IMPORTED item wants to land in an order that already exists —
+   * "worship" between Sunday School and the Sermon, "offering" against the
+   * Offerings card. Written by the Service Builder, consumed and dropped by the
+   * importer, so it never appears in a service Cantica itself saved.
+   */
+  slot?: 'worship' | 'offering'
 }
 
 /** A worship service / setlist: an ordered collection of items plus the look
