@@ -232,9 +232,17 @@ export function Stage({
       !!qr,
       fixedLineHeight,
       autoSpacing,
-      live
+      live,
+      slide?.textScale
     ],
-    { scale: theme.fontScale, autoSpacing, lineHeight: fixedLineHeight }
+    {
+      // A slide may ask to sit below the usual ceiling (a title card, which
+      // would otherwise fill the screen); the operator's Size bias still
+      // multiplies on top of it.
+      scale: theme.fontScale * (slide?.textScale ?? 1),
+      autoSpacing,
+      lineHeight: fixedLineHeight
+    }
   )
 
   return (

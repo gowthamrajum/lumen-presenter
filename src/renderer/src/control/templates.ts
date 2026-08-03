@@ -1,4 +1,4 @@
-import type { Background, ComposedLine, ItemKind, ServiceItem, SlideContent } from '@shared/types'
+import { SECTION_TEXT_SCALE, type Background, type ComposedLine, type ItemKind, type ServiceItem, type SlideContent } from '@shared/types'
 import { uid, broadcastDefaults } from '../store/useStore'
 import { blankSlide, clockSlide, countdownSlide } from './slides'
 import { COMMUNION } from './scenes'
@@ -29,7 +29,11 @@ function section(title: string, kind: ItemKind, telugu: string, english: string)
     // Telugu on its own line, English on its own line (house format). Each line
     // is kept to one line and the whole card is auto-sized to fit.
     lines: [telugu, english].filter((s) => s.trim()),
-    singleLine: true
+    singleLine: true,
+    // A heading, not a verse: two short lines would otherwise be sized until
+    // they filled the screen. Held below the ceiling so the words sit in the
+    // middle of the slide with air around them.
+    textScale: SECTION_TEXT_SCALE
   }
   return { id: uid(), title, kind, slides: [slide], ...broadcastDefaults(kind) }
 }
@@ -94,6 +98,7 @@ function communion(): ServiceItem {
     label: COMMUNION.name,
     lines: COMMUNION.lines,
     singleLine: true,
+    textScale: SECTION_TEXT_SCALE,
     // carried on the slide, so the wine background belongs to this card alone
     // and doesn't repaint the rest of the service
     background: COMMUNION.background
@@ -186,6 +191,7 @@ function offerings(): ServiceItem {
     label: 'Offerings',
     lines: ['కానుకలు', 'Offerings'], // Telugu line, then English line
     singleLine: true,
+    textScale: SECTION_TEXT_SCALE,
     qr: QR_DONATIONS,
     qrLabel: 'Know ways to contribute'
   }

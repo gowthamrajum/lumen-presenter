@@ -45,6 +45,15 @@ export const DEFAULT_LINE_SPACING = 1.22
  */
 export const GO_LIVE_LINE_SPACING = DEFAULT_LINE_SPACING
 
+/**
+ * How large a section heading may get, against the normal ceiling — see
+ * SlideContent.textScale. Two short lines at full size are bound only by the
+ * height of the screen, so "వాక్యోపదేశం / Sermon" grows until it fills it edge
+ * to edge; at this it sits in the middle of the slide with air around it.
+ * Measured on the output window, not guessed.
+ */
+export const SECTION_TEXT_SCALE = 0.55
+
 export type BackgroundType = 'color' | 'gradient' | 'image' | 'video'
 
 export interface Background {
@@ -140,6 +149,14 @@ export interface SlideContent {
   /** render the text on a single line, shrinking to fit width instead of
    *  wrapping (used by bilingual title cards). */
   singleLine?: boolean
+  /**
+   * Shrink this slide's text against the normal ceiling: 1 is the usual size,
+   * 0.5 is half of it. A two-word title card otherwise grows until the block
+   * fills the screen edge to edge, which reads as shouting rather than as a
+   * heading. Only the CEILING moves — long text is still bound by the space it
+   * has, so this can make a slide smaller but never bigger than it would fit.
+   */
+  textScale?: number
 }
 
 /**
