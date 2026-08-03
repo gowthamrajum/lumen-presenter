@@ -28,6 +28,10 @@ export const IPC = {
   broadcastSet: 'broadcast:set',
   broadcastStatusGet: 'broadcast:statusGet',
 
+  // services built on the web and kept on the relay
+  servicesRemote: 'services:remoteList',
+  serviceRemoteGet: 'services:remoteGet',
+
   // main -> renderers (send)
   liveState: 'live:state',
   screensChanged: 'screens:changed',

@@ -23,10 +23,12 @@ import {
   type Song,
   type SongMeta,
   type RemoteSong,
+  type RemoteService,
+  type ItemSource,
   type ThemeStyle
 } from '@shared/types'
 import { SERVICE_TEMPLATES } from '../control/templates'
-import { mergeBySlot } from '../control/mergeImport'
+import { itemsFrom, mergeBySlot, withoutSource } from '../control/mergeImport'
 import { loadSessionCache, saveSessionCache } from './sessionCache'
 
 export function uid(): string {
@@ -46,6 +48,18 @@ function reArmItems(items: ServiceItem[]): ServiceItem[] {
         : sl
     )
   }))
+}
+
+/**
+ * The deck out of whatever the relay stored. cantica-web saves the same
+ * `cantica-service` envelope it would have handed over as a file, plus a
+ * `builder` sidecar it needs to reopen the service for editing — Cantica reads
+ * only the items and ignores the rest.
+ */
+function deckOf(serviceData: unknown): ServiceItem[] {
+  const d = serviceData as { service?: { items?: unknown }; items?: unknown } | null
+  const items = d?.service?.items ?? d?.items
+  return Array.isArray(items) ? (items as ServiceItem[]) : []
 }
 
 /**
@@ -242,6 +256,20 @@ interface AppState {
   exportServiceJson: () => Promise<ServiceExportResult>
   /** load a deck from a JSON file into the current service */
   importServiceJson: () => Promise<ServiceImportResult>
+
+  // services built on the web (cantica-web) and kept on the relay
+  /** what the relay is offering, newest first; empty when offline */
+  remoteServices: RemoteService[]
+  /** a linked service has been edited on the web but something is live, so the
+   *  operator decides when to take it — never mid-song */
+  remoteUpdate: { serviceId: number; day: string; date: string } | null
+  refreshRemoteServices: () => Promise<void>
+  /** pull a web service into the order (merging by slot, as a file does) */
+  importRemoteService: (id: number) => Promise<{ ok: boolean; message?: string }>
+  /** re-pull a linked service, replacing only the items it put here before */
+  applyRemoteUpdate: (id: number) => Promise<{ ok: boolean; message?: string }>
+  /** the poll: notice an edited service, and take it when it's safe to */
+  syncRemoteServices: () => Promise<void>
   newService: () => void
   /** start a fresh service pre-populated from a named template outline */
   applyTemplate: (templateId: string) => void
@@ -899,6 +927,80 @@ export const useStore = create<AppState>((set, get) => {
         obsStyle: bc?.obsStyle
       }
       return window.lumen.exportServiceJson(env)
+    },
+
+    remoteServices: [],
+    remoteUpdate: null,
+
+    refreshRemoteServices: async () => {
+      set({ remoteServices: await window.lumen.listRemoteServices().catch(() => []) })
+    },
+
+    importRemoteService: async (id) => {
+      const full = await window.lumen.getRemoteService(id).catch(() => null)
+      if (!full) return { ok: false, message: 'Could not reach the service store.' }
+      const items = reArmItems(deckOf(full.serviceData))
+      if (!items.length) return { ok: false, message: 'That service has nothing in it yet.' }
+      const source: ItemSource = { serviceId: id, updatedAt: full.updatedDateTime }
+      // Anything this same service left here before comes out first, so pulling
+      // it twice replaces its songs instead of stacking a second copy of them.
+      const base = withoutSource(get().items, id)
+      const keep = (list: ServiceItem[]): string | null => {
+        const sel = get().selectedItemId
+        return sel && list.some((it) => it.id === sel) ? sel : list[0]?.id ?? null
+      }
+
+      // As with a file: a slot marks a pick-list to drop INTO the order, while a
+      // whole service replaces it.
+      if (items.some((it) => it.slot)) {
+        const merged = mergeBySlot(base, items, source)
+        if (merged) {
+          set({ items: merged, selectedItemId: keep(merged) })
+          push()
+          return { ok: true }
+        }
+      }
+      const landed = items.map((it) => {
+        const { slot: _slot, ...rest } = it
+        return { ...rest, source }
+      })
+      set({
+        serviceId: null,
+        serviceName: `${full.serviceDay} · ${full.serviceDate}`,
+        items: landed,
+        selectedItemId: landed[0]?.id ?? null,
+        liveId: null
+      })
+      push()
+      return { ok: true }
+    },
+
+    applyRemoteUpdate: async (id) => {
+      const res = await get().importRemoteService(id)
+      if (res.ok) set({ remoteUpdate: null })
+      return res
+    },
+
+    /**
+     * Notice that a service in this order was edited on the web, and take it.
+     *
+     * Silently, while nothing is on screen — that is the whole point: whoever
+     * builds Sunday's songs can still be changing them on Saturday night and the
+     * projection machine keeps up on its own. Once something IS live the order is
+     * left exactly alone and the operator is offered the update instead; swapping
+     * songs out from under a live slide is not a decision to make for them.
+     */
+    syncRemoteServices: async () => {
+      await get().refreshRemoteServices()
+      const list = get().remoteServices
+      const linked = new Map<number, string>()
+      for (const it of get().items) if (it.source) linked.set(it.source.serviceId, it.source.updatedAt)
+      for (const [serviceId, importedAt] of linked) {
+        const remote = list.find((s) => s.id === serviceId)
+        if (!remote || remote.updatedDateTime === importedAt) continue
+        if (get().liveId == null) await get().applyRemoteUpdate(serviceId)
+        else set({ remoteUpdate: { serviceId, day: remote.serviceDay, date: remote.serviceDate } })
+      }
     },
 
     importServiceJson: async () => {

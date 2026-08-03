@@ -1,0 +1,39 @@
+import { useEffect } from 'react'
+import { useStore } from '../store/useStore'
+
+/** How often Cantica asks the relay whether Sunday's service has moved on. */
+export const REMOTE_POLL_MS = 60_000
+
+/**
+ * Keep the order in step with the service it was built from.
+ *
+ * Sunday's songs are assembled on a phone (cantica-web) and kept on the relay,
+ * and they keep being assembled — a song swapped on Saturday night, a psalm
+ * added on the way to church. Rather than re-exporting a file and carrying it
+ * over, the projection machine asks once a minute whether the service it pulled
+ * has changed, and takes the new one.
+ *
+ * It only ever replaces the items that service put there: the rest of the
+ * Sunday order, and anything added by hand, is untouched. And it only does it
+ * silently while nothing is on screen — see syncRemoteServices.
+ */
+export function useRemoteServices(): void {
+  const sync = useStore((s) => s.syncRemoteServices)
+
+  useEffect(() => {
+    void sync()
+    const id = setInterval(() => void sync(), REMOTE_POLL_MS)
+    // A machine that was asleep through the last few ticks is exactly the one
+    // most likely to be behind, so ask again the moment it comes back.
+    const wake = (): void => {
+      if (!document.hidden) void sync()
+    }
+    document.addEventListener('visibilitychange', wake)
+    window.addEventListener('online', wake)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', wake)
+      window.removeEventListener('online', wake)
+    }
+  }, [sync])
+}

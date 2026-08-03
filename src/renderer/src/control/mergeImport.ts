@@ -1,4 +1,4 @@
-import type { ServiceItem } from '@shared/types'
+import type { ItemSource, ServiceItem } from '@shared/types'
 
 /**
  * Merge Service-Builder items into an order that already exists, instead of
@@ -14,7 +14,12 @@ import type { ServiceItem } from '@shared/types'
  * schedule — so the caller falls back to loading the file as the service rather
  * than quietly dropping songs at the end.
  */
-export function mergeBySlot(current: ServiceItem[], incoming: ServiceItem[]): ServiceItem[] | null {
+export function mergeBySlot(
+  current: ServiceItem[],
+  incoming: ServiceItem[],
+  /** stamped on every inserted item when the deck came from the relay */
+  source?: ItemSource
+): ServiceItem[] | null {
   if (!current.length) return null
   const find = (re: RegExp): number => current.findIndex((it) => re.test(it.title))
   const sermonAt = find(/sermon|వాక్యోపదేశం/i)
@@ -28,9 +33,10 @@ export function mergeBySlot(current: ServiceItem[], incoming: ServiceItem[]): Se
   // can't silently put a song on a channel the rest of the order is off.
   const like = (host: ServiceItem | undefined, it: ServiceItem): ServiceItem => {
     const { slot: _slot, ...rest } = it
+    const marked = source ? { ...rest, source } : rest
     return host
-      ? { ...rest, noBroadcastUsers: host.noBroadcastUsers, noBroadcastStream: host.noBroadcastStream }
-      : rest
+      ? { ...marked, noBroadcastUsers: host.noBroadcastUsers, noBroadcastStream: host.noBroadcastStream }
+      : marked
   }
 
   const out = current.slice()
@@ -51,4 +57,18 @@ export function mergeBySlot(current: ServiceItem[], incoming: ServiceItem[]): Se
   }
   return out
 }
+
+/** The items a given web service put into this order. */
+export const itemsFrom = (items: ServiceItem[], serviceId: number): ServiceItem[] =>
+  items.filter((it) => it.source?.serviceId === serviceId)
+
+/**
+ * Take out everything a web service contributed, leaving the rest of the order
+ * exactly as it was — the first half of re-importing an edited service.
+ *
+ * Anything the operator added by hand has no `source`, so it survives; so does a
+ * block imported from a DIFFERENT web service.
+ */
+export const withoutSource = (items: ServiceItem[], serviceId: number): ServiceItem[] =>
+  items.filter((it) => it.source?.serviceId !== serviceId)
 

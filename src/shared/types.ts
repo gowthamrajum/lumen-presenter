@@ -236,6 +236,30 @@ export type ItemKind =
 
 /** A titled group of slides within a service (e.g. one imported PowerPoint,
  *  a video, a scripture reading, or a song). */
+/**
+ * A service built on the web (cantica-web's Service Builder) and kept on the
+ * relay. Cantica lists these so Sunday's songs can be pulled in without a file
+ * changing hands, and re-pulled when whoever built it changes their mind.
+ */
+export interface RemoteService {
+  id: number
+  /** the gathering, e.g. "Sunday Morning" — unique per date on the relay */
+  serviceDay: string
+  /** YYYY-MM-DD */
+  serviceDate: string
+  createdDateTime: string
+  /** bumped on every edit; this is what tells Cantica the deck moved on */
+  updatedDateTime: string
+  /** characters of stored deck — the list endpoint's cheap size hint */
+  serviceDataLength?: number
+}
+
+/** The web service an imported item came from, and the version it came from. */
+export interface ItemSource {
+  serviceId: number
+  updatedAt: string
+}
+
 export interface ServiceItem {
   id: string
   title: string
@@ -258,6 +282,10 @@ export interface ServiceItem {
    *  clip: unmuted, played once, and followed by the next item. Never set by
    *  default; the operator turns it on per item. */
   sound?: boolean
+  /** Which web-built service this item came from, so a later edit of that
+   *  service can replace exactly these items and leave the rest of the order
+   *  alone. Absent on anything built inside Cantica. */
+  source?: ItemSource
   /**
    * Where an IMPORTED item wants to land in an order that already exists —
    * "worship" between Sunday School and the Sermon, "offering" against the

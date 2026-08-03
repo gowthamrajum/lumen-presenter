@@ -17,6 +17,27 @@ const KIND_ICON: Record<ItemKind, IconName> = {
   countdown: 'timer'
 }
 
+/** "Sun 10 Aug" — a service is filed by the day it is for, so show that. */
+function prettyDate(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`)
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+/** How long ago the web copy was last touched, in the roughest useful terms. */
+function sinceText(iso: string): string {
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return 'recently'
+  const mins = Math.round((Date.now() - then) / 60_000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`
+  const days = Math.round(hrs / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
+}
+
 export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Element {
   const items = useStore((s) => s.items)
   const selectedItemId = useStore((s) => s.selectedItemId)
@@ -26,6 +47,16 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const removeItem = useStore((s) => s.removeItem)
   const setItemSound = useStore((s) => s.setItemSound)
   const setInsertAt = useStore((s) => s.setInsertAt)
+  const remoteServices = useStore((s) => s.remoteServices)
+  const remoteUpdate = useStore((s) => s.remoteUpdate)
+  const importRemoteService = useStore((s) => s.importRemoteService)
+  const applyRemoteUpdate = useStore((s) => s.applyRemoteUpdate)
+  const [remoteMsg, setRemoteMsg] = useState<string | null>(null)
+
+  const pullRemote = async (id: number): Promise<void> => {
+    const res = await importRemoteService(id)
+    setRemoteMsg(res.ok ? null : res.message ?? 'Could not load that service.')
+  }
 
   /** Arm the insertion point and jump to the Library to pick what goes there. */
   const insertHere = (index: number | null): void => {
@@ -203,6 +234,34 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                     <span className="template-desc">{t.description}</span>
                   </button>
                 ))}
+                <div className="menu-label">Built on the web</div>
+                {remoteServices.length === 0 && (
+                  <div className="menu-empty">
+                    None yet — build one in Cantica Web and it appears here
+                  </div>
+                )}
+                {remoteServices.map((s) => {
+                  const linked = items.some((it) => it.source?.serviceId === s.id)
+                  return (
+                    <button
+                      key={s.id}
+                      className={`menu-item remote-item ${linked ? 'linked' : ''}`}
+                      onClick={() => { void pullRemote(s.id); setMenu(false) }}
+                      title={
+                        linked
+                          ? 'Already in this order — pull it again to take the latest version'
+                          : 'Add this service to the order'
+                      }
+                    >
+                      <span className="template-name">
+                        {s.serviceDay} · {prettyDate(s.serviceDate)}
+                      </span>
+                      <span className="template-desc">
+                        {linked ? 'In this order · updates by itself' : `Updated ${sinceText(s.updatedDateTime)}`}
+                      </span>
+                    </button>
+                  )
+                })}
                 <div className="menu-label">Open a saved service</div>
                 {savedServices.length === 0 && <div className="menu-empty">None saved yet</div>}
                 {savedServices.map((s) => (
@@ -226,6 +285,36 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
           )}
         </div>
       </div>
+
+      {/* An edited web service is taken automatically while nothing is on
+          screen. Once the service is running it waits here instead — the
+          operator decides when the songs may change under them. */}
+      {remoteUpdate && (
+        <div className="remote-banner">
+          <Icon name="refresh" />
+          <span className="remote-banner-text">
+            <b>{remoteUpdate.day}</b> was updated on the web.
+          </span>
+          <button
+            className="btn tiny"
+            onClick={() => void applyRemoteUpdate(remoteUpdate.serviceId)}
+            title="Replace this service's songs with the new version"
+          >
+            Update now
+          </button>
+          <button className="btn tiny quiet" onClick={() => useStore.setState({ remoteUpdate: null })}>
+            Not now
+          </button>
+        </div>
+      )}
+      {remoteMsg && (
+        <div className="remote-banner warn">
+          <span className="remote-banner-text">{remoteMsg}</span>
+          <button className="btn tiny quiet" onClick={() => setRemoteMsg(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="schedule-list">
         {items.length === 0 && (

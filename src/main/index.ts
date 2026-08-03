@@ -21,7 +21,8 @@ import {
   type PsalmVerse,
   type PsalmEnglish,
   type PsalmsResult,
-  type PsalmsError
+  type PsalmsError,
+  type RemoteService
 } from '../shared/types'
 import { importPptxFiles } from './pptx'
 import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExport'
@@ -531,6 +532,40 @@ function registerIpc(): void {
       force: !!force,
       validate: (d): d is unknown[] => Array.isArray(d)
     })
+  })
+
+  // Services built in cantica-web's Service Builder and kept on the relay.
+  // Fetched in main (no renderer CORS) and never cached: the whole point is to
+  // notice that whoever built Sunday's service has changed it.
+  ipcMain.handle(IPC.servicesRemote, async (): Promise<RemoteService[]> => {
+    const base = process.env.LUMEN_BROADCAST_API || process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com'
+    // A window around today: last week (the relay's own retention) through the
+    // next three, so next Sunday is there to prepare and last Sunday to reopen.
+    const day = 86_400_000
+    const iso = (t: number): string => new Date(t).toISOString().slice(0, 10)
+    const now = Date.now()
+    try {
+      const r = await fetch(`${base}/services?from=${iso(now - 7 * day)}&to=${iso(now + 21 * day)}`, {
+        signal: AbortSignal.timeout(10_000)
+      })
+      if (!r.ok) return []
+      const j = (await r.json()) as { services?: RemoteService[] }
+      return Array.isArray(j.services) ? j.services : []
+    } catch {
+      // Offline is normal on a projection machine; an empty list reads as "none".
+      return []
+    }
+  })
+
+  ipcMain.handle(IPC.serviceRemoteGet, async (_e, id: number) => {
+    const base = process.env.LUMEN_BROADCAST_API || process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com'
+    try {
+      const r = await fetch(`${base}/services/${Number(id)}`, { signal: AbortSignal.timeout(15_000) })
+      if (!r.ok) return null
+      return (await r.json()) as RemoteService & { serviceData: unknown }
+    } catch {
+      return null
+    }
   })
 
   // Psalms (bilingual): Telugu OV (bundled) + English. The English is either the

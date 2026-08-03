@@ -912,6 +912,35 @@ select,
 .add-items {
   margin-top: 2px;
 }
+/* Only ever seen mid-service: an edited web service waiting to be taken. */
+.remote-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 7px 9px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  font-size: 12.5px;
+}
+.remote-banner.warn {
+  border-color: var(--line);
+  background: var(--panel-2);
+}
+.remote-banner-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.remote-item.linked .template-name::after {
+  content: '· linked';
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
 
 /* ---------- center: slides of selected item ---------- */
 .slides-panel {

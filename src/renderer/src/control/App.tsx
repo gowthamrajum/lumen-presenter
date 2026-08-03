@@ -7,10 +7,12 @@ import { CountdownDialog } from './components/CountdownDialog'
 import { ParityDisplay } from './components/ParityDisplay'
 import { useRemoteControl } from './useRemoteControl'
 import { useVerseAutoAdvance } from './useVerseAutoAdvance'
+import { useRemoteServices } from './useRemoteServices'
 
 export function App(): JSX.Element {
   useRemoteControl()
   useVerseAutoAdvance()
+  useRemoteServices()
   return (
     <div className="app">
       <TopBar />
