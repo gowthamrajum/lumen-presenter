@@ -103,6 +103,16 @@ export interface SlideContent {
   /** for kind 'clock': IANA zone to read the time in, e.g. "Asia/Kolkata".
    *  Absent = whatever the machine showing the slide is set to. */
   clockTimeZone?: string
+  /**
+   * This slide moves on by itself after the verse hold, WITHIN its item: to the
+   * next slide of the same item, or — from the last one — back to the item's
+   * first slide. That is how a verse read during the sermon returns the screen
+   * to the sermon card instead of walking on into the offerings.
+   *
+   * Item-level `autoAdvance` (a Bible passage added as its own section) is the
+   * other rule: it reads straight through the service. See useVerseAutoAdvance.
+   */
+  autoAdvance?: boolean
   /** optional caption shown above a countdown/clock */
   message?: string
   /** small caption rendered at the bottom of the audience screen */

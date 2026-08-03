@@ -104,9 +104,14 @@ export function SermonVerseDialog({
    *  Bible panel's Add button follows. */
   const add = (list: BibleVerse[] = selectedVerses.length ? selectedVerses : verses): void => {
     if (!list.length) return
-    // No autoAdvance: a sermon verse stays up for as long as it is being
-    // preached on, which is not something a timer can know.
-    appendSlides(itemId, bilingualScriptureSlides(list, lang, teOf, enOf, refOf), true)
+    // Each verse holds its minute and then moves on WITHIN the sermon: the next
+    // verse of the passage, and from the last one back to the sermon card. The
+    // operator can add time or stop it from the Live panel.
+    const slides = bilingualScriptureSlides(list, lang, teOf, enOf, refOf).map((sl) => ({
+      ...sl,
+      autoAdvance: true
+    }))
+    appendSlides(itemId, slides, true)
     setAdded((a) => [titleOf(list), ...a])
     setQuery('')
     setSelected(new Set())
