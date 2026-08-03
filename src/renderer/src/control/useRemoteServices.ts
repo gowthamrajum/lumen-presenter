@@ -19,6 +19,15 @@ export const REMOTE_POLL_MS = 60_000
  */
 export function useRemoteServices(): void {
   const sync = useStore((s) => s.syncRemoteServices)
+  const liveId = useStore((s) => s.liveId)
+  const holding = useStore((s) => s.remoteUpdate?.serviceId ?? null)
+
+  // A song held back because it was on screen is stale the moment it isn't, and
+  // waiting out the rest of the minute would leave the operator looking at a
+  // version nobody is expecting. Moving on is the cue to take it.
+  useEffect(() => {
+    if (holding != null) void sync()
+  }, [liveId, holding, sync])
 
   useEffect(() => {
     void sync()

@@ -258,6 +258,9 @@ export interface RemoteService {
 export interface ItemSource {
   serviceId: number
   updatedAt: string
+  /** the slot it was filed under, kept so a later version of the same service
+   *  can be matched against it item for item */
+  slot?: 'worship' | 'offering'
 }
 
 export interface ServiceItem {

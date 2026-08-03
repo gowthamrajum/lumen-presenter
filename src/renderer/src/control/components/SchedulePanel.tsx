@@ -286,24 +286,21 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
         </div>
       </div>
 
-      {/* An edited web service is taken automatically while nothing is on
-          screen. Once the service is running it waits here instead — the
-          operator decides when the songs may change under them. */}
+      {/* An edited web service lands on its own. This says so — and names the
+          one item that couldn't, because it is the one on the screen. */}
       {remoteUpdate && (
         <div className="remote-banner">
           <Icon name="refresh" />
           <span className="remote-banner-text">
-            <b>{remoteUpdate.day}</b> was updated on the web.
+            <b>{remoteUpdate.day}</b> updated. <b>{remoteUpdate.holding}</b> is live, so it changes
+            when you move on.
           </span>
           <button
             className="btn tiny"
-            onClick={() => void applyRemoteUpdate(remoteUpdate.serviceId)}
-            title="Replace this service's songs with the new version"
+            onClick={() => void applyRemoteUpdate(remoteUpdate.serviceId, true)}
+            title="Take the new version of this song now, changing what is on screen"
           >
-            Update now
-          </button>
-          <button className="btn tiny quiet" onClick={() => useStore.setState({ remoteUpdate: null })}>
-            Not now
+            Change now
           </button>
         </div>
       )}

@@ -32,8 +32,10 @@ export function mergeBySlot(
   // An inserted item broadcasts like the item it was filed against, so a merge
   // can't silently put a song on a channel the rest of the order is off.
   const like = (host: ServiceItem | undefined, it: ServiceItem): ServiceItem => {
-    const { slot: _slot, ...rest } = it
-    const marked = source ? { ...rest, source } : rest
+    const { slot, ...rest } = it
+    // The slot moves onto the source stamp rather than being dropped: it is half
+    // of what identifies this item in the NEXT version of the same service.
+    const marked = source ? { ...rest, source: { ...source, slot } } : rest
     return host
       ? { ...marked, noBroadcastUsers: host.noBroadcastUsers, noBroadcastStream: host.noBroadcastStream }
       : marked
