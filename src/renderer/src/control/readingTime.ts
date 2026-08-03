@@ -21,10 +21,13 @@
 const TELUGU_CHAR = /[ఀ-౿]/
 const WORDS_PER_SECOND = { telugu: 1.5, english: 2.2 }
 
-/** Time to notice the slide changed and find the start of the line. */
-const BUFFER_MS = 4_000
-/** Even a two-word verse is worth a beat to take in. */
-export const MIN_HOLD_MS = 12_000
+/**
+ * What every verse gets before a word of it is counted: time to notice the
+ * slide changed, find the start of the line, and take it in afterwards. The
+ * reading estimate is added on top, so this is also the floor — a two-word
+ * verse still gets its twelve seconds and a little.
+ */
+const BASE_MS = 12_000
 /** Nothing reads for two minutes; past this the operator is in charge anyway. */
 export const MAX_HOLD_MS = 120_000
 /** What a slide with no words to measure falls back to. */
@@ -49,6 +52,6 @@ export function readingHoldMs(lines: string[] | undefined): number {
   const seconds = telugu
     ? telugu / WORDS_PER_SECOND.telugu
     : english / WORDS_PER_SECOND.english
-  const ms = Math.min(MAX_HOLD_MS, Math.max(MIN_HOLD_MS, seconds * 1000 + BUFFER_MS))
+  const ms = Math.min(MAX_HOLD_MS, BASE_MS + seconds * 1000)
   return Math.round(ms / 1000) * 1000 // whole seconds; the operator sees this count down
 }
