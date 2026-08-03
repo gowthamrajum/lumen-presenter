@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bible, referenceOf, compactVerses, type BibleBook, type BibleVerse } from '@shared/bible'
-import { romanizeTelugu, romanMatches } from '@shared/bible/translit'
+import { Bible, referenceOf, compactVerses, type BibleVerse } from '@shared/bible'
 import { useStore } from '../../store/useStore'
 import { bilingualScriptureSlides, type PsalmLang } from '../slides'
 import { LangToggle } from './LangToggle'
+import { BibleSearchBox, VerseList, useRomanNames } from './BibleSearch'
 
 /**
  * Bible source — bilingual like the Psalms source. Both church bibles load once
@@ -81,71 +81,8 @@ export function BibleSource(): JSX.Element {
   // the name is already complete.
   const searchRef = useRef<HTMLInputElement>(null)
 
-  // Romanised Telugu names, so every book is reachable from a Latin keyboard
-  // ("kee" -> Psalms, "pra" -> Prasangi). Always taken from the Telugu
-  // translation, so it works whichever language is being browsed.
-  const romanNames = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const b of telugu?.books() ?? []) m.set(b.book, romanizeTelugu(b.display))
-    return m
-  }, [telugu])
+  const romanNames = useRomanNames(telugu)
 
-  const bookSuggestions = useMemo<BibleBook[]>(() => {
-    const m = query.trim().match(/^(.+?)\s*(\d+\s*(?::[\d\s,-]+)?)?$/)
-    const bq = m?.[1]?.trim().toLowerCase() ?? ''
-    if (!bq || m?.[2]) return [] // nothing typed yet, or a chapter is already present
-    const hits = books.filter(
-      (b) =>
-        b.display.toLowerCase().startsWith(bq) ||
-        b.book.toLowerCase().startsWith(bq) ||
-        romanMatches(romanNames.get(b.book) ?? '', bq)
-    )
-    // Don't dangle a single suggestion that just echoes a fully-typed name.
-    if (hits.length === 1 && (hits[0].display.toLowerCase() === bq || hits[0].book.toLowerCase() === bq)) return []
-    return hits.slice(0, 8)
-  }, [query, books, romanNames])
-
-  // Keyboard walk of the suggestions: Down/Up move, Enter picks, Escape hides.
-  const [activeSuggestion, setActiveSuggestion] = useState(0)
-  const [suggestOpen, setSuggestOpen] = useState(true)
-  const suggestions = suggestOpen ? bookSuggestions : []
-  useEffect(() => {
-    setActiveSuggestion(0)
-  }, [query])
-
-  const pickBook = (b: BibleBook): void => {
-    setQuery(`${b.display} `) // leave a trailing space so the operator types "3:16" next
-    setSelected(new Set())
-    setSuggestOpen(false)
-    searchRef.current?.focus()
-  }
-
-  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (suggestions.length === 0) {
-      // No book list in the way, so a reference is fully typed ("John 3",
-      // "John 3:16", "John 3:16-18"): Enter puts it on screen straight away.
-      if (e.key === 'Enter' && verses.length > 0) {
-        e.preventDefault()
-        addSelected(true)
-      }
-      return
-    }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setActiveSuggestion((i) => (i + 1) % suggestions.length)
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setActiveSuggestion((i) => (i - 1 + suggestions.length) % suggestions.length)
-    } else if (e.key === 'Enter') {
-      // Only claim Enter while a suggestion is highlighted; otherwise it stays a
-      // plain text search.
-      e.preventDefault()
-      pickBook(suggestions[Math.min(activeSuggestion, suggestions.length - 1)])
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      setSuggestOpen(false)
-    }
-  }
   const chapters = useMemo(() => (primary && book ? primary.chaptersFor(book) : []), [primary, book])
   const maxChapter = chapters.length ? chapters[chapters.length - 1] : 1
   const searchResults = useMemo(
@@ -238,46 +175,19 @@ export function BibleSource(): JSX.Element {
         <LangToggle value={lang} onChange={(l) => setLang(l as PsalmLang)} />
       </div>
 
-      <div className="search-wrap">
-        <input
-          ref={searchRef}
-          className="search"
-          placeholder="Search text or reference (e.g. Mark 5:13-16 or 5:13,16)"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-            setSuggestOpen(true)
-            setSelected(new Set()) // selection is scoped to the visible list
-          }}
-          onKeyDown={onSearchKeyDown}
-          disabled={loading}
-        />
-        {suggestions.length > 0 && (
-          <div className="book-suggest" role="listbox">
-            {suggestions.map((b, i) => (
-              <button
-                key={b.book}
-                type="button"
-                role="option"
-                aria-selected={i === activeSuggestion}
-                className={`book-suggest-item ${i === activeSuggestion ? 'active' : ''}`}
-                ref={(el) => {
-                  if (i === activeSuggestion) el?.scrollIntoView({ block: 'nearest' })
-                }}
-                onMouseEnter={() => setActiveSuggestion(i)}
-                // onMouseDown (not onClick) so the pick lands before the input blurs.
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  pickBook(b)
-                }}
-              >
-                <span className="book-suggest-name">{b.display}</span>
-                {b.display !== b.book && <span className="book-suggest-key">{b.book}</span>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <BibleSearchBox
+        value={query}
+        onChange={(v) => {
+          setQuery(v)
+          setSelected(new Set()) // selection is scoped to the visible list
+        }}
+        onSubmit={() => verses.length > 0 && addSelected(true)}
+        books={books}
+        romanNames={romanNames}
+        placeholder="Search text or reference (e.g. Mark 5:13-16 or 5:13,16)"
+        disabled={loading}
+        inputRef={searchRef}
+      />
 
       {!searchResults && (
         <>
@@ -349,25 +259,15 @@ export function BibleSource(): JSX.Element {
         </>
       )}
 
-      <div className="verse-list">
-        {loading && <div className="empty-note">Loading Telugu + English…</div>}
-        {!loading && verses.length === 0 && <div className="empty-note">No verses. Try another search.</div>}
-        {verses.map((v) => {
-          const k = keyOf(v)
-          return (
-            <div
-              key={k}
-              className={`verse-item ${selected.has(k) ? 'selected' : ''}`}
-              onClick={() => toggle(v)}
-              onDoubleClick={() => presentOne(v)}
-              title="Click to select · double-click to present now"
-            >
-              <div className="verse-ref">{refOf(v)}</div>
-              <div className="verse-text psalm-text">{previewOf(v)}</div>
-            </div>
-          )
-        })}
-      </div>
+      <VerseList
+        verses={verses}
+        selected={selected}
+        onToggle={toggle}
+        onPresent={presentOne}
+        refOf={refOf}
+        previewOf={previewOf}
+        loading={loading}
+      />
 
       <div className="source-actions">
         <button className="btn btn-primary" onClick={() => addSelected(false)} disabled={loading || verses.length === 0}>

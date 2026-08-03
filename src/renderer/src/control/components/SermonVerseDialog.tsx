@@ -4,6 +4,7 @@ import { Bible, referenceOf, compactVerses, type BibleVerse } from '@shared/bibl
 import { useStore } from '../../store/useStore'
 import { bilingualScriptureSlides, type PsalmLang } from '../slides'
 import { LangToggle } from './LangToggle'
+import { BibleSearchBox, VerseList, useRomanNames } from './BibleSearch'
 import { Icon } from '../../shared/Icon'
 
 /**
@@ -34,6 +35,7 @@ export function SermonVerseDialog({
   const [loading, setLoading] = useState(true)
   const [lang, setLang] = useState<PsalmLang>('both')
   const [query, setQuery] = useState('')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   /** what this sitting has put on the screen, newest first */
   const [added, setAdded] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -64,14 +66,31 @@ export function SermonVerseDialog({
   const teOf = (v: BibleVerse): string => telugu?.verse(v.book, v.chapter, v.verse)?.text ?? ''
   const enOf = (v: BibleVerse): string => web?.verse(v.book, v.chapter, v.verse)?.text ?? ''
   const refOf = (v: BibleVerse): string => primary?.reference(v) ?? referenceOf(v)
+  const keyOf = (v: BibleVerse): string => referenceOf(v)
+  const previewOf = (v: BibleVerse): string => {
+    const te = teOf(v)
+    const en = enOf(v)
+    return lang === 'telugu' ? te : lang === 'english' ? en : [te, en].filter(Boolean).join('\n')
+  }
+
+  const books = useMemo(() => primary?.books() ?? [], [primary])
+  const romanNames = useRomanNames(telugu)
 
   // `search` resolves a reference ("John 3", "John 3:16", "John 3:16-18") and
-  // falls back to matching the text, which is the same thing the Bible panel
-  // types into — one box, no book picker to walk.
+  // falls back to matching the text — the same call the Bible panel makes.
   const verses = useMemo(
     () => (primary && query.trim() ? primary.search(query) : []),
     [primary, query]
   )
+  const selectedVerses = verses.filter((v) => selected.has(keyOf(v)))
+  const toggle = (v: BibleVerse): void =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      const k = keyOf(v)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
 
   const titleOf = (list: BibleVerse[]): string => {
     if (!list.length) return ''
@@ -81,13 +100,16 @@ export function SermonVerseDialog({
     return `${refOf(list[0])}–${refOf(list[list.length - 1])}`
   }
 
-  const add = (): void => {
-    if (!verses.length) return
+  /** Whatever is ticked, or the whole result when nothing is — the same rule the
+   *  Bible panel's Add button follows. */
+  const add = (list: BibleVerse[] = selectedVerses.length ? selectedVerses : verses): void => {
+    if (!list.length) return
     // No autoAdvance: a sermon verse stays up for as long as it is being
     // preached on, which is not something a timer can know.
-    appendSlides(itemId, bilingualScriptureSlides(verses, lang, teOf, enOf, refOf), true)
-    setAdded((a) => [titleOf(verses), ...a])
+    appendSlides(itemId, bilingualScriptureSlides(list, lang, teOf, enOf, refOf), true)
+    setAdded((a) => [titleOf(list), ...a])
     setQuery('')
+    setSelected(new Set())
     inputRef.current?.focus()
   }
 
@@ -111,50 +133,45 @@ export function SermonVerseDialog({
           <div className="lang-row">
             <LangToggle value={lang} onChange={(l) => setLang(l as PsalmLang)} />
           </div>
-          <input
-            ref={inputRef}
-            className="search verse-search"
-            placeholder={loading ? 'Opening the bibles…' : 'John 3:16   ·   Rom 8:1-4   ·   యోహాను 3'}
-            value={query}
-            // Never disabled: the operator types the reference the moment they
-            // hear it, and the bibles land in their own time — the preview just
-            // fills in when they do.
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                add()
-              } else if (e.key === 'Escape') {
-                e.preventDefault()
-                onClose()
-              }
-            }}
-          />
-
-          <div className="verse-preview">
-            {query.trim() && verses.length === 0 && (
-              <div className="empty-note">Nothing found for “{query.trim()}”.</div>
-            )}
-            {verses.length > 0 && (
-              <>
-                <div className="verse-preview-head">
-                  <b>{titleOf(verses)}</b>
-                  <span className="verse-count">
-                    {verses.length} verse{verses.length === 1 ? '' : 's'} — press Enter to show it
-                  </span>
-                </div>
-                {verses.slice(0, 4).map((v) => (
-                  <div key={referenceOf(v)} className="verse-preview-line">
-                    <span className="verse-ref">{refOf(v)}</span>
-                    <span className="verse-text">
-                      {lang === 'english' ? enOf(v) : teOf(v) || enOf(v)}
-                    </span>
-                  </div>
-                ))}
-                {verses.length > 4 && <div className="verse-more">…and {verses.length - 4} more</div>}
-              </>
-            )}
+          {/* The same box and the same list as the Library's Bible source: Down
+              walks the books, "kee" finds Keerthanalu, a verse can be ticked or
+              double-clicked. Anything else and the two would drift. */}
+          <div onKeyDown={(e) => e.key === 'Escape' && !e.defaultPrevented && onClose()}>
+            <BibleSearchBox
+              value={query}
+              onChange={(v) => {
+                setQuery(v)
+                setSelected(new Set())
+              }}
+              onSubmit={() => add()}
+              books={books}
+              romanNames={romanNames}
+              placeholder={loading ? 'Opening the bibles…' : 'John 3:16 · Rom 8:1-4 · kee 23 · యోహాను 3'}
+              inputRef={inputRef}
+              autoFocus
+            />
           </div>
+
+          {verses.length > 0 && (
+            <div className="verse-preview-head">
+              <b>{titleOf(selectedVerses.length ? selectedVerses : verses)}</b>
+              <span className="verse-count">
+                {selectedVerses.length
+                  ? `${selectedVerses.length} selected — Enter shows those`
+                  : `${verses.length} verse${verses.length === 1 ? '' : 's'} — Enter shows them all`}
+              </span>
+            </div>
+          )}
+          <VerseList
+            verses={verses}
+            selected={selected}
+            onToggle={toggle}
+            onPresent={(v) => add([v])}
+            refOf={refOf}
+            previewOf={previewOf}
+            loading={loading}
+            emptyNote={query.trim() ? 'No verses. Try another search.' : 'Type a reference or a book name.'}
+          />
 
           {added.length > 0 && (
             <div className="verse-added">
