@@ -604,7 +604,19 @@ export const useStore = create<AppState>((set, get) => {
       push()
     },
 
-    selectItem: (id) => set({ selectedItemId: id }),
+    // Picking a section shows its first slide. An item is a place in the
+    // service, not a bookmark: coming back to one should start it at the top
+    // rather than wherever it was last left.
+    selectItem: (id) => {
+      const first = id ? get().items.find((it) => it.id === id)?.slides[0] : undefined
+      // Re-firing goLive on the slide already showing would reset an intentional
+      // blackout/clear/logo and flash content at the audience.
+      if (first && first.id !== get().liveId) {
+        get().goLive(first.id)
+        return
+      }
+      set({ selectedItemId: id })
+    },
 
     setComposed: (slideId, composed) => {
       set((s) => ({
