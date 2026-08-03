@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import { useStore } from '../store/useStore'
+import { readingHoldMs, DEFAULT_HOLD_MS } from './readingTime'
 
-/** How long a scripture slide holds before advancing to the next one. */
-export const SLIDE_HOLD_MS = 60_000
+/** What a slide with no words to measure falls back to. Every verse is timed
+ *  from its own text instead — see readingTime. */
+export const SLIDE_HOLD_MS = DEFAULT_HOLD_MS
 /** How much each operator "Extend" click pushes the auto-advance back. */
 export const VERSE_EXTEND_MS = 30_000
 
@@ -10,9 +12,10 @@ export const VERSE_EXTEND_MS = 30_000
  * Two things read themselves through, and they end differently.
  *
  * A Bible passage added as its own section (an item tagged `autoAdvance`) holds
- * each slide for SLIDE_HOLD_MS and moves to the NEXT slide of the service, so a
- * reading can be put up and left. Psalms / responsive readings are not tagged,
- * so they never advance on their own.
+ * each slide for as long as its own text takes to read (see readingTime) and
+ * then moves to the NEXT slide of the service, so a reading can be put up and
+ * left. Psalms / responsive readings are not tagged, so they never advance on
+ * their own.
  *
  * A verse quoted DURING the sermon (a slide tagged `autoAdvance`) circles inside
  * the sermon instead: the next verse of the passage, and from the last one back
@@ -39,7 +42,7 @@ export function useVerseAutoAdvance(): void {
     // A verse read during the sermon: it circles inside its own item, so it
     // always has somewhere to go — the sermon card, if nothing else.
     if (slide?.autoAdvance) {
-      s.armAutoAdvance(SLIDE_HOLD_MS)
+      s.armAutoAdvance(readingHoldMs(slide.lines))
       return
     }
     const isPassage = !!item && item.kind === 'scripture' && item.autoAdvance === true
@@ -48,7 +51,9 @@ export function useVerseAutoAdvance(): void {
     const deck = s.items.flatMap((it) => it.slides)
     const i = deck.findIndex((d) => d.id === s.liveId)
     const hasNext = i >= 0 && i < deck.length - 1
-    if (isPassage && hasNext) s.armAutoAdvance(SLIDE_HOLD_MS)
+    // A passage added as its own section is timed the same way — no verse
+    // anywhere in the app is held for a set minute any more.
+    if (isPassage && hasNext) s.armAutoAdvance(readingHoldMs(slide?.lines))
     else s.cancelAutoAdvance()
   }, [liveId])
 
