@@ -975,6 +975,124 @@ select,
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 14px;
 }
+/* Sits in the slide grid at the same 16:9 as a real slide, so the sermon reads
+   as a deck with one more space in it rather than a panel with a button. */
+.verse-add-tile {
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: 2px dashed var(--line-strong);
+  border-radius: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.verse-add-tile:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.verse-add-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+.verse-add-sub {
+  font-size: 11.5px;
+  opacity: 0.8;
+}
+.sermon-panel {
+  cursor: copy;
+}
+.sermon-panel .slide-thumb,
+.sermon-panel .slides-head {
+  cursor: default;
+}
+.sermon-panel .slide-thumb {
+  cursor: pointer;
+}
+
+/* ---------- add a verse during the sermon ---------- */
+.verse-modal {
+  width: min(680px, 92vw);
+}
+.verse-search {
+  width: 100%;
+  font-size: 15px;
+  margin-top: 8px;
+}
+.verse-preview {
+  min-height: 96px;
+  margin-top: 10px;
+}
+.verse-preview-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.verse-count {
+  color: var(--muted);
+  font-size: 12px;
+}
+.verse-preview-line {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.verse-ref {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.verse-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.verse-more {
+  color: var(--muted);
+  font-size: 12px;
+  padding-top: 4px;
+}
+.verse-added {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.verse-added-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.verse-chip {
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.verse-hint {
+  flex: 1 1 auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .slides-empty {
   text-align: center;
   color: var(--muted);

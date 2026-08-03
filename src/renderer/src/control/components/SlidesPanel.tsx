@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { SlideThumb } from './SlideThumb'
+import { SermonVerseDialog } from './SermonVerseDialog'
 import { Icon } from '../../shared/Icon'
 
 /** Center panel — the slides of the currently-selected schedule item. Clicking
@@ -15,6 +16,7 @@ export function SlidesPanel(): JSX.Element {
 
   const [urlOpen, setUrlOpen] = useState(false)
   const [urlVal, setUrlVal] = useState('')
+  const [verseOpen, setVerseOpen] = useState(false)
   // drag-and-drop reorder within this item's slides (indices into item.slides)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
@@ -25,6 +27,10 @@ export function SlidesPanel(): JSX.Element {
 
   const item = items.find((i) => i.id === selectedItemId) ?? null
   const isMediaItem = item?.kind === 'video' || item?.kind === 'media'
+  // The sermon is the one section that grows while it runs: the preacher quotes
+  // a reference and it has to be on the screen before they have finished saying
+  // it. Anywhere in this panel is the target, so it doesn't have to be aimed at.
+  const isSermon = !!item && /sermon|వాక్యోపదేశం/i.test(item.title)
 
   const submitUrl = (): void => {
     if (!item) return
@@ -53,7 +59,20 @@ export function SlidesPanel(): JSX.Element {
   }
 
   return (
-    <div className="slides-panel">
+    <div
+      className={`slides-panel ${isSermon ? 'sermon-panel' : ''}`}
+      onClick={(e) => {
+        // Anywhere that isn't already something: a slide, a button, the media
+        // row. Those keep doing what they did.
+        if (!isSermon) return
+        const el = e.target as HTMLElement
+        if (el.closest('.slide-thumb, button, input, .media-url-row')) return
+        setVerseOpen(true)
+      }}
+    >
+      {verseOpen && item && (
+        <SermonVerseDialog itemId={item.id} itemTitle={item.title} onClose={() => setVerseOpen(false)} />
+      )}
       <div className="slides-head">
         <span className="slides-title">{item.title}</span>
         <span className="slides-sub">
@@ -113,6 +132,15 @@ export function SlidesPanel(): JSX.Element {
             onDragEndSlide={endDrag}
           />
         ))}
+        {/* Clicking the panel anywhere does this too — the tile is so that the
+            operator knows it, and has something to aim at when they'd rather. */}
+        {isSermon && (
+          <button className="verse-add-tile" onClick={() => setVerseOpen(true)}>
+            <Icon name="plus" />
+            <span className="verse-add-title">Add a verse</span>
+            <span className="verse-add-sub">Type a reference, press Enter</span>
+          </button>
+        )}
       </div>
     </div>
   )
