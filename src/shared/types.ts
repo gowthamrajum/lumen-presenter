@@ -180,6 +180,10 @@ export interface LiveState {
    *  per-channel (the local stage monitor still shows it). */
   nextNoBroadcastUsers?: boolean
   nextNoBroadcastStream?: boolean
+  /** The live item is a clip to be HEARD, not a backdrop: the audience output
+   *  unmutes it, it plays once instead of looping, and the service moves on when
+   *  it ends. Off (silent, looping) unless the operator turns it on. */
+  sound?: boolean
   /** global/stage background, used when a slide has no background of its own */
   background: Background
   blackout: boolean
@@ -249,6 +253,11 @@ export interface ServiceItem {
   /** When live, this item's verse auto-advances to the Sermon slide after a TTL.
    *  Set on Bible passages only (not psalms / responsive readings). */
   autoAdvance?: boolean
+  /** Play this item's video with sound on the audience screen. A video is a
+   *  BACKDROP by default — silent and looping — so this is what turns one into a
+   *  clip: unmuted, played once, and followed by the next item. Never set by
+   *  default; the operator turns it on per item. */
+  sound?: boolean
   /**
    * Where an IMPORTED item wants to land in an order that already exists —
    * "worship" between Sunday School and the Sermon, "offering" against the

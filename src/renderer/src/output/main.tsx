@@ -15,15 +15,24 @@ const isExport = params.has('export')
 
 function Output(): JSX.Element {
   const [state, setState] = useState<LiveState>(DEFAULT_LIVE)
+  // Sound belongs to ONE window. The main process picks it (the first audience
+  // output) and tells each window whether it is the one; a stage monitor and any
+  // second audience screen are told no, so a clip is never heard twice.
+  const [audio, setAudio] = useState(false)
 
   useEffect(() => {
     window.lumen.getLive().then(setState)
-    return window.lumen.onLiveState(setState)
+    const offLive = window.lumen.onLiveState(setState)
+    const offAudio = window.lumen.onAudioOwner(setAudio)
+    return () => {
+      offLive()
+      offAudio()
+    }
   }, [])
 
   // The audience layout IS the Go Live screen — the only surface that honours
   // theme.lineSpacing. The stage monitor keeps the default spacing.
-  return layout === 'stage' ? <StageDisplay state={state} /> : <Stage state={state} live />
+  return layout === 'stage' ? <StageDisplay state={state} /> : <Stage state={state} live audio={audio} />
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)

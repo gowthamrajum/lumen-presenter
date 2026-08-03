@@ -192,6 +192,8 @@ interface AppState {
   setItemBroadcast: (id: string, channel: 'users' | 'stream', on: boolean) => void
   /** turn both channels on/off for one item at once */
   setItemBroadcastAll: (id: string, on: boolean) => void
+  /** play this item's video for its sound (unmuted, once, then move on) */
+  setItemSound: (id: string, on: boolean) => void
   /** pick a media file and set it as the item's (first) slide background */
   attachMediaToItem: (itemId: string) => Promise<void>
   /** set a web-URL image/video as the item's (first) slide background — reaches
@@ -361,6 +363,8 @@ export function selectLive(s: AppState): LiveState {
     next: nextSlide,
     noBroadcastUsers: suppressedOn(liveItem, 'users'),
     noBroadcastStream: suppressedOn(liveItem, 'stream'),
+    // Only the live item's setting travels: a clip is heard while it is on.
+    sound: liveItem?.sound === true,
     nextNoBroadcastUsers: suppressedOn(nextItem, 'users'),
     nextNoBroadcastStream: suppressedOn(nextItem, 'stream'),
     background: s.background,
@@ -558,6 +562,11 @@ export const useStore = create<AppState>((set, get) => {
           return { ...rest, noBroadcastUsers: !on, noBroadcastStream: !on }
         })
       }))
+      push()
+    },
+
+    setItemSound: (id, on) => {
+      set((s) => ({ items: s.items.map((it) => (it.id === id ? { ...it, sound: on } : it)) }))
       push()
     },
 

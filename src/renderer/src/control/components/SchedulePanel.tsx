@@ -24,6 +24,7 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const moveItem = useStore((s) => s.moveItem)
   const reorderItems = useStore((s) => s.reorderItems)
   const removeItem = useStore((s) => s.removeItem)
+  const setItemSound = useStore((s) => s.setItemSound)
   const setInsertAt = useStore((s) => s.setInsertAt)
 
   /** Arm the insertion point and jump to the Library to pick what goes there. */
@@ -255,6 +256,20 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
             <span className="sched-title" title={it.title}>
               {it.title}
             </span>
+            {it.slides.some((sl) => sl.background?.type === 'video') && (
+              <button
+                className={`sound-toggle ${it.sound ? 'on' : ''}`}
+                title={
+                  it.sound
+                    ? 'Sound on — plays once on the audience screen, then moves on. Click to mute.'
+                    : 'Muted (loops as a backdrop). Click to play this clip with sound.'
+                }
+                aria-pressed={!!it.sound}
+                onClick={(e) => { e.stopPropagation(); setItemSound(it.id, !it.sound) }}
+              >
+                <Icon name={it.sound ? 'sound' : 'sound-off'} />
+              </button>
+            )}
             <BroadcastToggle item={it} />
             <span className="sched-count">{it.slides.length}</span>
             <div className="sched-actions">

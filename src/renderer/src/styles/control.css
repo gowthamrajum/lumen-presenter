@@ -867,6 +867,37 @@ select,
 .sched-item.no-broadcast .sched-title {
   color: var(--muted);
 }
+/* Sound is off by default and looks it — a muted clip is the normal state, so
+   only the ON case is coloured, the way a live indicator should read.
+   A muted toggle also stays out of the row entirely: it would otherwise eat the
+   title of every video item to advertise the setting they aren't using. Sound
+   ON is always shown — that one changes what Sunday hears. */
+.sound-toggle {
+  display: none;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: var(--muted);
+  opacity: 0.7;
+}
+.sound-toggle:hover {
+  background: var(--panel-2);
+  opacity: 1;
+}
+/* Hover only — not `.active`. The selected row is the one being read, so it is
+   the last place to spend its name on a control nobody is reaching for. */
+.sched-item:hover .sound-toggle,
+.sound-toggle.on {
+  display: inline-flex;
+}
+.sound-toggle.on {
+  color: var(--accent);
+  opacity: 1;
+}
 .sched-actions {
   flex: 0 0 auto;
   display: flex;

@@ -169,7 +169,11 @@ function buildOutputWindow(
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      backgroundThrottling: false
+      backgroundThrottling: false,
+      // An output window is opened by the operator, not visited by a stranger:
+      // Chromium's default would refuse to start an unmuted clip because nobody
+      // clicked inside this particular window.
+      autoplayPolicy: 'no-user-gesture-required'
     }
   }
 
@@ -224,7 +228,9 @@ function buildOutputWindow(
 
   win.loadURL(outputUrl(kind))
   win.webContents.once('did-finish-load', () => {
-    if (!win.isDestroyed()) win.webContents.send(IPC.liveState, liveState)
+    if (win.isDestroyed()) return
+    win.webContents.send(IPC.liveState, liveState)
+    syncAudioOwner()
   })
 
   return win
@@ -290,6 +296,22 @@ function screensStatus(): ScreenInfo[] {
 
 function broadcastScreens(): void {
   controlWindow?.webContents.send(IPC.screensChanged, screensStatus())
+  syncAudioOwner()
+}
+
+/**
+ * Exactly one window may play sound: the first audience output.
+ *
+ * Every surface renders the same <video>, so without this a second audience
+ * screen — or the stage monitor, which is a confidence display for the platform
+ * — would play the clip a fraction of a second behind the first and echo. The
+ * control window is never a candidate: its preview must stay silent.
+ */
+function syncAudioOwner(): void {
+  const owner = [...outputs.values()].find((w) => !w.isDestroyed() && w._kind === 'audience')
+  for (const win of outputs.values()) {
+    if (!win.isDestroyed()) win.webContents.send(IPC.audioOwner, win === owner)
+  }
 }
 
 function broadcastLive(): void {
@@ -314,6 +336,10 @@ function registerIpc(): void {
   ipcMain.handle(IPC.displaysList, () => listDisplays())
   ipcMain.handle(IPC.screensStatus, () => screensStatus())
   ipcMain.handle(IPC.screenSet, (_e, displayId: number, role: ScreenRole) => setScreen(displayId, role))
+
+  // The clip that just finished is on the output screen; the schedule it belongs
+  // to lives in the control window, so the end of it has to travel back.
+  ipcMain.on(IPC.mediaEnded, () => controlWindow?.webContents.send(IPC.mediaEnded))
 
   ipcMain.handle(IPC.liveGet, () => liveState)
   ipcMain.handle(IPC.liveSet, (_e, patch: Partial<LiveState>) => {

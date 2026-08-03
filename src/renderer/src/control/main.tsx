@@ -64,9 +64,13 @@ function Root(): JSX.Element {
     window.addEventListener('keydown', onKey)
     // Keys pressed while the audience/output window has focus are forwarded here.
     const offOutputKey = window.lumen.onOutputKey((key) => dispatchKey(key))
+    // A clip played for its sound has finished: move on, as the operator would
+    // have. Only the audience output reports this, and only for a sound item.
+    const offEnded = window.lumen.onMediaEnded(() => useStore.getState().goNext())
     return () => {
       window.removeEventListener('keydown', onKey)
       offOutputKey()
+      offEnded()
     }
   }, [])
 

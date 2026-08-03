@@ -37,6 +37,11 @@ export const IPC = {
   pptxExportProgress: 'pptx:exportProgress',
   // output window -> control (forwarded key presses)
   outputKey: 'output:key',
+  // main -> each output: whether THIS window is the one that may play sound.
+  // Two audience screens would otherwise echo the clip a beat apart.
+  audioOwner: 'output:audioOwner',
+  // output -> main -> control: a clip with sound reached its end
+  mediaEnded: 'output:mediaEnded',
   // main -> control: a command from a phone remote (next/prev/goto/…)
   remoteCommand: 'remote:command'
 } as const

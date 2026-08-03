@@ -78,22 +78,46 @@ function TimerDisplay({
   )
 }
 
-function BackgroundLayer({ bg }: { bg: Background }): JSX.Element {
+/**
+ * `sound` marks the live item as a clip rather than a backdrop: it plays once
+ * and holds its last frame instead of looping. The audience output and the
+ * operator's LIVE preview both set it, so the preview stops when the audience
+ * screen does; thumbnails and the NEXT preview deliberately don't — they aren't
+ * what is on screen, and one frozen on a clip's black final frame would look
+ * broken before it ever went live.
+ *
+ * `audio` is the separate permission to actually make noise, and only the
+ * audience output window is ever given it: every preview, the stage monitor and
+ * the export host stay silent whatever the item says.
+ */
+function BackgroundLayer({
+  bg,
+  sound,
+  audio,
+  onEnded
+}: {
+  bg: Background
+  sound?: boolean
+  audio?: boolean
+  onEnded?: () => void
+}): JSX.Element {
   if (bg.type === 'color' || bg.type === 'gradient') {
     // `value` is a CSS color or any CSS gradient string; `anim` adds motion.
     const cls = `stage-bg${bg.anim ? ` anim-${bg.anim}` : ''}`
     return <div className={cls} style={{ background: bg.value }} />
   }
   if (bg.type === 'video') {
+    const heard = !!sound && !!audio
     return (
       <video
         className="stage-bg"
         style={{ objectFit: bg.fit ?? 'cover' }}
         src={bg.value}
         autoPlay
-        loop
-        muted
+        loop={!sound}
+        muted={!heard}
         playsInline
+        onEnded={heard ? onEnded : undefined}
       />
     )
   }
@@ -119,11 +143,15 @@ function BackgroundLayer({ bg }: { bg: Background }): JSX.Element {
 export function Stage({
   state,
   preview,
-  live
+  live,
+  audio
 }: {
   state: LiveState
   preview?: boolean
   live?: boolean
+  /** This render may play sound. The audience output window passes it when the
+   *  main process has named it the audio owner; nothing else ever does. */
+  audio?: boolean
 }): JSX.Element {
   const { slide, theme } = state
   const bg = slide?.background ?? state.background
@@ -211,7 +239,12 @@ export function Stage({
 
   return (
     <div className={`stage${qr ? ' has-qr' : ''}${live ? ' is-live' : ''}`}>
-      <BackgroundLayer bg={bg} />
+      <BackgroundLayer
+        bg={bg}
+        sound={state.sound}
+        audio={audio}
+        onEnded={() => window.lumen?.mediaEnded()}
+      />
       {!state.blackout && theme.scrim > 0 && (
         <div className="stage-scrim" style={{ opacity: theme.scrim }} />
       )}

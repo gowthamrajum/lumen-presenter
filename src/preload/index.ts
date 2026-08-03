@@ -112,6 +112,21 @@ const api = {
     const h = (_e: unknown, msg: { cmd: string; arg: unknown }): void => cb(msg)
     ipcRenderer.on(IPC.remoteCommand, h)
     return () => ipcRenderer.removeListener(IPC.remoteCommand, h)
+  },
+
+  /** Output side: whether THIS window is the one allowed to play sound. */
+  onAudioOwner: (cb: (owner: boolean) => void): (() => void) => {
+    const h = (_e: unknown, owner: boolean): void => cb(owner)
+    ipcRenderer.on(IPC.audioOwner, h)
+    return () => ipcRenderer.removeListener(IPC.audioOwner, h)
+  },
+  /** Output side: a clip being played for its sound has reached its end. */
+  mediaEnded: (): void => ipcRenderer.send(IPC.mediaEnded),
+  /** Control side: that clip's end, so the service can move on. */
+  onMediaEnded: (cb: () => void): (() => void) => {
+    const h = (): void => cb()
+    ipcRenderer.on(IPC.mediaEnded, h)
+    return () => ipcRenderer.removeListener(IPC.mediaEnded, h)
   }
 }
 

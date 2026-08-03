@@ -73,7 +73,12 @@ export function LivePanel(): JSX.Element {
     blackout,
     clearText,
     showLogo,
-    theme
+    theme,
+    // The LIVE preview is meant to be what the audience is seeing, so a clip
+    // playing for its sound plays once here too and holds on its last frame —
+    // otherwise the preview would loop on while the audience screen had stopped.
+    // (It stays muted: only the output window is ever given `audio`.)
+    sound: items.find((it) => it.slides.some((sl) => sl.id === liveId))?.sound === true
   }
 
   const nextPreview: LiveState = {
