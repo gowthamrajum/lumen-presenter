@@ -43,13 +43,21 @@ export function mergeBySlot(
   const worship = incoming.filter((it) => it.slot !== 'offering')
   const offering = incoming.filter((it) => it.slot === 'offering')
 
-  // An inserted item broadcasts like the item it was filed against, so a merge
-  // can't silently put a song on a channel the rest of the order is off.
+  /**
+   * Songs and scripture go out on EVERY channel — they are the words the room
+   * and the stream are both following, and a lower third with the lyrics missing
+   * is the one thing a viewer at home can't work around. Anything else inserted
+   * broadcasts like the item it was filed against, so a merge can't quietly put
+   * something on a channel the rest of the order is off.
+   */
   const like = (host: ServiceItem | undefined, it: ServiceItem): ServiceItem => {
     const { slot, ...rest } = it
     // The slot moves onto the source stamp rather than being dropped: it is half
     // of what identifies this item in the NEXT version of the same service.
     const marked = source ? { ...rest, source: { ...source, slot } } : rest
+    if (it.kind === 'song' || it.kind === 'scripture') {
+      return { ...marked, noBroadcastUsers: false, noBroadcastStream: false }
+    }
     return host
       ? { ...marked, noBroadcastUsers: host.noBroadcastUsers, noBroadcastStream: host.noBroadcastStream }
       : marked
@@ -76,8 +84,13 @@ export function mergeBySlot(
     const block = worship.map((it) => like(host, it))
     // One card in front of the whole block, not one per song: it announces the
     // section. It carries the same source stamp, so re-pulling the service takes
-    // it back out with the songs instead of leaving a heading over nothing.
-    if (bookend) block.unshift(like(host, bookend()))
+    // it back out with the songs instead of leaving a heading over nothing — but
+    // keeps its OWN channels, because it is a heading and not a song, whatever
+    // kind it is filed under.
+    if (bookend) {
+      const card = bookend()
+      block.unshift(source ? { ...card, source: { ...source, slot: 'worship' as const } } : card)
+    }
     if (i >= 0) out.splice(i, 0, ...block)
     else out.push(...block)
   }
