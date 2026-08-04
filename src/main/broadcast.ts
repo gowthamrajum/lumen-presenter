@@ -10,6 +10,7 @@ import {
   type LiveState,
   type SlideContent
 } from '../shared/types'
+import { stripSingingMarks } from '../shared/lyrics'
 
 /**
  * Web broadcast publisher. Pushes the canonical LiveState to a small open relay
@@ -162,29 +163,6 @@ async function publishOff(): Promise<void> {
 }
 
 /** Queue the current live state for publishing (debounced). */
-/**
- * Singing marks, taken off the lower third.
- *
- * A song sheet carries instructions to the people singing it — "(2)" to sing a
- * line twice, "||యెహోవా||" to go back to the Pallavi. They belong on the
- * projector, where the congregation is following along. They do not belong on a
- * YouTube stream, where nobody is singing from them and they read as clutter
- * across the bottom of the picture.
- *
- * Only the marks go. Numbers inside the line are left alone: a hymn that says
- * "forty days" still says it, and "Psalm 23:1" keeps its reference.
- */
-const REPEAT_MARKER = /\s*\|\|[^|]*\|\|\s*/g
-const REPEAT_COUNT = /\s*[(（]\s*\d+\s*[)）]\s*$/
-
-export function stripSingingMarks(line: string): string {
-  return line
-    .replace(REPEAT_MARKER, ' ')
-    .replace(REPEAT_COUNT, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-}
-
 /** A slide as the OBS overlay should read it: the words, without the marks. */
 function forStream(slide: SlideContent | null | undefined): SlideContent | null {
   if (!slide) return null

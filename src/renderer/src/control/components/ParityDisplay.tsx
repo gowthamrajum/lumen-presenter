@@ -3,6 +3,7 @@ import { useStore, suppressedOn } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import { Icon } from '../../shared/Icon'
 import { DEFAULT_OBS_STYLE, type LiveState, type ObsStyle, type SlideContent } from '@shared/types'
+import { stripSingingMarks } from '@shared/lyrics'
 
 /** Any character from the Telugu Unicode block. */
 const TELUGU = /[ఀ-౿]/
@@ -14,7 +15,12 @@ const TELUGU = /[ఀ-౿]/
  * is kept, so an all-one-language slide is never blanked.
  */
 export function obsLines(slide: SlideContent | null): string[] {
-  const lines = (slide?.lines ?? []).filter((l) => l && l.trim())
+  // Stripped BEFORE the language is picked: a line that was nothing but a
+  // marker has no words left, and an empty line is not one of the two
+  // languages — it would otherwise be counted and shown as a blank.
+  const lines = (slide?.lines ?? [])
+    .map(stripSingingMarks)
+    .filter((l) => l && l.trim())
   if (!lines.length) return []
   const pick =
     slide?.kind === 'scripture'
