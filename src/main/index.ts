@@ -419,7 +419,11 @@ function registerIpc(): void {
   ipcMain.handle(IPC.bibleLoad, async (_e, id: string) => loadBundledTranslation(id))
 
   // ---- services (saved setlists) persistence ----
-  ipcMain.handle(IPC.servicesList, () => listServices())
+  // The shelf is swept when the app opens, before anything asks what is on it.
+  ipcMain.handle(IPC.servicesList, async () => {
+    await purgeOldServices()
+    return listServices()
+  })
   ipcMain.handle(IPC.serviceSave, async (_e, service: Service) => {
     if (!isSafeId(service?.id)) throw new Error('invalid service id')
     await ensureServicesDir()
@@ -641,6 +645,55 @@ function isSafeId(id: unknown): id is string {
 async function ensureServicesDir(): Promise<void> {
   await mkdir(servicesDir(), { recursive: true })
 }
+/**
+ * The saved list is a working shelf, not an archive.
+ *
+ * A service is the gathering on a day and is auto-saved continuously, so
+ * without this the list grows by one entry per day the app is opened and last
+ * month's Sundays sit above this coming one. Anything untouched for more than a
+ * day goes.
+ *
+ * The exception is a service built AHEAD: Sunday's order gets put together on a
+ * Monday and then left alone, and deleting it on Wednesday for being stale
+ * would throw away the week's work. A service whose own name is a day that has
+ * not arrived yet is kept however long it has sat there.
+ */
+const SERVICE_KEEP_MS = 24 * 60 * 60 * 1000
+
+/** The day a service is FOR, read out of its name ("Sunday August 9th, 2026"). */
+function serviceDayOf(name: string | undefined): Date | null {
+  if (!name) return null
+  const d = new Date(name.replace(/(\d+)(st|nd|rd|th)/, '$1'))
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+async function purgeOldServices(): Promise<number> {
+  const cutoff = Date.now() - SERVICE_KEEP_MS
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  let removed = 0
+  try {
+    for (const f of (await readdir(servicesDir())).filter((n) => n.endsWith('.json'))) {
+      const path = join(servicesDir(), f)
+      try {
+        const s: Service = JSON.parse(await readFile(path, 'utf8'))
+        const saved = s.savedAt ? Date.parse(s.savedAt) : 0
+        if (!saved || saved >= cutoff) continue
+        const day = serviceDayOf(s.name)
+        if (day && day.getTime() >= today.getTime()) continue // still to come
+        await unlink(path)
+        removed++
+      } catch {
+        // an unreadable file is not something to delete on a guess
+      }
+    }
+  } catch {
+    // no services directory yet
+  }
+  if (removed) console.log(`Cleared ${removed} saved service${removed === 1 ? '' : 's'} older than a day.`)
+  return removed
+}
+
 async function listServices(): Promise<ServiceMeta[]> {
   try {
     const files = (await readdir(servicesDir())).filter((f) => f.endsWith('.json'))
