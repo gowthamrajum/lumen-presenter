@@ -4,7 +4,7 @@ import { Bible, referenceOf, compactVerses, type BibleVerse } from '@shared/bibl
 import { useStore } from '../../store/useStore'
 import { bilingualScriptureSlides, type PsalmLang } from '../slides'
 import { LangToggle } from './LangToggle'
-import { BibleSearchBox, VerseList, useRomanNames } from './BibleSearch'
+import { BibleSearchBox, VerseList, explainNoMatch, useRomanNames } from './BibleSearch'
 import { Icon } from '../../shared/Icon'
 
 /**
@@ -175,7 +175,7 @@ export function SermonVerseDialog({
             refOf={refOf}
             previewOf={previewOf}
             loading={loading}
-            emptyNote={query.trim() ? 'No verses. Try another search.' : 'Type a reference or a book name.'}
+            emptyNote={explainNoMatch(primary, query)}
           />
 
           {added.length > 0 && (

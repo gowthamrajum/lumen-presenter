@@ -90,7 +90,7 @@ export class Bible {
     const raw = query.trim()
     if (!raw) return []
     const q = raw.toLowerCase()
-    const ref = this.parseRef(q)
+    const ref = this.parseReference(q)
     // A reference with an explicit verse spec (a range/list like "5:13-16" or
     // "5:13,16") may name more verses than the default text-search cap; make sure
     // every requested verse can come back.
@@ -114,7 +114,12 @@ export class Bible {
     return out
   }
 
-  private parseRef(q: string): { book: string; chapter: number | null; verses: number[] | null } | null {
+  /**
+   * Split a typed reference into book / chapter / verses. Public because the
+   * search box has to explain a miss ("Jude has 1 chapter"), and it can only do
+   * that by reading the same parse the search itself ran.
+   */
+  parseReference(q: string): { book: string; chapter: number | null; verses: number[] | null } | null {
     // e.g. "john 3:16", "psalm 23", "1 cor 13", "mark 5:13-16", "mark 5:13,16",
     // or a localized book name. The part after ":" is a verse spec: a single
     // verse, a hyphen range, a comma list, or any mix ("13-16,20").

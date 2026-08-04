@@ -3,7 +3,7 @@ import { Bible, referenceOf, compactVerses, type BibleVerse } from '@shared/bibl
 import { useStore } from '../../store/useStore'
 import { bilingualScriptureSlides, type PsalmLang } from '../slides'
 import { LangToggle } from './LangToggle'
-import { BibleSearchBox, VerseList, useRomanNames } from './BibleSearch'
+import { BibleSearchBox, VerseList, explainNoMatch, useRomanNames } from './BibleSearch'
 
 /**
  * Bible source — bilingual like the Psalms source. Both church bibles load once
@@ -267,6 +267,7 @@ export function BibleSource(): JSX.Element {
         refOf={refOf}
         previewOf={previewOf}
         loading={loading}
+        emptyNote={explainNoMatch(primary, query)}
       />
 
       <div className="source-actions">

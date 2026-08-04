@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import type { Bible, BibleBook, BibleVerse } from '@shared/bible'
-import { referenceOf } from '@shared/bible'
+import { referenceOf, type Bible, type BibleBook, type BibleVerse } from '@shared/bible'
 import { romanizeTelugu, romanMatches } from '@shared/bible/translit'
 
 /**
@@ -155,6 +154,60 @@ export function BibleSearchBox({
       )}
     </div>
   )
+}
+
+/**
+ * Why a search came back with nothing, in terms of the thing that was asked for.
+ *
+ * "No verses. Try another search." is true and useless: the operator typed
+ * Jude 3:16 in front of a congregation and has to work out for themselves that
+ * Jude has one chapter. The parse that the search itself ran already knows —
+ * which book was meant, which chapter, which verses — so it can say so.
+ */
+export function explainNoMatch(bible: Bible | null, query: string): string {
+  const q = query.trim()
+  if (!q) return 'Type a reference or a book name.'
+  if (!bible) return 'The bibles are still opening…'
+
+  // Parsed from what was actually typed, so the message can quote it back in
+  // the operator's own casing rather than the lowercase the search runs on.
+  const ref = bible.parseReference(q)
+  // No reference in it at all: this was a text search that found nothing.
+  if (!ref) return `Nothing found for “${q}”.`
+
+  const needle = ref.book.toLowerCase()
+  const book = bible
+    .books()
+    .find(
+      (b) => b.book.toLowerCase().startsWith(needle) || b.display.toLowerCase().startsWith(needle)
+    )
+  if (!book) {
+    // A bare word with no chapter is a text search, not a mistyped book.
+    return ref.chapter == null && ref.verses == null
+      ? `Nothing found for “${q}”.`
+      : `No book called “${ref.book}”.`
+  }
+
+  // Telugu name with the English key behind it — the operator typed one of the
+  // two and should not have to match the answer up to the question.
+  const name = book.display === book.book ? book.book : `${book.display} (${book.book})`
+
+  const chapters = bible.chaptersFor(book.book)
+  const lastChapter = chapters.length ? chapters[chapters.length - 1] : 0
+  if (ref.chapter != null && !chapters.includes(ref.chapter)) {
+    return `${name} has ${lastChapter} chapter${lastChapter === 1 ? '' : 's'} — there is no chapter ${ref.chapter}.`
+  }
+
+  if (ref.chapter != null && ref.verses?.length) {
+    const inChapter = bible.versesFor(book.book, ref.chapter)
+    const lastVerse = inChapter.length ? inChapter[inChapter.length - 1].verse : 0
+    const missing = ref.verses.filter((v) => v > lastVerse || v < 1)
+    if (missing.length) {
+      return `${name} ${ref.chapter} has ${lastVerse} verse${lastVerse === 1 ? '' : 's'} — there is no verse ${missing[0]}.`
+    }
+  }
+
+  return `Nothing found for “${q}”.`
 }
 
 /** What the search found: click a verse to select it, double-click to put it up
