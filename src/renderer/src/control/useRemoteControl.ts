@@ -4,7 +4,8 @@ import { useStore } from '../store/useStore'
 /**
  * Apply commands sent from a phone remote (relayed via the main process) to the
  * live deck. The phone and the desktop operator both drive the same deck — a
- * remote "next" is identical to pressing Next here.
+ * remote "next" is identical to pressing Next here, and a remote "end" is
+ * identical to switching Broadcast off.
  */
 export function useRemoteControl(): void {
   useEffect(() => {
@@ -25,6 +26,12 @@ export function useRemoteControl(): void {
           break
         case 'logo':
           s.toggleLogo()
+          break
+        case 'end':
+          // The operator is calling the service: take the broadcast off air.
+          // Turning it off publishes a final blacked-out frame and drops the
+          // control listener, which is what tells the phone it really stopped.
+          void window.lumen.setBroadcast({ enabled: false })
           break
         case 'goto': {
           // arg is an index into the service outline (order) the remote sees.

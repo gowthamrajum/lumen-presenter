@@ -609,20 +609,16 @@ select,
 .export-status.error {
   color: var(--danger, #ff6b6b);
 }
-.service-name-input {
+.service-name {
   flex: 1;
   min-width: 0;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
   color: var(--text);
-  padding: 8px 10px;
+  padding: 8px 2px;
   font-weight: 700;
   font-size: 13px;
-}
-.service-name-input:focus {
-  outline: none;
-  border-color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .menu-wrap {
   position: relative;

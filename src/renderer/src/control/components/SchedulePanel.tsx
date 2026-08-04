@@ -68,7 +68,6 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const serviceId = useStore((s) => s.serviceId)
   const background = useStore((s) => s.background)
   const theme = useStore((s) => s.theme)
-  const renameService = useStore((s) => s.renameService)
   const autoSaveStatus = useStore((s) => s.autoSaveStatus)
   const newService = useStore((s) => s.newService)
   const applyTemplate = useStore((s) => s.applyTemplate)
@@ -172,13 +171,11 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   return (
     <div className="schedule">
       <div className="schedule-head">
-        <input
-          className="service-name-input"
-          value={serviceName}
-          onChange={(e) => renameService(e.target.value)}
-          placeholder="Service name"
-          title="Service name"
-        />
+        {/* A service is the gathering on a day, so the day is its name — there
+            is nothing here to decide, and nothing to mistype. */}
+        <span className="service-name" title={serviceName}>
+          {serviceName}
+        </span>
         {exp.phase === 'idle' ? (
           <span className={`autosave-status ${autoSaveStatus}`} title="Changes save automatically">
             {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? 'Saved' : 'Auto-save'}

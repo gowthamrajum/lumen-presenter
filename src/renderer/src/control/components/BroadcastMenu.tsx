@@ -46,7 +46,13 @@ export function BroadcastMenu(): JSX.Element {
   useEffect(() => {
     void window.lumen.getBroadcast().then(setCfg)
     void window.lumen.getBroadcastStatus().then(setStatus)
-    return window.lumen.onBroadcastStatus(setStatus)
+    // Broadcasting can now be switched off from somewhere other than this menu —
+    // the phone remote's End — so the toggle follows the published status rather
+    // than only what was last set here.
+    return window.lumen.onBroadcastStatus((s) => {
+      setStatus(s)
+      setCfg((c) => (c.enabled === s.enabled ? c : { ...c, enabled: s.enabled }))
+    })
   }, [])
 
   const patch = async (p: Partial<BroadcastConfig>): Promise<void> => {
