@@ -50,6 +50,8 @@ export const IPC = {
   mediaControl: 'media:control',
   // outputs -> main -> control: where that clip has got to
   mediaState: 'media:state',
+  // main -> control: the relay says a service was created / edited / removed
+  servicesChanged: 'services:changed',
   // main -> control: a command from a phone remote (next/prev/goto/…)
   remoteCommand: 'remote:command'
 } as const

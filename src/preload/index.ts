@@ -123,6 +123,13 @@ const api = {
   getRemoteService: (id: number): Promise<RemoteServiceResult> =>
     ipcRenderer.invoke(IPC.serviceRemoteGet, id),
 
+  /** Control side: the relay says the saved services changed. */
+  onServicesChanged: (cb: () => void): (() => void) => {
+    const h = (): void => cb()
+    ipcRenderer.on(IPC.servicesChanged, h)
+    return () => ipcRenderer.removeListener(IPC.servicesChanged, h)
+  },
+
   /** Output side: whether THIS window is the one allowed to play sound. */
   onAudioOwner: (cb: (owner: boolean) => void): (() => void) => {
     const h = (_e: unknown, owner: boolean): void => cb(owner)

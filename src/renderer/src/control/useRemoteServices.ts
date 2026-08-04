@@ -2,14 +2,15 @@ import { useEffect } from 'react'
 import { useStore } from '../store/useStore'
 
 /**
- * How often Cantica asks the relay whether Sunday's service has moved on.
+ * The safety net, not the mechanism.
  *
- * The relay has no event stream for services, so this is the whole mechanism —
- * a save on the phone shows up here within one tick. Fifteen seconds is short
- * enough that a change made while the operator is watching looks immediate, and
- * the request is a small JSON list either way.
+ * Changes arrive over the relay's service feed the moment they are made (see
+ * main/serviceFeed), so this only has to cover the times that connection is
+ * down without anybody noticing — a slept laptop, a dropped hotspot, a relay
+ * restart between reconnect attempts. A minute is plenty for that, and would be
+ * far too slow to rely on.
  */
-export const REMOTE_POLL_MS = 15_000
+export const REMOTE_POLL_MS = 60_000
 
 /**
  * Keep the order in step with the service it was built from.
@@ -35,6 +36,9 @@ export function useRemoteServices(): void {
   useEffect(() => {
     if (holding != null) void sync()
   }, [liveId, holding, sync])
+
+  // The push channel: the relay announces every create, edit, delete and purge.
+  useEffect(() => window.lumen.onServicesChanged(() => void sync()), [sync])
 
   useEffect(() => {
     void sync()

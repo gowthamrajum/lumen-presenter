@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, screen, dialog, protocol } from 'electron'
 import { initAutoUpdate } from './autoUpdate'
+import { startServiceFeed, stopServiceFeed } from './serviceFeed'
 import { join } from 'path'
 import { readFile, writeFile, readdir, unlink, mkdir, stat } from 'fs/promises'
 import { readFileSync, createReadStream } from 'fs'
@@ -902,6 +903,9 @@ app.whenReady().then(() => {
   initControlListener((cmd, arg) => controlWindow?.webContents.send(IPC.remoteCommand, { cmd, arg }))
   void initBroadcast((s) => controlWindow?.webContents.send(IPC.broadcastStatus, s))
   createControlWindow()
+  // Push, not poll: the relay tells us the moment a service is saved, edited or
+  // removed, and the control window syncs on that.
+  startServiceFeed(() => controlWindow)
   initAutoUpdate()
 
   const onDisplaysChanged = (): void => {
@@ -917,6 +921,8 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createControlWindow()
   })
 })
+
+app.on('will-quit', () => stopServiceFeed())
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
