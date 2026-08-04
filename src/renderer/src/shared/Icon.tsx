@@ -43,6 +43,7 @@ export type IconName =
   | 'upload'
   | 'sound'
   | 'sound-off'
+  | 'pause'
 
 // Each entry draws inside a 24x24 viewBox. Stroked by default (inherits color);
 // icons that read better solid set their own fill/stroke on the element.
@@ -167,6 +168,7 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M16 9a4 4 0 010 6M18.5 6.5a7.5 7.5 0 010 11" />
     </>
   ),
+  pause: <path d="M8 5v14M16 5v14" />,
   'sound-off': (
     <>
       <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" />

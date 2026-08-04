@@ -54,18 +54,36 @@ export const GO_LIVE_LINE_SPACING = DEFAULT_LINE_SPACING
  */
 export const SECTION_TEXT_SCALE = 0.55
 
-export type BackgroundType = 'color' | 'gradient' | 'image' | 'video'
+export type BackgroundType = 'color' | 'gradient' | 'image' | 'video' | 'audio'
 
 export interface Background {
   type: BackgroundType
   /**
    * hex color for 'color'; any CSS background/gradient string for 'gradient';
-   * a lumen-media:// url for image/video.
+   * a lumen-media:// url for image/video/audio. An 'audio' background has no
+   * picture — the slide keeps whatever it would have shown, and the sound plays
+   * over it.
    */
   value: string
   fit?: 'cover' | 'contain'
   /** optional motion for color/gradient backgrounds (CSS anim id, e.g. 'aurora') */
   anim?: string
+}
+
+/** Where a playing clip has got to, reported by the window that is playing it. */
+export interface MediaState {
+  /** seconds played */
+  t: number
+  /** seconds long, or 0 while it is still being read */
+  duration: number
+  paused: boolean
+}
+
+/** What the operator's transport asks of it. */
+export interface MediaCommand {
+  cmd: 'play' | 'pause' | 'seek'
+  /** seconds, for 'seek' */
+  value?: number
 }
 
 export type SlideKind = 'text' | 'scripture' | 'media' | 'blank' | 'countdown' | 'clock'
@@ -480,9 +498,10 @@ export interface PsalmsError {
 export interface MediaFile {
   path: string
   name: string
-  /** lumen-media:// url usable directly in img/video src */
+  /** lumen-media:// url usable directly in img/video/audio src */
   url: string
   isVideo: boolean
+  isAudio: boolean
 }
 
 /** One slide extracted from an imported PowerPoint (.pptx) deck. */

@@ -46,6 +46,10 @@ export const IPC = {
   audioOwner: 'output:audioOwner',
   // output -> main -> control: a clip with sound reached its end
   mediaEnded: 'output:mediaEnded',
+  // control -> main -> outputs: play / pause / seek the clip on screen
+  mediaControl: 'media:control',
+  // outputs -> main -> control: where that clip has got to
+  mediaState: 'media:state',
   // main -> control: a command from a phone remote (next/prev/goto/…)
   remoteCommand: 'remote:command'
 } as const

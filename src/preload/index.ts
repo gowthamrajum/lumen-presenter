@@ -16,6 +16,8 @@ import type {
   SongMeta,
   RemoteSong,
   RemoteService,
+  MediaState,
+  MediaCommand,
   PsalmEnglish,
   PsalmsResult,
   PsalmsError,
@@ -128,6 +130,20 @@ const api = {
   },
   /** Output side: a clip being played for its sound has reached its end. */
   mediaEnded: (): void => ipcRenderer.send(IPC.mediaEnded),
+  /** Control side: drive the clip on the audience screen. */
+  mediaControl: (cmd: MediaCommand): void => ipcRenderer.send(IPC.mediaControl, cmd),
+  onMediaControl: (cb: (cmd: MediaCommand) => void): (() => void) => {
+    const h = (_e: unknown, c: MediaCommand): void => cb(c)
+    ipcRenderer.on(IPC.mediaControl, h)
+    return () => ipcRenderer.removeListener(IPC.mediaControl, h)
+  },
+  /** Output side: report where the clip has got to. */
+  mediaState: (st: MediaState): void => ipcRenderer.send(IPC.mediaState, st),
+  onMediaState: (cb: (st: MediaState) => void): (() => void) => {
+    const h = (_e: unknown, st: MediaState): void => cb(st)
+    ipcRenderer.on(IPC.mediaState, h)
+    return () => ipcRenderer.removeListener(IPC.mediaState, h)
+  },
   /** Control side: that clip's end, so the service can move on. */
   onMediaEnded: (cb: () => void): (() => void) => {
     const h = (): void => cb()

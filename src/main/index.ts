@@ -74,7 +74,13 @@ const MEDIA_MIME: Record<string, string> = {
   jpeg: 'image/jpeg',
   png: 'image/png',
   gif: 'image/gif',
-  webp: 'image/webp'
+  webp: 'image/webp',
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  wav: 'audio/wav',
+  aac: 'audio/aac',
+  ogg: 'audio/ogg',
+  flac: 'audio/flac'
 }
 function mediaMime(p: string): string {
   const ext = p.slice(p.lastIndexOf('.') + 1).toLowerCase()
@@ -342,6 +348,13 @@ function registerIpc(): void {
   // to lives in the control window, so the end of it has to travel back.
   ipcMain.on(IPC.mediaEnded, () => controlWindow?.webContents.send(IPC.mediaEnded))
 
+  // The clip plays on the audience screen; the transport that drives it is in
+  // the operator's window, so both directions cross the process boundary.
+  ipcMain.on(IPC.mediaControl, (_e, cmd: unknown) => {
+    for (const win of outputs.values()) if (!win.isDestroyed()) win.webContents.send(IPC.mediaControl, cmd)
+  })
+  ipcMain.on(IPC.mediaState, (_e, st: unknown) => controlWindow?.webContents.send(IPC.mediaState, st))
+
   ipcMain.handle(IPC.liveGet, () => liveState)
   ipcMain.handle(IPC.liveSet, (_e, patch: Partial<LiveState>) => {
     liveState = { ...liveState, ...patch }
@@ -359,7 +372,14 @@ function registerIpc(): void {
       title: 'Add media',
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: 'Media', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov', 'm4v'] }
+        {
+          name: 'Media',
+          extensions: [
+            'jpg', 'jpeg', 'png', 'gif', 'webp',
+            'mp4', 'webm', 'mov', 'm4v',
+            'mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac'
+          ]
+        }
       ]
     })
     if (res.canceled) return []
@@ -367,7 +387,8 @@ function registerIpc(): void {
       path: p,
       name: p.split(/[\\/]/).pop() ?? p,
       url: mediaUrl(p),
-      isVideo: /\.(mp4|webm|mov|m4v)$/i.test(p)
+      isVideo: /\.(mp4|webm|mov|m4v)$/i.test(p),
+      isAudio: /\.(mp3|m4a|wav|aac|ogg|flac)$/i.test(p)
     }))
   })
 

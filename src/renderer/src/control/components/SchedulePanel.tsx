@@ -338,7 +338,7 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
             <span className="sched-title" title={it.title}>
               {it.title}
             </span>
-            {it.slides.some((sl) => sl.background?.type === 'video') && (
+            {it.slides.some((sl) => sl.background?.type === 'video' || sl.background?.type === 'audio') && (
               <button
                 className={`sound-toggle ${it.sound ? 'on' : ''}`}
                 title={

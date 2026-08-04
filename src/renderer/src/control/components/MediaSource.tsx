@@ -52,6 +52,8 @@ export function MediaSource(): JSX.Element {
     background.type === bg.type && background.value === bg.value
 
   const asBackground = (m: MediaFile): void => {
+    // A sound is not a background — there is nothing to look at — so the button
+    // isn't offered for one (see the row below).
     const bg: Background = { type: m.isVideo ? 'video' : 'image', value: m.url, fit: 'cover' }
     setBackground(bg)
   }
@@ -60,7 +62,10 @@ export function MediaSource(): JSX.Element {
     addItem({
       title: m.name,
       kind: m.isVideo ? 'video' : 'media',
-      slides: [mediaSlide(m.url, m.name, m.isVideo)]
+      slides: [mediaSlide(m.url, m.name, m.isVideo, m.isAudio)],
+      // A track added as its own item is there to be HEARD: it would otherwise
+      // arrive muted like a video backdrop and do nothing at all.
+      sound: m.isAudio || undefined
     })
   }
 
@@ -83,7 +88,7 @@ export function MediaSource(): JSX.Element {
   return (
     <div className="source media-source">
       <button className="btn btn-primary full" onClick={() => void importMedia()}>
-        + Add image / video…
+        + Add image / video / audio…
       </button>
 
       <button className="btn full" onClick={() => void importFromPptx()}>
@@ -132,23 +137,31 @@ export function MediaSource(): JSX.Element {
       })}
 
       <div className="section-label">Library</div>
-      {media.length === 0 && <div className="empty-note">No media yet. Add images or videos above.</div>}
+      {media.length === 0 && <div className="empty-note">No media yet. Add images, videos or audio above.</div>}
       <div className="media-grid">
         {media.map((m) => (
           <div key={m.path} className="media-tile" title={m.name}>
             <div className="media-thumb">
-              {m.isVideo ? (
+              {m.isAudio ? (
+                <div className="media-audio-thumb">
+                  <Icon name="sound" />
+                </div>
+              ) : m.isVideo ? (
                 <video src={m.url} muted />
               ) : (
                 <img src={m.url} alt={m.name} />
               )}
               {m.isVideo && <span className="badge"><Icon name="play" /></span>}
+              {m.isAudio && <span className="badge"><Icon name="sound" /></span>}
             </div>
             <div className="media-name">{m.name}</div>
             <div className="media-actions">
-              <button className="btn tiny" onClick={() => asBackground(m)} title="Use as stage background">
-                Background
-              </button>
+              {/* A sound has nothing to look at, so it cannot be a background. */}
+              {!m.isAudio && (
+                <button className="btn tiny" onClick={() => asBackground(m)} title="Use as stage background">
+                  Background
+                </button>
+              )}
               <button className="btn tiny" onClick={() => addAsSlide(m)} title="Add as a slide">
                 + Slide
               </button>

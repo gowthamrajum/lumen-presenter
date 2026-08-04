@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { SlideThumb } from './SlideThumb'
 import { SermonVerseDialog } from './SermonVerseDialog'
+import { MediaTransport } from './MediaTransport'
 import { Icon } from '../../shared/Icon'
 
 /** Center panel — the slides of the currently-selected schedule item. Clicking
@@ -27,6 +28,11 @@ export function SlidesPanel(): JSX.Element {
 
   const item = items.find((i) => i.id === selectedItemId) ?? null
   const isMediaItem = item?.kind === 'video' || item?.kind === 'media'
+  // Anything with a clip or a track on it gets a transport, whatever kind the
+  // item calls itself — a song slide with a backing track has one too.
+  const hasPlayable = !!item?.slides.some(
+    (sl) => sl.background?.type === 'video' || sl.background?.type === 'audio'
+  )
   // The sermon is the one section that grows while it runs: the preacher quotes
   // a reference and it has to be on the screen before they have finished saying
   // it. Anywhere in this panel is the target, so it doesn't have to be aimed at.
@@ -83,7 +89,7 @@ export function SlidesPanel(): JSX.Element {
             <button
               className="btn tiny with-ico slides-add-media"
               onClick={() => void attachMediaToItem(item.id)}
-              title="Choose an image or video file for this item"
+              title="Choose an image, video or audio file for this item"
             >
               <Icon name="image" /> Add media
             </button>
@@ -112,6 +118,7 @@ export function SlidesPanel(): JSX.Element {
           </button>
         </div>
       )}
+      {hasPlayable && item && <MediaTransport item={item} />}
       <div className="slides-grid">
         {item.slides.map((sl, i) => (
           <SlideThumb

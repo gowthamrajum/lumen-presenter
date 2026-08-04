@@ -94,12 +94,15 @@ function BackgroundLayer({
   bg,
   sound,
   audio,
-  onEnded
+  onEnded,
+  onEl
 }: {
   bg: Background
   sound?: boolean
   audio?: boolean
   onEnded?: () => void
+  /** the element actually playing, so a transport elsewhere can drive it */
+  onEl?: (el: HTMLMediaElement | null) => void
 }): JSX.Element {
   if (bg.type === 'color' || bg.type === 'gradient') {
     // `value` is a CSS color or any CSS gradient string; `anim` adds motion.
@@ -110,6 +113,7 @@ function BackgroundLayer({
     const heard = !!sound && !!audio
     return (
       <video
+        ref={onEl}
         className="stage-bg"
         style={{ objectFit: bg.fit ?? 'cover' }}
         src={bg.value}
@@ -132,6 +136,41 @@ function BackgroundLayer({
 }
 
 /**
+ * Sound with no picture of its own.
+ *
+ * Audio is not a background — it has nothing to show — so it plays OVER
+ * whatever the slide would have shown anyway: lyrics or a verse stay on the
+ * screen with a track underneath. The rules are a clip's: only the audience
+ * output is ever unmuted, and a track played for its sound plays once and hands
+ * over when it ends.
+ */
+function AudioLayer({
+  src,
+  sound,
+  audio,
+  onEnded,
+  onEl
+}: {
+  src: string
+  sound?: boolean
+  audio?: boolean
+  onEnded?: () => void
+  onEl?: (el: HTMLMediaElement | null) => void
+}): JSX.Element {
+  const heard = !!sound && !!audio
+  return (
+    <audio
+      ref={onEl}
+      src={src}
+      autoPlay
+      loop={!sound}
+      muted={!heard}
+      onEnded={heard ? onEnded : undefined}
+    />
+  )
+}
+
+/**
  * Pure presentational render of a LiveState. Fills its parent; the parent
  * decides the size (fullscreen on the output window, small on previews).
  *
@@ -144,7 +183,8 @@ export function Stage({
   state,
   preview,
   live,
-  audio
+  audio,
+  onMediaEl
 }: {
   state: LiveState
   preview?: boolean
@@ -152,9 +192,16 @@ export function Stage({
   /** This render may play sound. The audience output window passes it when the
    *  main process has named it the audio owner; nothing else ever does. */
   audio?: boolean
+  /** Called with the <video>/<audio> this render is playing (or null when it
+   *  stops playing one), so the operator's transport can drive it. */
+  onMediaEl?: (el: HTMLMediaElement | null) => void
 }): JSX.Element {
   const { slide, theme } = state
-  const bg = slide?.background ?? state.background
+  // A slide whose "background" is a sound has no picture in it, so the picture
+  // stays whatever the service is set to and the sound plays on top.
+  const slideBg = slide?.background
+  const track = slideBg?.type === 'audio' ? slideBg.value : null
+  const bg = track ? state.background : slideBg ?? state.background
   const lines = slide?.lines ?? []
   // Extra full-bleed image layers (e.g. a transparent lyrics PNG from an
   // imported PowerPoint) drawn over the background; hidden by blackout.
@@ -252,7 +299,17 @@ export function Stage({
         sound={state.sound}
         audio={audio}
         onEnded={() => window.lumen?.mediaEnded()}
+        onEl={track ? undefined : onMediaEl}
       />
+      {track && (
+        <AudioLayer
+          src={track}
+          sound={state.sound}
+          audio={audio}
+          onEnded={() => window.lumen?.mediaEnded()}
+          onEl={onMediaEl}
+        />
+      )}
       {!state.blackout && theme.scrim > 0 && (
         <div className="stage-scrim" style={{ opacity: theme.scrim }} />
       )}

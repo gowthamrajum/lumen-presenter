@@ -87,8 +87,9 @@ export function textSlides(text: string, label = 'Text'): SlideContent[] {
 }
 
 /** A media-only slide: just a background (image/video), no text. */
-export function mediaSlide(url: string, name: string, isVideo: boolean): SlideContent {
-  const background: Background = { type: isVideo ? 'video' : 'image', value: url, fit: 'cover' }
+export function mediaSlide(url: string, name: string, isVideo: boolean, isAudio = false): SlideContent {
+  const type = isAudio ? 'audio' : isVideo ? 'video' : 'image'
+  const background: Background = { type, value: url, fit: 'cover' }
   return { id: uid(), kind: 'media', label: name, lines: [], background }
 }
 
