@@ -1,8 +1,15 @@
 import { useEffect } from 'react'
 import { useStore } from '../store/useStore'
 
-/** How often Cantica asks the relay whether Sunday's service has moved on. */
-export const REMOTE_POLL_MS = 60_000
+/**
+ * How often Cantica asks the relay whether Sunday's service has moved on.
+ *
+ * The relay has no event stream for services, so this is the whole mechanism —
+ * a save on the phone shows up here within one tick. Fifteen seconds is short
+ * enough that a change made while the operator is watching looks immediate, and
+ * the request is a small JSON list either way.
+ */
+export const REMOTE_POLL_MS = 15_000
 
 /**
  * Keep the order in step with the service it was built from.
@@ -10,7 +17,7 @@ export const REMOTE_POLL_MS = 60_000
  * Sunday's songs are assembled on a phone (cantica-web) and kept on the relay,
  * and they keep being assembled — a song swapped on Saturday night, a psalm
  * added on the way to church. Rather than re-exporting a file and carrying it
- * over, the projection machine asks once a minute whether the service it pulled
+ * over, the projection machine keeps asking whether the service it pulled
  * has changed, and takes the new one.
  *
  * It only ever replaces the items that service put there: the rest of the

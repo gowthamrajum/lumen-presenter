@@ -22,7 +22,8 @@ import {
   type PsalmEnglish,
   type PsalmsResult,
   type PsalmsError,
-  type RemoteService
+  type RemoteService,
+  type RemoteServiceResult
 } from '../shared/types'
 import { importPptxFiles } from './pptx'
 import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExport'
@@ -582,14 +583,18 @@ function registerIpc(): void {
     }
   })
 
-  ipcMain.handle(IPC.serviceRemoteGet, async (_e, id: number) => {
+  // "Gone" and "couldn't ask" are different answers and want different words: a
+  // service the church deleted is not a network problem, and calling it one
+  // sends the operator to check the wifi for no reason.
+  ipcMain.handle(IPC.serviceRemoteGet, async (_e, id: number): Promise<RemoteServiceResult> => {
     const base = process.env.LUMEN_BROADCAST_API || process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com'
     try {
       const r = await fetch(`${base}/services/${Number(id)}`, { signal: AbortSignal.timeout(15_000) })
-      if (!r.ok) return null
-      return (await r.json()) as RemoteService & { serviceData: unknown }
+      if (r.status === 404) return { status: 'gone' }
+      if (!r.ok) return { status: 'unreachable' }
+      return { status: 'ok', service: (await r.json()) as RemoteService & { serviceData: unknown } }
     } catch {
-      return null
+      return { status: 'unreachable' }
     }
   })
 

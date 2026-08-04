@@ -51,7 +51,10 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const remoteUpdate = useStore((s) => s.remoteUpdate)
   const importRemoteService = useStore((s) => s.importRemoteService)
   const applyRemoteUpdate = useStore((s) => s.applyRemoteUpdate)
+  const remoteNotice = useStore((s) => s.remoteNotice)
   const [remoteMsg, setRemoteMsg] = useState<string | null>(null)
+  /** the operator's own message wins; the poll's is shown when there isn't one */
+  const notice = remoteMsg ?? remoteNotice
 
   const pullRemote = async (id: number): Promise<void> => {
     const res = await importRemoteService(id)
@@ -300,10 +303,16 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
           </button>
         </div>
       )}
-      {remoteMsg && (
+      {notice && (
         <div className="remote-banner warn">
-          <span className="remote-banner-text">{remoteMsg}</span>
-          <button className="btn tiny quiet" onClick={() => setRemoteMsg(null)}>
+          <span className="remote-banner-text">{notice}</span>
+          <button
+            className="btn tiny quiet"
+            onClick={() => {
+              setRemoteMsg(null)
+              useStore.setState({ remoteNotice: null })
+            }}
+          >
             Dismiss
           </button>
         </div>

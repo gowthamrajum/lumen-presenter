@@ -16,6 +16,7 @@ import type {
   SongMeta,
   RemoteSong,
   RemoteService,
+  RemoteServiceResult,
   MediaState,
   MediaCommand,
   PsalmEnglish,
@@ -119,7 +120,7 @@ const api = {
 
   /** Services built on the web and kept on the relay. */
   listRemoteServices: (): Promise<RemoteService[]> => ipcRenderer.invoke(IPC.servicesRemote),
-  getRemoteService: (id: number): Promise<(RemoteService & { serviceData: unknown }) | null> =>
+  getRemoteService: (id: number): Promise<RemoteServiceResult> =>
     ipcRenderer.invoke(IPC.serviceRemoteGet, id),
 
   /** Output side: whether THIS window is the one allowed to play sound. */

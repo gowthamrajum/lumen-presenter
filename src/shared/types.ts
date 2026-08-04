@@ -299,6 +299,13 @@ export interface RemoteService {
   serviceDataLength?: number
 }
 
+/** Asking the relay for one service has three answers, not two: here it is, it
+ *  has been deleted, or the relay could not be reached. */
+export type RemoteServiceResult =
+  | { status: 'ok'; service: RemoteService & { serviceData: unknown } }
+  | { status: 'gone' }
+  | { status: 'unreachable' }
+
 /** The web service an imported item came from, and the version it came from. */
 export interface ItemSource {
   serviceId: number
