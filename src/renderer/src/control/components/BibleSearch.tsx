@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { referenceOf, type Bible, type BibleBook, type BibleVerse } from '@shared/bible'
-import { romanizeTelugu, romanMatches } from '@shared/bible/translit'
+import { romanizeTelugu, romanMatches, romanPrefix } from '@shared/bible/translit'
 
 /**
  * The one Bible search box, and the one list of what it found.
@@ -34,12 +34,17 @@ export function useBookSuggestions(
     const m = query.trim().match(/^(.+?)\s*(\d+\s*(?::[\d\s,-]+)?)?$/)
     const bq = m?.[1]?.trim().toLowerCase() ?? ''
     if (!bq || m?.[2]) return []
-    const hits = books.filter(
-      (b) =>
-        b.display.toLowerCase().startsWith(bq) ||
-        b.book.toLowerCase().startsWith(bq) ||
-        romanMatches(romanNames.get(b.book) ?? '', bq)
-    )
+    // What actually starts with what was typed comes first and alone: the
+    // near-miss arm exists to rescue a search that found nothing, not to pad one
+    // that found the right book with three that merely rhyme with it.
+    const starts = (b: BibleBook): boolean =>
+      b.display.toLowerCase().startsWith(bq) ||
+      b.book.toLowerCase().startsWith(bq) ||
+      romanPrefix(romanNames.get(b.book) ?? '', bq)
+    const exact = books.filter(starts)
+    const hits = exact.length
+      ? exact
+      : books.filter((b) => romanMatches(romanNames.get(b.book) ?? '', bq))
     if (hits.length === 1 && (hits[0].display.toLowerCase() === bq || hits[0].book.toLowerCase() === bq)) return []
     return hits.slice(0, 8)
   }, [query, books, romanNames])

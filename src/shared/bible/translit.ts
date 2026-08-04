@@ -22,19 +22,27 @@ const CONSONANTS: Record<string, string> = {
   ౘ: 'ts', ౙ: 'dz'
 }
 
-/** Standalone vowel letters. */
+/**
+ * Standalone vowel letters.
+ *
+ * Long o (ఓ) is written 'o' and long e (ఏ) 'e', NOT 'oo'/'ee'. Doubling them
+ * would spell them the same as long u (ఊ) and long i (ఈ), and `foldRoman` then
+ * sends "oo" to u and "ee" to i — so యోహాను came out "yuhanu" and could not be
+ * reached by typing "yo", which is what anybody types. The doubled spellings
+ * stay where they belong: on the vowels that really are u and i.
+ */
 const VOWELS: Record<string, string> = {
   అ: 'a', ఆ: 'aa', ఇ: 'i', ఈ: 'ee', ఉ: 'u', ఊ: 'oo',
   ఋ: 'ru', ౠ: 'ruu', ఌ: 'lu', ౡ: 'luu',
-  ఎ: 'e', ఏ: 'ee', ఐ: 'ai', ఒ: 'o', ఓ: 'oo', ఔ: 'au'
+  ఎ: 'e', ఏ: 'e', ఐ: 'ai', ఒ: 'o', ఓ: 'o', ఔ: 'au'
 }
 
 /** Vowel signs that replace a consonant's inherent "a". */
 const MATRAS: Record<string, string> = {
   'ా': 'aa', 'ి': 'i', 'ీ': 'ee', 'ు': 'u', 'ూ': 'oo',
   'ృ': 'ru', 'ౄ': 'ruu',
-  'ె': 'e', 'ే': 'ee', 'ై': 'ai',
-  'ొ': 'o', 'ో': 'oo', 'ౌ': 'au'
+  'ె': 'e', 'ే': 'e', 'ై': 'ai',
+  'ొ': 'o', 'ో': 'o', 'ౌ': 'au'
 }
 
 const VIRAMA = '్' // ్ — kills the inherent vowel
@@ -129,13 +137,22 @@ function within(a: string, b: string, max: number): boolean {
  * it. Extra letters should never cost you the result.
  */
 export function romanMatches(text: string, query: string): boolean {
+  if (romanPrefix(text, query)) return true
+  const q = foldRoman(query)
+  // only once it's long enough that a loose match still means something
+  if (q.length < 4) return false
+  return foldRoman(text)
+    .split(' ')
+    .filter(Boolean)
+    .some((w) => within(w, q, 2))
+}
+
+/** The strict half of the above: `query` starts the text or one of its words.
+ *  Kept separate so a caller can prefer real prefixes and only fall back to the
+ *  near-miss arm when nothing starts with what was typed. */
+export function romanPrefix(text: string, query: string): boolean {
   const q = foldRoman(query)
   if (!q) return false
   const t = foldRoman(text)
-  if (t.startsWith(q)) return true
-  const words = t.split(' ').filter(Boolean)
-  if (words.some((w) => w.startsWith(q))) return true
-  // only once it's long enough that a loose match still means something
-  if (q.length < 4) return false
-  return words.some((w) => within(w, q, 2))
+  return t.startsWith(q) || t.split(' ').some((w) => w.startsWith(q))
 }
