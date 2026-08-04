@@ -155,6 +155,10 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
     endDrag()
   }
 
+  /** The one outline the church actually starts from. There is no picker any
+   *  more, so the menu names it rather than offering a choice of one. */
+  const GENERAL_TEMPLATE = SERVICE_TEMPLATES[0]?.id ?? ''
+
   // Replacing the current setlist with a template shouldn't silently discard
   // unsaved work — confirm first when there's something in the schedule.
   const startTemplate = (id: string): void => {
@@ -209,6 +213,13 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                   <span className="mi-row"><Icon name="upload" /> Import service (JSON / ZIP)…</span>
                 </button>
                 <button
+                  className="menu-item template-item"
+                  onClick={() => startTemplate(GENERAL_TEMPLATE)}
+                  title={SERVICE_TEMPLATES[0]?.description}
+                >
+                  <span className="mi-row"><Icon name="slides" /> General template</span>
+                </button>
+                <button
                   className="menu-item"
                   onClick={() => { setMenu(false); void exportPptx() }}
                   disabled={!items.length || exp.phase === 'running'}
@@ -222,18 +233,6 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                 >
                   <span className="mi-row"><Icon name="download" /> Export service JSON (.json)…</span>
                 </button>
-                <div className="menu-label">Start from a template</div>
-                {SERVICE_TEMPLATES.map((t) => (
-                  <button
-                    key={t.id}
-                    className="menu-item template-item"
-                    onClick={() => startTemplate(t.id)}
-                    title={t.description}
-                  >
-                    <span className="template-name">{t.name}</span>
-                    <span className="template-desc">{t.description}</span>
-                  </button>
-                ))}
                 <div className="menu-label">Built on the web</div>
                 {remoteServices.length === 0 && (
                   <div className="menu-empty">

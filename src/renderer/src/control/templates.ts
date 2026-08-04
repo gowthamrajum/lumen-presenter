@@ -1,15 +1,15 @@
 import { SECTION_TEXT_SCALE, type Background, type ComposedLine, type ItemKind, type ServiceItem, type SlideContent } from '@shared/types'
 import { uid, broadcastDefaults } from '../store/useStore'
-import { blankSlide, clockSlide, countdownSlide } from './slides'
+import { clockSlide } from './slides'
 import { COMMUNION } from './scenes'
 import { isFirstSunday } from './firstSunday'
 import { QR_DONATIONS } from './assets/qrDonations'
 
 /**
- * A ready-made order of service. Picking a template drops a full outline into
- * the schedule — a countdown, a welcome, and one titled placeholder item per
- * section (worship, scripture, message, prayer, …) — that the operator then
- * fills in with real songs, passages and slides.
+ * The ready-made order of service. Starting from it drops the whole Sunday
+ * outline into the schedule — the clips, the clock, and one titled card per
+ * section — which the operator then fills in with the real songs and passages.
+ * There is one, so the menu names it rather than offering a choice.
  */
 export interface ServiceTemplate {
   id: string
@@ -36,27 +36,6 @@ function section(title: string, kind: ItemKind, telugu: string, english: string)
     textScale: SECTION_TEXT_SCALE
   }
   return { id: uid(), title, kind, slides: [slide], ...broadcastDefaults(kind) }
-}
-
-/** A pre-service countdown item. */
-function countdown(minutes: number, message: string): ServiceItem {
-  return {
-    id: uid(),
-    title: 'Pre-Service Countdown',
-    kind: 'countdown',
-    slides: [countdownSlide(minutes, message)],
-    ...broadcastDefaults('countdown')
-  }
-}
-
-/** A trailing blank so the service ends on a clean screen. */
-function blank(): ServiceItem {
-  return { id: uid(), title: 'Blank', kind: 'blank', slides: [blankSlide('#000000')], ...broadcastDefaults('blank') }
-}
-
-/** Welcome title card, reused across templates. */
-function welcome(english: string): ServiceItem {
-  return section('Welcome', 'text', 'స్వాగతం', english)
 }
 
 /** The church site serves the service clips; they need a direct URL because the
@@ -215,38 +194,6 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
       { ...section('Benediction', 'text', 'దీవెన', 'Go in peace'), ...ON_AIR },
       { ...announcements(), ...ON_AIR },
       clip('Thank You', 'thank-you.mp4')
-    ]
-  },
-  {
-    id: 'wednesday-bible-study',
-    name: 'Wednesday Bible Study Service',
-    description: 'Midweek study — short worship, a passage, teaching and prayer requests.',
-    build: () => [
-      countdown(5, 'Bible study begins soon'),
-      welcome('Wednesday Bible Study'),
-      section('Opening Prayer', 'text', 'ప్రారంభ ప్రార్థన', 'Opening Prayer'),
-      section('Worship', 'song', 'ఆరాధన', 'Worship'),
-      section("Today's Passage", 'scripture', 'నేటి వాక్యభాగం', "Today's Passage"),
-      section('Study & Discussion', 'text', 'అధ్యయనం & చర్చ', 'Study & Discussion'),
-      section('Prayer Requests', 'text', 'ప్రార్థన అభ్యర్థనలు', 'Prayer Requests'),
-      section('Closing Prayer', 'text', 'ముగింపు ప్రార్థన', 'Closing Prayer'),
-      blank()
-    ]
-  },
-  {
-    id: 'saturday-prayer',
-    name: 'Saturday Prayer Service',
-    description: 'Prayer meeting — praise, a promise from the Word, requests and intercession.',
-    build: () => [
-      countdown(5, 'Prayer begins soon'),
-      welcome('Saturday Prayer'),
-      section('Worship', 'song', 'ఆరాధన', 'Worship'),
-      section('Promise of the Day', 'scripture', 'నేటి వాగ్దానం', 'Promise of the Day'),
-      section('Praise Reports', 'text', 'స్తుతి సాక్ష్యాలు', 'Praise Reports'),
-      section('Prayer Requests', 'text', 'ప్రార్థన అభ్యర్థనలు', 'Prayer Requests'),
-      section('Intercession', 'text', 'మధ్యవర్తిత్వ ప్రార్థన', 'Intercession'),
-      section('Benediction', 'text', 'దీవెన', 'Go in peace'),
-      blank()
     ]
   }
 ]
