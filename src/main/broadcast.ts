@@ -7,7 +7,8 @@ import {
   DEFAULT_THEME,
   type BroadcastConfig,
   type BroadcastStatus,
-  type LiveState
+  type LiveState,
+  type SlideContent
 } from '../shared/types'
 
 /**
@@ -161,6 +162,37 @@ async function publishOff(): Promise<void> {
 }
 
 /** Queue the current live state for publishing (debounced). */
+/**
+ * Singing marks, taken off the lower third.
+ *
+ * A song sheet carries instructions to the people singing it — "(2)" to sing a
+ * line twice, "||యెహోవా||" to go back to the Pallavi. They belong on the
+ * projector, where the congregation is following along. They do not belong on a
+ * YouTube stream, where nobody is singing from them and they read as clutter
+ * across the bottom of the picture.
+ *
+ * Only the marks go. Numbers inside the line are left alone: a hymn that says
+ * "forty days" still says it, and "Psalm 23:1" keeps its reference.
+ */
+const REPEAT_MARKER = /\s*\|\|[^|]*\|\|\s*/g
+const REPEAT_COUNT = /\s*[(（]\s*\d+\s*[)）]\s*$/
+
+export function stripSingingMarks(line: string): string {
+  return line
+    .replace(REPEAT_MARKER, ' ')
+    .replace(REPEAT_COUNT, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+/** A slide as the OBS overlay should read it: the words, without the marks. */
+function forStream(slide: SlideContent | null | undefined): SlideContent | null {
+  if (!slide) return null
+  const lines = slide.lines?.map(stripSingingMarks).filter((l) => l.length > 0)
+  const composed = slide.composed?.map((c) => ({ ...c, text: stripSingingMarks(c.text) }))
+  return { ...slide, ...(lines ? { lines } : {}), ...(composed ? { composed } : {}) }
+}
+
 export function publishBroadcast(state: LiveState): void {
   latest = state
   if (!config.enabled || !config.base) return
@@ -206,8 +238,8 @@ async function flush(): Promise<void> {
       next: nextNoBroadcastUsers ? null : next ?? null
     },
     stream: {
-      slide: noBroadcastStream ? null : slide ?? null,
-      next: nextNoBroadcastStream ? null : next ?? null
+      slide: noBroadcastStream ? null : forStream(slide),
+      next: nextNoBroadcastStream ? null : forStream(next)
     },
     // Unsuppressed slice for the phone operator — they drive the deck and see
     // every slide, just like the desktop presenter. Only users/stream inherit
