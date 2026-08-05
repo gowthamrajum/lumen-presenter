@@ -60,8 +60,9 @@ it in the top bar, and hit **Go Live** to open the audience window.
 ### Try it in 30 seconds
 1. **Bible** tab → search `John 3:16` or browse Psalms 23 → **Add & Present**.
 2. **Media** tab → *Add image/video…* → **Background** to set a stage backdrop.
-3. **Text** tab → paste lyrics (blank line = new slide) → **Add slides**.
-4. Click any slide, or use **→ / ←** to move; **B** black, **C** clear, **L** logo.
+3. **Media** tab → *Import PDF* or *Import PowerPoint* → present it a page at a time.
+4. **Text** tab → paste lyrics (blank line = new slide) → **Add slides**.
+5. Click any slide, or use **→ / ←** to move; **B** black, **C** clear, **L** logo.
 
 ## Keyboard
 
@@ -154,20 +155,38 @@ book) into Lumen's translation shape.
 ## Services (setlists)
 
 A **Service** is the plan for a gathering — an ordered collection of **items**,
-where each item is a titled group of slides: an imported PowerPoint, a video, a
-scripture reading, or some text. Build it ahead of time and present straight
-through.
+where each item is a titled group of slides: an imported PowerPoint, a PDF, a
+video, a scripture reading, or some text. Build it ahead of time and present
+straight through.
 
 - Anything you add from the left panel becomes an **item** in the current
-  service (one item per imported `.pptx` file, per video, per scripture range,
-  per text block). The center **program** view shows items as labelled groups.
+  service (one item per imported `.pptx` or `.pdf` file, per video, per scripture
+  range, per text block). The center **program** view shows items as labelled
+  groups.
 - The **Services** tab (left) lets you **name**, **Save**, start a **New**
   service, and **open** or **delete** saved ones. Services are stored as JSON
   under the app's user-data folder (`services/`), so they survive restarts.
-- Saved media/PowerPoint slides reference their files by path (PowerPoint images
-  live in the app cache), so reopening a service restores its media too.
+- Saved media/PowerPoint/PDF slides reference their files by path (PowerPoint and
+  PDF page images live in the app cache), so reopening a service restores its
+  media too.
 - Press-through works across item boundaries — arrow keys advance through the
   whole service.
+
+## PDF import
+
+The **Media** tab has **+ Import PDF (.pdf)…** beside the PowerPoint importer.
+Pick one or more PDFs — a song sheet, a bulletin, an order of service, a deck
+someone exported — and each becomes a service item, one **page per slide**.
+
+- Every page is rendered to a crisp image and shown **whole** (`contain`,
+  letterboxed on the stage's black) so nothing is cropped — the way you'd expect
+  a document to look on the screen. Press through the pages like any other item.
+- No LibreOffice / poppler / native tooling required. Rendering is pure JS
+  ([pdf.js](https://mozilla.github.io/pdf.js/)) and runs entirely offline. Pages
+  are rasterized in the renderer (where a canvas exists) and cached as PNGs under
+  the app's user-data folder (`pdf-cache/`), so a saved service reopens with its
+  PDF pages intact — mirroring how imported PowerPoint slides are cached.
+- A long PDF shows page-by-page progress while it renders.
 
 ## Look: font, backgrounds & themes
 

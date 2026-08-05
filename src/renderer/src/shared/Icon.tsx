@@ -16,6 +16,7 @@ export type IconName =
   | 'image'
   | 'play'
   | 'slides'
+  | 'file-text'
   | 'square'
   | 'timer'
   | 'broadcast'
@@ -82,6 +83,12 @@ const PATHS: Record<IconName, JSX.Element> = {
     <>
       <rect x="3" y="4" width="18" height="13" rx="2" />
       <path d="M8 13v-3M12 13V8M16 13v-5M12 17v3M9 20h6" />
+    </>
+  ),
+  'file-text': (
+    <>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5M9 13h6M9 17h6" />
     </>
   ),
   square: <rect x="4.5" y="4.5" width="15" height="15" rx="2.5" fill="currentColor" stroke="none" />,

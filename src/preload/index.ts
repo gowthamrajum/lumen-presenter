@@ -7,6 +7,7 @@ import type {
   ScreenRole,
   MediaFile,
   PptxImport,
+  PdfFile,
   Service,
   ServiceMeta,
   ServiceExport,
@@ -38,6 +39,9 @@ const api = {
     ipcRenderer.invoke(IPC.screenSet, displayId, role),
   pickMedia: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC.pickMedia),
   importPptx: (): Promise<PptxImport[]> => ipcRenderer.invoke(IPC.pickPptx),
+  pickPdf: (): Promise<PdfFile[]> => ipcRenderer.invoke(IPC.pickPdf),
+  savePdfPage: (key: string, index: number, bytes: Uint8Array): Promise<string> =>
+    ipcRenderer.invoke(IPC.savePdfPage, key, index, bytes),
   exportPptx: (req: PptxExportRequest): Promise<PptxExportResult> =>
     ipcRenderer.invoke(IPC.pptxExport, req),
   onPptxProgress: (cb: (p: PptxExportProgress) => void): (() => void) => {

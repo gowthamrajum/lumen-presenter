@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Background, MediaFile } from '@shared/types'
 import { useStore } from '../../store/useStore'
 import { mediaSlide, pptxSlides } from '../slides'
+import { renderPdfDeck } from '../pdf'
 import { BACKGROUND_PRESETS, BACKGROUND_CATEGORIES } from '../presets'
 import { Icon } from '../../shared/Icon'
 
@@ -20,11 +21,14 @@ export function MediaSource(): JSX.Element {
   const media = useStore((s) => s.media)
   const importMedia = useStore((s) => s.importMedia)
   const importPptx = useStore((s) => s.importPptx)
+  const importPdf = useStore((s) => s.importPdf)
   const addItem = useStore((s) => s.addItem)
   const setBackground = useStore((s) => s.setBackground)
   const background = useStore((s) => s.background)
 
   const [pptxNote, setPptxNote] = useState('')
+  const [pdfNote, setPdfNote] = useState('')
+  const [pdfBusy, setPdfBusy] = useState(false)
   // Which background categories are collapsed (persisted). All start collapsed.
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -85,6 +89,36 @@ export function MediaSource(): JSX.Element {
     setPptxNote(`Added ${total} slide${total === 1 ? '' : 's'} from ${from}.`)
   }
 
+  const importFromPdf = async (): Promise<void> => {
+    const files = await importPdf()
+    if (!files.length) return // dialog canceled
+    setPdfBusy(true)
+    setPdfNote('Rendering…')
+    let total = 0
+    let done = 0
+    try {
+      // Render one document at a time (a page at a time within it), so a big PDF
+      // reports progress and its item lands as soon as it is ready.
+      for (const file of files) {
+        const multi = files.length > 1
+        const deck = await renderPdfDeck(file, (p, n) =>
+          setPdfNote(multi ? `Rendering ${file.name} — page ${p} of ${n}…` : `Rendering page ${p} of ${n}…`)
+        )
+        if (!deck.slides.length) continue
+        addItem({ title: deck.name, kind: 'pdf', slides: deck.slides }) // one item per file
+        total += deck.slides.length
+        done += 1
+      }
+    } catch (err) {
+      setPdfBusy(false)
+      return setPdfNote(`Couldn't import that PDF: ${err instanceof Error ? err.message : String(err)}`)
+    }
+    setPdfBusy(false)
+    if (!total) return setPdfNote('No pages found in that file.')
+    const from = done === 1 ? files[0].name.replace(/\.pdf$/i, '') : `${done} files`
+    setPdfNote(`Added ${total} page${total === 1 ? '' : 's'} from ${from}.`)
+  }
+
   return (
     <div className="source media-source">
       <button className="btn btn-primary full" onClick={() => void importMedia()}>
@@ -95,6 +129,11 @@ export function MediaSource(): JSX.Element {
         + Import PowerPoint (.pptx)…
       </button>
       {pptxNote && <div className="empty-note">{pptxNote}</div>}
+
+      <button className="btn full" onClick={() => void importFromPdf()} disabled={pdfBusy}>
+        + Import PDF (.pdf)…
+      </button>
+      {pdfNote && <div className="empty-note">{pdfNote}</div>}
 
       <div className="section-label">Backgrounds</div>
       {BG_GROUPS.map(({ cat, presets }) => {

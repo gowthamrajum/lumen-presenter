@@ -8,6 +8,8 @@ export const IPC = {
   liveSet: 'live:set',
   pickMedia: 'media:pick',
   pickPptx: 'pptx:pick',
+  pickPdf: 'pdf:pick',
+  savePdfPage: 'pdf:savePage',
   pptxExport: 'pptx:export',
   bibleLoad: 'bible:load',
   servicesList: 'services:list',

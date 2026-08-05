@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, screen, dialog, protocol } from 'electron'
 import { initAutoUpdate } from './autoUpdate'
 import { startServiceFeed, stopServiceFeed } from './serviceFeed'
-import { join } from 'path'
+import { basename, join } from 'path'
 import { readFile, writeFile, readdir, unlink, mkdir, stat } from 'fs/promises'
 import { readFileSync, createReadStream } from 'fs'
 import { Readable } from 'stream'
@@ -403,6 +403,35 @@ function registerIpc(): void {
     if (res.canceled) return []
     const cacheDir = join(app.getPath('userData'), 'pptx-cache')
     return importPptxFiles(res.filePaths, cacheDir, mediaUrl)
+  })
+
+  // Pick PDF(s) and hand their bytes to the renderer, which rasterizes each page
+  // (a canvas lives there, not in this Node process). Rendered pages come back
+  // through savePdfPage below. Reads sync so a large PDF can't leave the dialog
+  // half-open while the picker awaits.
+  ipcMain.handle(IPC.pickPdf, async () => {
+    const res = await dialog.showOpenDialog(controlWindow!, {
+      title: 'Import PDF',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    })
+    if (res.canceled) return []
+    return res.filePaths.map((p) => ({ name: basename(p), data: new Uint8Array(readFileSync(p)) }))
+  })
+
+  // Persist one rasterized PDF page. The renderer sends the page's PNG bytes; we
+  // write it into the pdf-cache beside the PowerPoint images and hand back a
+  // lumen-media:// url, so a saved service references the page by path (small
+  // JSON) exactly as an imported .pptx slide does. `key` is sanitized — it lands
+  // in a file name — and the page index is clamped to a positive integer.
+  ipcMain.handle(IPC.savePdfPage, async (_e, key: string, index: number, bytes: Uint8Array) => {
+    const cacheDir = join(app.getPath('userData'), 'pdf-cache')
+    await mkdir(cacheDir, { recursive: true })
+    const safe = String(key).replace(/[^a-z0-9-_]+/gi, '_').slice(0, 80) || 'pdf'
+    const n = Math.max(1, Math.floor(Number(index)) || 1)
+    const outPath = join(cacheDir, `${safe}-${n}.png`)
+    await writeFile(outPath, Buffer.from(bytes))
+    return mediaUrl(outPath)
   })
 
   // Export the whole session to a .pptx (one image slide per slide, captured from

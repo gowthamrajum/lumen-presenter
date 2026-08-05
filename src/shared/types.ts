@@ -276,6 +276,7 @@ export type ItemKind =
   | 'media'
   | 'video'
   | 'ppt'
+  | 'pdf'
   | 'blank'
   | 'countdown'
 
@@ -537,6 +538,21 @@ export interface PptxImport {
   /** source file name without extension, used to label slides */
   name: string
   slides: ImportedSlide[]
+}
+
+// ---- PDF import ----
+/**
+ * A PDF the operator picked, handed to the renderer as raw bytes. A PDF is
+ * rasterized page-by-page in the renderer (where a canvas exists — the Node main
+ * process has none, and this repo deliberately ships no native tooling), then
+ * each page PNG is written back to the app's pdf-cache via savePdfPage. That keeps
+ * the import path pure-JS, mirroring the .pptx importer.
+ */
+export interface PdfFile {
+  /** original file name including the .pdf extension */
+  name: string
+  /** the file's bytes */
+  data: Uint8Array
 }
 
 // ---- PowerPoint export ----

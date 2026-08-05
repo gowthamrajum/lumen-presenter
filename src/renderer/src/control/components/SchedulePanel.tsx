@@ -13,6 +13,7 @@ const KIND_ICON: Record<ItemKind, IconName> = {
   media: 'image',
   video: 'play',
   ppt: 'slides',
+  pdf: 'file-text',
   blank: 'square',
   countdown: 'timer'
 }

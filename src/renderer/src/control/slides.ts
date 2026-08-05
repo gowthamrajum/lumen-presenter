@@ -94,6 +94,23 @@ export function mediaSlide(url: string, name: string, isVideo: boolean, isAudio 
 }
 
 /**
+ * One rasterized PDF page -> a slide. Unlike an ordinary media background, a
+ * document page is shown `contain` (the whole page, letterboxed on the stage's
+ * black) rather than `cover` — a page cropped to fill the screen would lose its
+ * margins and, for a portrait song sheet or bulletin, most of its content.
+ */
+export function pdfPageSlide(url: string, name: string, index: number, pages: number): SlideContent {
+  const background: Background = { type: 'image', value: url, fit: 'contain' }
+  return {
+    id: uid(),
+    kind: 'media',
+    label: pages > 1 ? `${name} · Page ${index}` : name,
+    lines: [],
+    background
+  }
+}
+
+/**
  * Imported PowerPoint deck -> slides. Each source slide becomes one Lumen
  * slide, keeping its text (editable) and its full-bleed background image if the
  * importer found one (resolved through the slide/layout/master chain). Slides
