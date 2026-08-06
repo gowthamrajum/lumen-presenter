@@ -44,24 +44,33 @@ export function useRemoteControl(): void {
           // the sermon card, but a verse the operator put up stays until they
           // move on. They are standing at the back watching the preacher, and a
           // countdown would take it down mid-sentence.
-          const p = arg as { label?: string; lines?: unknown } | null
-          const lines = Array.isArray(p?.lines) ? (p.lines as unknown[]).map(String).filter(Boolean) : []
-          if (!lines.length) break
+          const p = arg as
+            | { label?: string; lines?: unknown; slides?: { label?: string; lines?: unknown }[] }
+            | null
+          // ONE SLIDE PER VERSE, exactly as Add verse builds them here — a whole
+          // passage on a single slide is unreadable from the back of the room.
+          // The flat `lines` is the fallback for a remote too old to send the
+          // split, which shows the words rather than nothing.
+          const parts = Array.isArray(p?.slides) && p.slides.length ? p.slides : [{ label: p?.label, lines: p?.lines }]
+          const built = parts
+            .map((sl) => ({
+              label: String(sl?.label ?? ''),
+              lines: Array.isArray(sl?.lines) ? (sl.lines as unknown[]).map(String).filter(Boolean) : []
+            }))
+            .filter((sl) => sl.lines.length)
+            .map((sl) => ({
+              id: Math.random().toString(36).slice(2, 10),
+              kind: 'scripture' as const,
+              label: sl.label,
+              lines: sl.lines,
+              caption: sl.label
+            }))
+          if (!built.length) break
           const live = s.items.find((it) => it.slides.some((sl) => sl.id === s.liveId))
           if (!live) break
-          s.appendSlides(
-            live.id,
-            [
-              {
-                id: Math.random().toString(36).slice(2, 10),
-                kind: 'scripture',
-                label: String(p?.label ?? ''),
-                lines,
-                caption: String(p?.label ?? '')
-              }
-            ],
-            true
-          )
+          // goLive takes the FIRST of them: a passage is read from its opening
+          // verse and Next walks the rest.
+          s.appendSlides(live.id, built, true)
           break
         }
         case 'goto': {
