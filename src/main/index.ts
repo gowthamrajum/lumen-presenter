@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, screen, dialog, protocol } from 'electron'
 import { initAutoUpdate } from './autoUpdate'
 import { relayBase, startServiceFeed, stopServiceFeed } from './serviceFeed'
+import { rendererBase, startRendererServer, stopRendererServer } from './rendererServer'
 import { basename, join } from 'path'
 import { readFile, writeFile, readdir, unlink, mkdir, stat } from 'fs/promises'
 import { readFileSync, createReadStream } from 'fs'
@@ -90,10 +91,27 @@ function mediaMime(p: string): string {
   return MEDIA_MIME[ext] ?? 'application/octet-stream'
 }
 
+/**
+ * Where a window loads its page from.
+ *
+ * The OUTPUT page is served over loopback http so it has a real web origin —
+ * without one an embedded YouTube player refuses to start (error 153). The
+ * CONTROL page stays on file:// deliberately: localStorage is keyed by origin,
+ * the control side keeps the working session, the theme and the panel state
+ * there, and the server's port is chosen fresh each launch. Moving it would
+ * throw that away every time the app started.
+ *
+ * Only the live audience screen runs a real player anyway — previews and
+ * thumbnails show the poster still — so the origin is needed exactly where it
+ * is now given, and nowhere else.
+ */
 function rendererUrl(page: 'index' | 'output'): string {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     return `${process.env['ELECTRON_RENDERER_URL']}/${page}.html`
   }
+  const base = page === 'output' ? rendererBase() : ''
+  // No base means the listen failed: fall back rather than not opening at all.
+  if (base) return `${base}/${page}.html`
   return pathToFileURL(join(__dirname, `../renderer/${page}.html`)).toString()
 }
 
@@ -933,8 +951,17 @@ function loadDotEnv(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   loadDotEnv()
+
+  // Give the renderer a real web origin before any window asks for its URL.
+  // Awaited rather than fired off: rendererUrl() reads the result, and a window
+  // built a moment too early would silently go back to file:// — which is the
+  // exact state this exists to get out of. In dev the vite server already
+  // provides one.
+  if (!(is.dev && process.env['ELECTRON_RENDERER_URL'])) {
+    await startRendererServer(join(__dirname, '../renderer'))
+  }
 
   // Serve local media files over the privileged scheme.
   protocol.handle(MEDIA_SCHEME, async (request) => {
@@ -1005,7 +1032,10 @@ app.whenReady().then(() => {
   })
 })
 
-app.on('will-quit', () => stopServiceFeed())
+app.on('will-quit', () => {
+  stopServiceFeed()
+  stopRendererServer()
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
