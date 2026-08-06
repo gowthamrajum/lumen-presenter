@@ -42,9 +42,20 @@ export function useBookSuggestions(
       b.book.toLowerCase().startsWith(bq) ||
       romanPrefix(romanNames.get(b.book) ?? '', bq)
     const exact = books.filter(starts)
-    const hits = exact.length
+    const found = exact.length
       ? exact
       : books.filter((b) => romanMatches(romanNames.get(b.book) ?? '', bq))
+    /**
+     * A leading number is part of the name, and foldRoman throws it away — it
+     * keeps only letters, so "1 J" folds to "j" and matches Zephaniah,
+     * Zechariah and everything else beginning with one. Honour it here instead:
+     * typed, only that numbered book may match; not typed, the plain book wins
+     * over its numbered namesakes, without which "Yohanu" offers John, 1, 2 and
+     * 3 John and settles nothing.
+     */
+    const num = /^\s*([123])\s*[^0-9]/.exec(bq)?.[1] ?? ''
+    const fit = found.filter((b) => (/^[123]\s/.test(b.book) ? b.book[0] : '') === num)
+    const hits = fit.length ? fit : num ? [] : found
     if (hits.length === 1 && (hits[0].display.toLowerCase() === bq || hits[0].book.toLowerCase() === bq)) return []
     return hits.slice(0, 8)
   }, [query, books, romanNames])
