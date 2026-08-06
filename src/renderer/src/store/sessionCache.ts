@@ -15,6 +15,9 @@ export interface CachedSession {
   items: ServiceItem[]
   background: Background
   theme: ThemeStyle
+  /** the relay row this session was published to, so a restart still updates
+   *  that copy rather than colliding with it */
+  publishedTo?: { id: number; day: string; date: string } | null
 }
 
 interface Envelope {

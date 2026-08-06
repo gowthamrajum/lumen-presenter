@@ -2,9 +2,10 @@ import { Fragment, useEffect, useState } from 'react'
 import { useStore, suppressedOn } from '../../store/useStore'
 import { SERVICE_TEMPLATES } from '../templates'
 import { ConfirmDialog } from './ConfirmDialog'
+import { PublishServiceDialog } from './PublishServiceDialog'
 import { BroadcastToggle } from './BroadcastToggle'
 import { Icon, type IconName } from '../../shared/Icon'
-import type { ItemKind } from '@shared/types'
+import type { ItemKind, RemoteService } from '@shared/types'
 
 const KIND_ICON: Record<ItemKind, IconName> = {
   scripture: 'cross',
@@ -51,15 +52,43 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const remoteServices = useStore((s) => s.remoteServices)
   const remoteUpdate = useStore((s) => s.remoteUpdate)
   const importRemoteService = useStore((s) => s.importRemoteService)
+  const openRemoteService = useStore((s) => s.openRemoteService)
   const applyRemoteUpdate = useStore((s) => s.applyRemoteUpdate)
   const remoteNotice = useStore((s) => s.remoteNotice)
   const [remoteMsg, setRemoteMsg] = useState<string | null>(null)
+  /** a web service waiting on "open it as its own service?" */
+  const [pendingRemote, setPendingRemote] = useState<RemoteService | null>(null)
   /** the operator's own message wins; the poll's is shown when there isn't one */
   const notice = remoteMsg ?? remoteNotice
 
+  /** Re-pull a service already in this order, taking its latest version. */
   const pullRemote = async (id: number): Promise<void> => {
     const res = await importRemoteService(id)
     setRemoteMsg(res.ok ? null : res.message ?? 'Could not load that service.')
+  }
+
+  /** Open a DIFFERENT web service, as an order of its own. */
+  const openRemote = async (id: number): Promise<void> => {
+    const res = await openRemoteService(id)
+    setRemoteMsg(res.ok ? null : res.message ?? 'Could not open that service.')
+  }
+
+  /**
+   * What tapping a web service means depends on whether it is already here.
+   *
+   * One that is IS this order's — tapping takes its latest version, in place.
+   * One that isn't is a different Sunday, and merging it into the order on
+   * screen would run two services together; it opens on its own instead. That
+   * swaps what the operator is looking at, so it is asked first.
+   */
+  const chooseRemote = (s: RemoteService, linked: boolean): void => {
+    setMenu(false)
+    if (linked) {
+      void pullRemote(s.id)
+      return
+    }
+    if (items.length) setPendingRemote(s)
+    else void openRemote(s.id)
   }
 
   /** Arm the insertion point and jump to the Library to pick what goes there. */
@@ -80,8 +109,12 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const deleteService = useStore((s) => s.deleteService)
   const exportServiceJson = useStore((s) => s.exportServiceJson)
   const importServiceJson = useStore((s) => s.importServiceJson)
+  const publishedTo = useStore((s) => s.publishedTo)
+  const liveId = useStore((s) => s.liveId)
 
   const [menu, setMenu] = useState(false)
+  /** the publish-to-the-web dialog */
+  const [publishing, setPublishing] = useState(false)
   /** PowerPoint export status shown inline in the header */
   const [exp, setExp] = useState<{
     phase: 'idle' | 'running' | 'done' | 'error'
@@ -234,7 +267,23 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                 >
                   <span className="mi-row"><Icon name="download" /> Export service JSON (.json)…</span>
                 </button>
-                <div className="menu-label">Built on the web</div>
+                {/* The other direction of the same channel: this order goes UP
+                    to the relay, where the phone can open it. */}
+                <button
+                  className="menu-item"
+                  onClick={() => { setMenu(false); setPublishing(true) }}
+                  disabled={!items.length}
+                  title={
+                    publishedTo
+                      ? 'Send this order to the web again, replacing the copy you published'
+                      : 'Put this order on the web, where it can be read and shared from a phone'
+                  }
+                >
+                  <span className="mi-row">
+                    <Icon name="upload" /> {publishedTo ? 'Update the web copy…' : 'Publish to the web…'}
+                  </span>
+                </button>
+                <div className="menu-label">On the web</div>
                 {remoteServices.length === 0 && (
                   <div className="menu-empty">
                     None yet — build one in Cantica Web and it appears here
@@ -246,11 +295,11 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                     <button
                       key={s.id}
                       className={`menu-item remote-item ${linked ? 'linked' : ''}`}
-                      onClick={() => { void pullRemote(s.id); setMenu(false) }}
+                      onClick={() => chooseRemote(s, linked)}
                       title={
                         linked
                           ? 'Already in this order — pull it again to take the latest version'
-                          : 'Add this service to the order'
+                          : 'Open this service on its own, leaving the current order saved'
                       }
                     >
                       <span className="template-name">
@@ -423,6 +472,28 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
           onCancel={() => setPendingTemplate(null)}
         />
       )}
+
+      {pendingRemote && (
+        <ConfirmDialog
+          title="Open it as its own service?"
+          message={
+            `“${serviceName}” stays saved — you'll find it under Open a saved service. ` +
+            `${pendingRemote.serviceDay} · ${prettyDate(pendingRemote.serviceDate)} opens as a separate order, ` +
+            `so the two services don't run together.` +
+            (liveId ? ' Whatever is on the audience screen goes off it.' : '')
+          }
+          confirmLabel="Open it"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            const id = pendingRemote.id
+            setPendingRemote(null)
+            void openRemote(id)
+          }}
+          onCancel={() => setPendingRemote(null)}
+        />
+      )}
+
+      {publishing && <PublishServiceDialog onClose={() => setPublishing(false)} />}
     </div>
   )
 }

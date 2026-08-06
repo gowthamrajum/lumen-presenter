@@ -1,6 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, screen, dialog, protocol } from 'electron'
 import { initAutoUpdate } from './autoUpdate'
-import { startServiceFeed, stopServiceFeed } from './serviceFeed'
+import { relayBase, startServiceFeed, stopServiceFeed } from './serviceFeed'
 import { basename, join } from 'path'
 import { readFile, writeFile, readdir, unlink, mkdir, stat } from 'fs/promises'
 import { readFileSync, createReadStream } from 'fs'
@@ -23,6 +23,7 @@ import {
   type PsalmEnglish,
   type PsalmsResult,
   type PsalmsError,
+  type RemotePublishResult,
   type RemoteService,
   type RemoteServiceResult
 } from '../shared/types'
@@ -594,7 +595,7 @@ function registerIpc(): void {
   // Fetched in main (no renderer CORS) and never cached: the whole point is to
   // notice that whoever built Sunday's service has changed it.
   ipcMain.handle(IPC.servicesRemote, async (): Promise<RemoteService[]> => {
-    const base = process.env.LUMEN_BROADCAST_API || process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com'
+    const base = relayBase()
     // A window around today: last week (the relay's own retention) through the
     // next three, so next Sunday is there to prepare and last Sunday to reopen.
     const day = 86_400_000
@@ -617,7 +618,7 @@ function registerIpc(): void {
   // service the church deleted is not a network problem, and calling it one
   // sends the operator to check the wifi for no reason.
   ipcMain.handle(IPC.serviceRemoteGet, async (_e, id: number): Promise<RemoteServiceResult> => {
-    const base = process.env.LUMEN_BROADCAST_API || process.env.LUMEN_SONGS_API || 'https://grey-gratis-ice.onrender.com'
+    const base = relayBase()
     try {
       const r = await fetch(`${base}/services/${Number(id)}`, { signal: AbortSignal.timeout(15_000) })
       if (r.status === 404) return { status: 'gone' }
@@ -627,6 +628,59 @@ function registerIpc(): void {
       return { status: 'unreachable' }
     }
   })
+
+  /**
+   * Put THIS session on the relay, so it appears in cantica-web alongside the
+   * ones built there — the other direction of the same channel.
+   *
+   * The relay keys a service on (serviceDate, serviceDay) and answers 409 with
+   * the row already sitting there. That is reported back rather than resolved
+   * here: replacing a service someone built on the phone is a decision, and the
+   * only place that can be made is in front of the person publishing. Passing
+   * `id` is that decision taken — it edits that row outright.
+   *
+   * The deck is sent whole (up to the relay's 50mb body limit), which is why
+   * this has a far longer timeout than the reads: a service carrying slide
+   * images is megabytes, and on a church's uplink it is not quick.
+   */
+  ipcMain.handle(
+    IPC.serviceRemotePut,
+    async (
+      _e,
+      body: { serviceDay: string; serviceDate: string; serviceData: unknown; id?: number }
+    ): Promise<RemotePublishResult> => {
+      const base = relayBase()
+      const day = String(body?.serviceDay ?? '').trim()
+      const date = String(body?.serviceDate ?? '').slice(0, 10)
+      if (!day) return { status: 'error', message: 'Pick which gathering this is.' }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { status: 'error', message: 'Pick a date.' }
+
+      const editing = Number.isFinite(body?.id) && Number(body?.id) > 0
+      const url = editing ? `${base}/services/${Number(body.id)}` : `${base}/services`
+      try {
+        const r = await fetch(url, {
+          method: editing ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serviceDay: day, serviceDate: date, serviceData: body.serviceData }),
+          signal: AbortSignal.timeout(60_000)
+        })
+        if (r.status === 409) {
+          // Creating onto a taken slot hands back the row; moving an existing
+          // service onto one does not, so only the first can offer to replace.
+          const j = (await r.json().catch(() => null)) as { existing?: RemoteService; message?: string } | null
+          if (j?.existing) return { status: 'taken', existing: j.existing }
+          return { status: 'error', message: j?.message ?? 'That day and date already has a service.' }
+        }
+        if (r.status === 404) return { status: 'error', message: 'That service is no longer on the relay.' }
+        if (!r.ok) return { status: 'error', message: (await r.text().catch(() => '')) || `Failed (HTTP ${r.status}).` }
+        return { status: 'ok', service: (await r.json()) as RemoteService, created: !editing }
+      } catch (e) {
+        // A timeout and a dead uplink are the same thing to the operator: it
+        // did not go, and it is worth trying again.
+        return { status: 'unreachable', message: e instanceof Error ? e.message : undefined }
+      }
+    }
+  )
 
   // Psalms (bilingual): Telugu OV (bundled) + English. The English is either the
   // bundled WEBBE (offline, public domain) or the ESV fetched on demand from the

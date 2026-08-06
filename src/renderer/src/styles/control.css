@@ -2168,6 +2168,17 @@ select:focus {
   font-size: 11.5px;
   color: var(--muted);
 }
+/* A hint that has stopped being background information — a slot already taken,
+   a publish that didn't go. Boxed so it reads as an answer to what was just
+   clicked rather than more small print under the field. */
+.timer-hint.warn {
+  color: var(--text);
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  line-height: 1.45;
+}
 
 /* ---------- add-song dialog (stanzas / repeat / background) ---------- */
 .modal.add-song {

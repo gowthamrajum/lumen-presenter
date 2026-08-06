@@ -22,7 +22,9 @@ let abort: AbortController | null = null
 let retry: NodeJS.Timeout | null = null
 let attempt = 0
 
-function relayBase(): string {
+/** Where the relay lives. Shared with the /services calls in main/index, so the
+ *  feed and the requests it announces can never point at different servers. */
+export function relayBase(): string {
   return (
     process.env.LUMEN_BROADCAST_API ||
     process.env.LUMEN_SONGS_API ||

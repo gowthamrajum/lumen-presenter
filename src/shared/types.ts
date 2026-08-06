@@ -309,6 +309,20 @@ export type RemoteServiceResult =
   | { status: 'gone' }
   | { status: 'unreachable' }
 
+/**
+ * Publishing this session to the relay, so the phone can see it.
+ *
+ * `taken` is not a failure: the relay keys a service on (date, day) and one
+ * already sits on that slot. It is handed back whole, because the only useful
+ * next question — "replace the service built on the web?" — needs to name what
+ * would be replaced.
+ */
+export type RemotePublishResult =
+  | { status: 'ok'; service: RemoteService; created: boolean }
+  | { status: 'taken'; existing: RemoteService }
+  | { status: 'unreachable'; message?: string }
+  | { status: 'error'; message: string }
+
 /** The web service an imported item came from, and the version it came from. */
 export interface ItemSource {
   serviceId: number
@@ -362,6 +376,10 @@ export interface Service {
   items: ServiceItem[]
   background?: Background
   theme?: ThemeStyle
+  /** The relay row this service was published to, if it has been. Kept with the
+   *  service so reopening it a week later still updates that copy rather than
+   *  colliding with it. */
+  publishedTo?: { id: number; day: string; date: string } | null
 }
 
 /** Portable service backup: the whole deck as a versioned JSON envelope, written

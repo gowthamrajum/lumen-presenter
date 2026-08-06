@@ -16,6 +16,7 @@ import type {
   Song,
   SongMeta,
   RemoteSong,
+  RemotePublishResult,
   RemoteService,
   RemoteServiceResult,
   MediaState,
@@ -126,6 +127,14 @@ const api = {
   listRemoteServices: (): Promise<RemoteService[]> => ipcRenderer.invoke(IPC.servicesRemote),
   getRemoteService: (id: number): Promise<RemoteServiceResult> =>
     ipcRenderer.invoke(IPC.serviceRemoteGet, id),
+  /** Put this session on the relay. Omit `id` to create; pass one to replace
+   *  that service outright — which is what answering "replace" amounts to. */
+  publishRemoteService: (body: {
+    serviceDay: string
+    serviceDate: string
+    serviceData: unknown
+    id?: number
+  }): Promise<RemotePublishResult> => ipcRenderer.invoke(IPC.serviceRemotePut, body),
 
   /** Control side: the relay says the saved services changed. */
   onServicesChanged: (cb: () => void): (() => void) => {
