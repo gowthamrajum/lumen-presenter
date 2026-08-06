@@ -54,6 +54,7 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const importRemoteService = useStore((s) => s.importRemoteService)
   const openRemoteService = useStore((s) => s.openRemoteService)
   const applyRemoteUpdate = useStore((s) => s.applyRemoteUpdate)
+  const adoptPublishedUpdate = useStore((s) => s.adoptPublishedUpdate)
   const remoteNotice = useStore((s) => s.remoteNotice)
   const [remoteMsg, setRemoteMsg] = useState<string | null>(null)
   /** a web service waiting on "open it as its own service?" */
@@ -346,8 +347,17 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
           </span>
           <button
             className="btn tiny"
-            onClick={() => void applyRemoteUpdate(remoteUpdate.serviceId, true)}
-            title="Take the new version of this song now, changing what is on screen"
+            onClick={() =>
+              // A session published FROM here takes the web copy whole; one
+              // PULLED from the web has its own items replaced in place. Same
+              // button, two different things behind it, and sending a published
+              // session down the merge path would file the phone's additions
+              // against the Sunday order a second time.
+              void (remoteUpdate.serviceId === publishedTo?.id
+                ? adoptPublishedUpdate()
+                : applyRemoteUpdate(remoteUpdate.serviceId, true))
+            }
+            title="Take the new version now, changing what is on screen"
           >
             Change now
           </button>
