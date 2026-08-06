@@ -32,7 +32,12 @@ export function MediaTransport({ item }: { item: ServiceItem }): JSX.Element {
   /** while the operator is dragging, the bar follows the finger, not the clip */
   const [scrub, setScrub] = useState<number | null>(null)
 
-  const slide = item.slides.find((sl) => sl.background?.type === 'video' || sl.background?.type === 'audio')
+  const slide = item.slides.find(
+    (sl) =>
+      sl.background?.type === 'video' ||
+      sl.background?.type === 'audio' ||
+      sl.background?.type === 'youtube'
+  )
   const isLive = !!slide && slide.id === liveId
 
   useEffect(() => {

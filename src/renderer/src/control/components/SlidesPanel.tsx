@@ -31,7 +31,10 @@ export function SlidesPanel(): JSX.Element {
   // Anything with a clip or a track on it gets a transport, whatever kind the
   // item calls itself — a song slide with a backing track has one too.
   const hasPlayable = !!item?.slides.some(
-    (sl) => sl.background?.type === 'video' || sl.background?.type === 'audio'
+    (sl) =>
+      sl.background?.type === 'video' ||
+      sl.background?.type === 'audio' ||
+      sl.background?.type === 'youtube'
   )
   // The sermon is the one section that grows while it runs: the preacher quotes
   // a reference and it has to be on the screen before they have finished saying
@@ -107,7 +110,7 @@ export function SlidesPanel(): JSX.Element {
         <div className="media-url-row">
           <input
             className="search"
-            placeholder="https://…/welcome.mp4"
+            placeholder="YouTube link or https://…/welcome.mp4"
             value={urlVal}
             onChange={(e) => setUrlVal(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submitUrl()}

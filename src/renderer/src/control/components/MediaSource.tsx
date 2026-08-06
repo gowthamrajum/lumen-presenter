@@ -5,6 +5,7 @@ import { mediaSlide, pptxSlides } from '../slides'
 import { renderPdfDeck } from '../pdf'
 import { BACKGROUND_PRESETS, BACKGROUND_CATEGORIES } from '../presets'
 import { Icon } from '../../shared/Icon'
+import { youtubeId } from '@shared/youtube'
 
 // Presets grouped into their categories, in display order (empty groups dropped).
 const BG_GROUPS = BACKGROUND_CATEGORIES.map((cat) => ({
@@ -22,6 +23,7 @@ export function MediaSource(): JSX.Element {
   const importMedia = useStore((s) => s.importMedia)
   const importPptx = useStore((s) => s.importPptx)
   const importPdf = useStore((s) => s.importPdf)
+  const addMediaLink = useStore((s) => s.addMediaLink)
   const addItem = useStore((s) => s.addItem)
   const setBackground = useStore((s) => s.setBackground)
   const background = useStore((s) => s.background)
@@ -29,6 +31,17 @@ export function MediaSource(): JSX.Element {
   const [pptxNote, setPptxNote] = useState('')
   const [pdfNote, setPdfNote] = useState('')
   const [pdfBusy, setPdfBusy] = useState(false)
+  const [linkVal, setLinkVal] = useState('')
+
+  // A YouTube link, or a bare id, or any http(s) media URL — the store classifies
+  // it and adds a video/media item that plays on the audience screen.
+  const linkOk = (v: string): boolean => /^https?:\/\//i.test(v.trim()) || !!youtubeId(v)
+  const submitLink = (): void => {
+    const u = linkVal.trim()
+    if (!linkOk(u)) return
+    addMediaLink(u)
+    setLinkVal('')
+  }
   // Which background categories are collapsed (persisted). All start collapsed.
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -134,6 +147,19 @@ export function MediaSource(): JSX.Element {
         + Import PDF (.pdf)…
       </button>
       {pdfNote && <div className="empty-note">{pdfNote}</div>}
+
+      <div className="media-url-row" title="Paste a YouTube link (or any direct video/image URL) to add it as a slide that plays on the audience screen">
+        <input
+          className="search"
+          placeholder="Paste a YouTube or video link…"
+          value={linkVal}
+          onChange={(e) => setLinkVal(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submitLink()}
+        />
+        <button className="btn tiny with-ico" onClick={submitLink} disabled={!linkOk(linkVal)}>
+          <Icon name="link" /> Add
+        </button>
+      </div>
 
       <div className="section-label">Backgrounds</div>
       {BG_GROUPS.map(({ cat, presets }) => {

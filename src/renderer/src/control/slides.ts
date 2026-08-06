@@ -1,5 +1,6 @@
-import type { Background, PptxImport, PsalmVerse, SlideContent, Song, SongSection } from '@shared/types'
+import type { Background, ItemKind, PptxImport, PsalmVerse, SlideContent, Song, SongSection } from '@shared/types'
 import { timeZoneLabel } from '@shared/types'
+import { youtubeId } from '@shared/youtube'
 import type { BibleVerse } from '@shared/bible'
 import { referenceOf } from '@shared/bible'
 import { uid } from '../store/useStore'
@@ -84,6 +85,35 @@ export function textSlides(text: string, label = 'Text'): SlideContent[] {
     label: blocks.length > 1 ? `${label} ${i + 1}` : label,
     lines: block.split('\n')
   }))
+}
+
+/**
+ * A pasted web link -> the background it should become, plus the item kind and a
+ * display name for it. A YouTube link becomes a 'youtube' background that plays
+ * as an embed on the audience screen; a direct video file (.mp4/.webm/.mov/.m4v)
+ * becomes a 'video'; anything else is treated as a still image. Shared by the
+ * "Add video link" box and the per-item "Add URL" action so both classify a
+ * link the same way.
+ */
+export function linkBackground(url: string): {
+  bg: Background
+  kind: ItemKind
+  name: string
+  youtube: boolean
+} {
+  const u = url.trim()
+  const yt = youtubeId(u)
+  if (yt) {
+    return { bg: { type: 'youtube', value: yt, fit: 'cover' }, kind: 'video', name: 'YouTube video', youtube: true }
+  }
+  const isVideo = /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(u)
+  const name = u.split('/').pop()?.split(/[?#]/)[0] || 'Media link'
+  return {
+    bg: { type: isVideo ? 'video' : 'image', value: u, fit: 'cover' },
+    kind: isVideo ? 'video' : 'media',
+    name,
+    youtube: false
+  }
 }
 
 /** A media-only slide: just a background (image/video), no text. */

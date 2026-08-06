@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { DEFAULT_LINE_SPACING, GO_LIVE_LINE_SPACING, countdownRemaining, formatClock, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
 import { AUTO_SPACING_TARGET, useFitText } from './useFitText'
 import { Icon } from './Icon'
+import { YouTubeBackground } from './YouTubeStage'
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`
@@ -92,18 +93,25 @@ function TimerDisplay({
  */
 function BackgroundLayer({
   bg,
+  live,
   sound,
   audio,
   onEnded,
   onEl
 }: {
   bg: Background
+  /** true only on the audience Go Live screen — where a YouTube link actually
+   *  plays (elsewhere it stands in as its poster still) */
+  live?: boolean
   sound?: boolean
   audio?: boolean
   onEnded?: () => void
   /** the element actually playing, so a transport elsewhere can drive it */
   onEl?: (el: HTMLMediaElement | null) => void
 }): JSX.Element {
+  if (bg.type === 'youtube') {
+    return <YouTubeBackground id={bg.value} live={live} sound={sound} audio={audio} onEnded={onEnded} />
+  }
   if (bg.type === 'color' || bg.type === 'gradient') {
     // `value` is a CSS color or any CSS gradient string; `anim` adds motion.
     const cls = `stage-bg${bg.anim ? ` anim-${bg.anim}` : ''}`
@@ -296,6 +304,7 @@ export function Stage({
     <div className={`stage${qr ? ' has-qr' : ''}${live ? ' is-live' : ''}`}>
       <BackgroundLayer
         bg={bg}
+        live={live}
         sound={state.sound}
         audio={audio}
         onEnded={() => window.lumen?.mediaEnded()}

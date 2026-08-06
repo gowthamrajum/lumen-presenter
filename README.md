@@ -188,6 +188,26 @@ someone exported — and each becomes a service item, one **page per slide**.
   PDF pages intact — mirroring how imported PowerPoint slides are cached.
 - A long PDF shows page-by-page progress while it renders.
 
+## Web video (YouTube & links)
+
+Paste a **YouTube link** into the **Media** tab's *"Paste a YouTube or video
+link…"* box (or the per-item **Add URL** button) and it becomes a video item
+that **plays on the audience screen**. Direct `https://…/clip.mp4` links work the
+same way; a YouTube link is recognized in every common form (`watch`, `youtu.be`,
+`embed`, `shorts`, `live`, or a bare id).
+
+- **Playback** honours the same per-item **Sound** toggle as a local video: off
+  = a muted, looping backdrop; on = plays once with sound and the service moves
+  on when it ends.
+- **Transport** — the operator's play / pause / seek bar drives the YouTube
+  player too (over the IFrame API), and the position read-out reflects the
+  audience screen.
+- Only the **live audience screen** runs a real player; the operator's previews
+  and thumbnails show the video's poster still, so the UI stays light.
+- YouTube items are **local-screen only** by default (kept off the web
+  broadcast, which can't embed a YouTube player) — flip broadcast on per item if
+  you're sending a plain image/video URL instead.
+
 ## Look: font, backgrounds & themes
 
 - **Font** — the app UI and slide text use **Anek Telugu** (variable, weights

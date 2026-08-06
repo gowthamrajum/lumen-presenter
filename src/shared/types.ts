@@ -54,15 +54,17 @@ export const GO_LIVE_LINE_SPACING = DEFAULT_LINE_SPACING
  */
 export const SECTION_TEXT_SCALE = 0.55
 
-export type BackgroundType = 'color' | 'gradient' | 'image' | 'video' | 'audio'
+export type BackgroundType = 'color' | 'gradient' | 'image' | 'video' | 'audio' | 'youtube'
 
 export interface Background {
   type: BackgroundType
   /**
    * hex color for 'color'; any CSS background/gradient string for 'gradient';
-   * a lumen-media:// url for image/video/audio. An 'audio' background has no
-   * picture — the slide keeps whatever it would have shown, and the sound plays
-   * over it.
+   * a lumen-media:// (or http) url for image/video/audio; an 11-char YouTube
+   * video id for 'youtube'. An 'audio' background has no picture — the slide
+   * keeps whatever it would have shown, and the sound plays over it. A 'youtube'
+   * background plays the video as an embed on the audience screen (a poster
+   * still stands in on the operator's previews).
    */
   value: string
   fit?: 'cover' | 'contain'
