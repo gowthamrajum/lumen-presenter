@@ -63,7 +63,11 @@ export function useRemoteControl(): void {
               kind: 'scripture' as const,
               label: sl.label,
               lines: sl.lines,
-              caption: sl.label
+              caption: sl.label,
+              // On the air even though the sermon card is not: this is the one
+              // thing a viewer at home most needs from the sermon.
+              broadcastUsers: true,
+              broadcastStream: true
             }))
           if (!built.length) break
           const live = s.items.find((it) => it.slides.some((sl) => sl.id === s.liveId))

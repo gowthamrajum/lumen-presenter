@@ -109,7 +109,13 @@ export function SermonVerseDialog({
     // operator can add time or stop it from the Live panel.
     const slides = bilingualScriptureSlides(list, lang, teOf, enOf, refOf).map((sl) => ({
       ...sl,
-      autoAdvance: true
+      autoAdvance: true,
+      // On the air even though the sermon card is not. The card is a heading and
+      // stays off the stream; the verse is the one thing from the sermon a
+      // viewer at home is relying on, and it inherits the card's silence unless
+      // it says otherwise.
+      broadcastUsers: true,
+      broadcastStream: true
     }))
     appendSlides(itemId, slides, true)
     setAdded((a) => [titleOf(list), ...a])

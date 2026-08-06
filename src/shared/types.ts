@@ -149,6 +149,18 @@ export interface SlideContent {
   message?: string
   /** small caption rendered at the bottom of the audience screen */
   caption?: string
+  /**
+   * Broadcast this ONE slide regardless of what its item says.
+   *
+   * An item's flags are the right granularity almost everywhere — a section
+   * card is off-air, a song is on. The sermon is the exception: the card itself
+   * is off the stream, but a verse quoted during it is the one thing a viewer
+   * at home most needs, and a verse is appended INTO the sermon item so it
+   * inherits the card's suppression. Undefined means "whatever the item says",
+   * which is every other slide ever made.
+   */
+  broadcastUsers?: boolean
+  broadcastStream?: boolean
   /** optional per-slide background overriding the global background */
   background?: Background
   /** freely-positioned composed layout (from the Slide Composer / songs to Canvas);
