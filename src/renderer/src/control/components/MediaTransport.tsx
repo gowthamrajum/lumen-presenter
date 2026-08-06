@@ -31,6 +31,8 @@ export function MediaTransport({ item }: { item: ServiceItem }): JSX.Element {
   const [st, setSt] = useState<MediaState>({ t: 0, duration: 0, paused: true })
   /** while the operator is dragging, the bar follows the finger, not the clip */
   const [scrub, setScrub] = useState<number | null>(null)
+  /** the same, for the volume slider — the player's report lags the drag */
+  const [volDrag, setVolDrag] = useState<number | null>(null)
 
   const slide = item.slides.find(
     (sl) =>
@@ -52,6 +54,9 @@ export function MediaTransport({ item }: { item: ServiceItem }): JSX.Element {
   const at = scrub ?? st.t
   const dur = st.duration
   const kind = slide?.background?.type === 'audio' ? 'track' : 'clip'
+  // Full until the player says otherwise: a slider that starts at zero reads as
+  // "there is no sound" on a clip that is in fact about to play at full volume.
+  const vol = volDrag ?? (st.muted ? 0 : st.volume ?? 100)
 
   const playPause = (): void => {
     if (!slide) return
@@ -103,6 +108,32 @@ export function MediaTransport({ item }: { item: ServiceItem }): JSX.Element {
       >
         <Icon name={item.sound ? 'sound' : 'sound-off'} />
       </button>
+
+      {/* How loud, not merely whether. The button above decides what this item
+          IS — a silent backdrop or a clip with sound — and that is a property of
+          the service. This is the level in the room right now, which is a thing
+          you adjust while it plays, so it applies as it moves rather than on
+          release. Only offered on a clip that is actually making sound. */}
+      {item.sound && (
+        <input
+          className="transport-volume"
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={vol}
+          disabled={!isLive}
+          onChange={(e) => {
+            const v = Number(e.target.value)
+            setVolDrag(v)
+            send({ cmd: 'volume', value: v })
+          }}
+          onMouseUp={() => setVolDrag(null)}
+          onKeyUp={() => setVolDrag(null)}
+          title={`Volume ${vol}%`}
+          aria-label={`Volume for this ${kind}`}
+        />
+      )}
 
       {!isLive && <span className="transport-note">Not on screen</span>}
     </div>

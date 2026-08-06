@@ -58,9 +58,44 @@ export function YouTubeBackground({
       if (!ready) hello()
     }, 400)
 
+    /**
+     * The player's state, ACCUMULATED — this is the whole trick.
+     *
+     * A YouTube embed does not send its state; it sends fragments of it. Over
+     * fifty messages, `currentTime` arrives in nearly every one but `duration`
+     * and `playerState` in about one in ten, and `onStateChange` never fires at
+     * all under this protocol. Reading each message on its own — which is what
+     * this did — therefore reported `duration: 0, paused: true` most of the
+     * time: a seek bar that cannot be dragged because it is zero long, and a
+     * Play button that never becomes Pause because the clip always looks
+     * stopped. Exactly the two controls that did nothing.
+     *
+     * So each fragment updates what is known and the whole picture is reported.
+     * `progressState` is preferred where present: it carries the position and
+     * the duration together in one object on nearly every tick, so the two can
+     * never disagree by a frame.
+     */
+    const known: { t: number; duration: number; paused: boolean; volume?: number; muted?: boolean } = {
+      t: 0,
+      duration: 0,
+      paused: false
+    }
+
     const onMsg = (e: MessageEvent): void => {
       if (!/\byoutube(-nocookie)?\.com$/.test(e.origin.replace(/^https?:\/\//, ''))) return
-      let d: { event?: string; info?: { currentTime?: number; duration?: number; playerState?: number } | number }
+      let d: {
+        event?: string
+        info?:
+          | {
+              currentTime?: number
+              duration?: number
+              playerState?: number
+              volume?: number
+              muted?: boolean
+              progressState?: { current?: number; duration?: number }
+            }
+          | number
+      }
       try {
         d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
       } catch {
@@ -68,18 +103,27 @@ export function YouTubeBackground({
       }
       if (!d || typeof d !== 'object') return
       ready = true
-      if (d.event === 'infoDelivery' && d.info && typeof d.info === 'object') {
+
+      let ended = false
+      if (d.info && typeof d.info === 'object') {
         const info = d.info
-        const ps = info.playerState
-        window.lumen.mediaState({
-          t: info.currentTime ?? 0,
-          duration: info.duration ?? 0,
-          paused: ps !== 1 // 1 = playing
-        })
-        if (ps === 0) onEndedRef.current?.() // 0 = ended
-      } else if (d.event === 'onStateChange' && d.info === 0) {
-        onEndedRef.current?.()
+        const prog = info.progressState
+        if (typeof prog?.current === 'number') known.t = prog.current
+        else if (typeof info.currentTime === 'number') known.t = info.currentTime
+        if (typeof prog?.duration === 'number' && prog.duration > 0) known.duration = prog.duration
+        else if (typeof info.duration === 'number' && info.duration > 0) known.duration = info.duration
+        if (typeof info.playerState === 'number') {
+          known.paused = info.playerState !== 1 // 1 = playing
+          if (info.playerState === 0) ended = true // 0 = ended
+        }
+        if (typeof info.volume === 'number') known.volume = info.volume
+        if (typeof info.muted === 'boolean') known.muted = info.muted
+        window.lumen.mediaState({ ...known })
       }
+      // Kept for players that do emit it; the accumulator above is what
+      // actually catches the end under this protocol.
+      if (d.event === 'onStateChange' && d.info === 0) ended = true
+      if (ended) onEndedRef.current?.()
     }
     window.addEventListener('message', onMsg)
 
@@ -88,6 +132,15 @@ export function YouTubeBackground({
       else if (c.cmd === 'pause') post({ event: 'command', func: 'pauseVideo', args: [] })
       else if (c.cmd === 'seek' && typeof c.value === 'number')
         post({ event: 'command', func: 'seekTo', args: [Math.max(0, c.value), true] })
+      else if (c.cmd === 'volume' && typeof c.value === 'number') {
+        const v = Math.max(0, Math.min(100, Math.round(c.value)))
+        // Setting a volume on a muted player is silent until it is unmuted, and
+        // nobody drags a volume slider to stay silent.
+        if (v > 0) post({ event: 'command', func: 'unMute', args: [] })
+        post({ event: 'command', func: 'setVolume', args: [v] })
+      } else if (c.cmd === 'mute') {
+        post({ event: 'command', func: c.value ? 'mute' : 'unMute', args: [] })
+      }
     })
 
     return () => {

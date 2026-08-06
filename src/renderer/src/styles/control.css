@@ -1016,6 +1016,17 @@ select,
 .transport-seek:disabled {
   opacity: 0.45;
 }
+/* Short and fixed, beside the sound button it belongs to — the seek bar takes
+   the row's spare width, and a volume slider that grew with it would read as a
+   second progress bar. */
+.transport-volume {
+  flex: 0 0 auto;
+  width: 68px;
+  accent-color: var(--accent);
+}
+.transport-volume:disabled {
+  opacity: 0.45;
+}
 .transport-note {
   flex: 0 0 auto;
   font-size: 11.5px;

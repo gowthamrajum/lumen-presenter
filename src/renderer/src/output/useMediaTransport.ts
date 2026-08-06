@@ -25,6 +25,13 @@ export function useMediaTransport(enabled: boolean): (el: HTMLMediaElement | nul
       else if (c.cmd === 'pause') el.pause()
       else if (c.cmd === 'seek' && typeof c.value === 'number') {
         el.currentTime = Math.max(0, Math.min(c.value, Number.isFinite(el.duration) ? el.duration : c.value))
+      } else if (c.cmd === 'volume' && typeof c.value === 'number') {
+        el.volume = Math.max(0, Math.min(1, c.value / 100))
+        // Raising the volume on a muted element is silent, which reads as the
+        // slider being broken. Moving it off zero is the intent to hear it.
+        if (el.volume > 0) el.muted = false
+      } else if (c.cmd === 'mute') {
+        el.muted = !!c.value
       }
     })
     // Polled rather than driven off `timeupdate`: that fires ~4×/second while
@@ -36,7 +43,9 @@ export function useMediaTransport(enabled: boolean): (el: HTMLMediaElement | nul
       window.lumen.mediaState({
         t: el.currentTime,
         duration: Number.isFinite(el.duration) ? el.duration : 0,
-        paused: el.paused
+        paused: el.paused,
+        volume: Math.round(el.volume * 100),
+        muted: el.muted
       })
     }, 250)
     return () => {

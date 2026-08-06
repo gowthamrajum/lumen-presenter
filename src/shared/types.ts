@@ -79,12 +79,15 @@ export interface MediaState {
   /** seconds long, or 0 while it is still being read */
   duration: number
   paused: boolean
+  /** 0–100, or undefined where the player hasn't said yet */
+  volume?: number
+  muted?: boolean
 }
 
 /** What the operator's transport asks of it. */
 export interface MediaCommand {
-  cmd: 'play' | 'pause' | 'seek'
-  /** seconds, for 'seek' */
+  cmd: 'play' | 'pause' | 'seek' | 'volume' | 'mute'
+  /** seconds for 'seek'; 0–100 for 'volume'; 1/0 for 'mute' */
   value?: number
 }
 
