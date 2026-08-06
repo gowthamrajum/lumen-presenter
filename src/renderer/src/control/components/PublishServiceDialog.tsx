@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useStore } from '../../store/useStore'
+import { useStore, serviceNameDate } from '../../store/useStore'
 import { serviceSunday } from '../firstSunday'
 import type { RemoteService } from '@shared/types'
 
@@ -54,9 +54,18 @@ export function PublishServiceDialog({ onClose }: { onClose: () => void }): JSX.
   const publishedTo = useStore((s) => s.publishedTo)
   const publishService = useStore((s) => s.publishService)
 
-  // Reopening on a published service offers its own slot, so the common case —
-  // "I changed the order, send it again" — is one button and no decisions.
-  const [date, setDate] = useState(() => publishedTo?.date ?? isoDate(serviceSunday()))
+  /**
+   * The date this is offering to file under, best answer first.
+   *
+   * The session's own name is what it is FOR — every session is stamped
+   * "Wednesday August 5th, 2026" — so that beats the coming Sunday, which is
+   * only a guess and a bad one for a midweek service: publishing a Wednesday
+   * order under Sunday's date lands it on Sunday's service and raises a
+   * "replace it?" warning about a gathering nobody meant to touch.
+   */
+  const [date, setDate] = useState(
+    () => publishedTo?.date ?? serviceNameDate(serviceName) ?? isoDate(serviceSunday())
+  )
   const [phase, setPhase] = useState<Phase>({ k: 'idle' })
 
   const day = weekdayOf(date)
@@ -107,6 +116,12 @@ export function PublishServiceDialog({ onClose }: { onClose: () => void }): JSX.
             </p>
           ) : (
             <>
+              {/* Which session is being sent, named before anything is chosen —
+                  several can be open in a week and they differ only by date. */}
+              <p className="timer-hint">
+                Sending <b>{serviceName}</b> — {items.length} item{items.length === 1 ? '' : 's'}, {slides} slide
+                {slides === 1 ? '' : 's'}.
+              </p>
               <label className="timer-field">
                 <span>Which date is this service for?</span>
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} />
@@ -114,8 +129,7 @@ export function PublishServiceDialog({ onClose }: { onClose: () => void }): JSX.
               <p className="timer-hint">
                 {day ? (
                   <>
-                    Filed as <b>{day}</b> · {pretty(date)} — {items.length} item
-                    {items.length === 1 ? '' : 's'}, {slides} slide{slides === 1 ? '' : 's'}.
+                    Filed as <b>{day}</b> · {pretty(date)}.
                     {updating && ' Replaces the copy you published earlier.'}
                   </>
                 ) : (
