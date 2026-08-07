@@ -5,6 +5,8 @@ const SUNDAY_SCHOOL = /sunday school/i
 const SERMON = /sermon|వాక్యోపదేశం/i
 const OFFERINGS = /offering|కానుక/i
 const ANNOUNCEMENTS = /announcement|ప్రకటన/i
+/** The card clips are filed under — off both broadcasts, so they inherit it. */
+const MEDIA = /^media$|వీడియో/i
 
 /**
  * Merge Service-Builder items into an order that already exists, instead of
@@ -17,7 +19,7 @@ const ANNOUNCEMENTS = /announcement|ప్రకటన/i
  *
  *   Welcome · Clock · **Praise & Worship · song · Praise & Worship · song** ·
  *   Sunday School · Sermon · **the communion song** · Offerings ·
- *   **the offering song** · Benediction · **media** · Announcements …
+ *   **the offering song** · Benediction · Media · **the clips** · Announcements …
  *
  * Worship goes early — between the clock and Sunday School, not before the
  * Sermon — and each song gets its own Praise & Worship card in front of it,
@@ -94,8 +96,13 @@ export function mergeBySlot(
   // being told things. Failing that it goes at the end, which is where an
   // unslotted item has always gone.
   if (media.length) {
-    const i = find(ANNOUNCEMENTS)
-    const host = i >= 0 ? out[i] : undefined
+    // Under the Media card when the order has one: it is off both broadcasts,
+    // and `like` gives an inserted item its host's channels — so a clip filed
+    // there is in the room and nowhere else without anything being set on it.
+    // Failing that, ahead of the announcements, which is where it used to go.
+    const m = find(MEDIA)
+    const i = m >= 0 ? m + 1 : find(ANNOUNCEMENTS)
+    const host = m >= 0 ? out[m] : i >= 0 ? out[i] : undefined
     const placed = media.map((it) => like(host, it))
     if (i >= 0) out.splice(i, 0, ...placed)
     else out.push(...placed)

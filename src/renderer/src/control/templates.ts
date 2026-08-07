@@ -50,6 +50,16 @@ const MEDIA_BASE = 'https://cantica-web.onrender.com/media'
  */
 const ON_AIR = { noBroadcastUsers: false, noBroadcastStream: true }
 const ON_AIR_WITH_OBS = { noBroadcastUsers: false, noBroadcastStream: false }
+/**
+ * In the room and nowhere else.
+ *
+ * A clip is for the people sitting in front of the screen. On a phone it is a
+ * video competing with the one they could already be watching, and on the
+ * stream it covers the camera with something the stream is not carrying the
+ * sound of. Neither is a smaller version of being there; both are worse than
+ * showing nothing.
+ */
+const ROOM_ONLY = { noBroadcastUsers: true, noBroadcastStream: true }
 
 /** A hosted clip, attached exactly as "Add media by URL" would build it — so it
  *  reaches the web broadcast and not only the local output. */
@@ -182,7 +192,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
     id: 'sunday-worship',
     name: 'Sunday Worship Service',
     description:
-      'Welcome, clock, Sunday School, the Word, offerings, the blessing, announcements and a closing thank-you. Communion is added on the first Sunday of the month.',
+      'Welcome, clock, Sunday School, the Word, offerings, the blessing, media, announcements and a closing thank-you. Communion is added on the first Sunday of the month.',
     build: () => [
       clip('Welcome', 'welcome.mp4'),
       clock(),
@@ -192,6 +202,10 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
       ...(isFirstSunday() ? [communion()] : []),
       { ...offerings(), ...ON_AIR },
       { ...section('Benediction', 'text', 'దీవెన', 'Go in peace'), ...ON_AIR },
+      // Where the clips go: after the blessing, before the notices, and off
+      // both broadcasts. Everything the Service Builder files under "media"
+      // lands beneath this card.
+      { ...section('Media', 'text', 'వీడియోలు', 'Media'), ...ROOM_ONLY },
       { ...announcements(), ...ON_AIR },
       clip('Thank You', 'thank-you.mp4')
     ]
