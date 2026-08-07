@@ -3370,6 +3370,10 @@ select:focus {
   line-height: 1.22;
   max-width: 92%;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+  /* One line sits centred in a two-line band rather than halving it — see
+     ObsPane's minHeight, and html.mode-obs .lyrics in broadcast/obs.html. */
+  display: grid;
+  align-content: center;
 }
 .parity-obs-line {
   display: block;

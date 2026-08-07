@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore, suppressedOn } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import { Icon } from '../../shared/Icon'
@@ -29,8 +29,53 @@ export function obsLines(slide: SlideContent | null): string[] {
   return pick.length ? pick : lines
 }
 
+/**
+ * The two-line rule, mirroring broadcast/obs.html.
+ *
+ * Duplicated rather than shared because the overlay is a standalone HTML file
+ * served from the repo, with nothing to import from. Kept here anyway: a parity
+ * pane that renders the lower third differently from the lower third is worse
+ * than no parity pane, because it is believed.
+ */
+const OBS_MAX_LINES = 2
+const OBS_MIN_SCALE = 0.6
+
+/**
+ * Shrink the block until it fits two lines, as the browser source does.
+ *
+ * Measures the LINES rather than the box: the box is pinned to two lines and
+ * its height never moves, so measuring it would shrink every slide to the floor
+ * chasing a number that cannot change — the same trap the overlay fell into.
+ */
+function useTwoLineFit(deps: unknown[]): React.RefObject<HTMLDivElement> {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.fontSize = ''
+    const base = parseFloat(getComputedStyle(el).fontSize) || 0
+    if (!base) return
+    const floor = base * OBS_MIN_SCALE
+    for (let i = 0; i < 12; i++) {
+      const cur = parseFloat(getComputedStyle(el).fontSize) || base
+      const lh = parseFloat(getComputedStyle(el).lineHeight) || cur * 1.22
+      let text = 0
+      el.querySelectorAll('.parity-obs-line').forEach((l) => (text += l.getBoundingClientRect().height))
+      if (text <= lh * OBS_MAX_LINES + lh * 0.5) break
+      const next = cur * 0.94
+      if (next <= floor) {
+        el.style.fontSize = `${floor.toFixed(2)}px`
+        break
+      }
+      el.style.fontSize = `${next.toFixed(2)}px`
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
+  return ref
+}
+
 /** The OBS lower third as the browser source renders it: transparent, one
- *  language, sized and placed by the operator's ObsStyle. */
+ *  language, sized and placed by the operator's ObsStyle, two lines tall. */
 function ObsPane({ state, style }: { state: LiveState; style: ObsStyle }): JSX.Element {
   const slide = state.slide
   const hidden = state.blackout || state.clearText || state.showLogo
@@ -45,6 +90,8 @@ function ObsPane({ state, style }: { state: LiveState; style: ObsStyle }): JSX.E
         ? 'linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.28), rgba(0,0,0,.5))'
         : 'linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0) 46%)'
 
+  const lyricsRef = useTwoLineFit([lines.join('\u0000'), style.size, style.uppercase])
+
   return (
     <div className="parity-obs">
       {style.scrim && <div className="parity-obs-scrim" style={{ background: scrim }} />}
@@ -52,9 +99,13 @@ function ObsPane({ state, style }: { state: LiveState; style: ObsStyle }): JSX.E
         {lines.length > 0 && (
           <div>
             <div
+              ref={lyricsRef}
               className="parity-obs-lyrics"
               style={{
                 fontSize: `${style.size}cqh`,
+                // Two lines at the OPERATOR's size, not the fitted one — the
+                // band keeps its height even when the words inside it shrink.
+                minHeight: `${style.size * 1.22 * OBS_MAX_LINES}cqh`,
                 color: style.textColor,
                 textTransform: style.uppercase ? 'uppercase' : 'none'
               }}
