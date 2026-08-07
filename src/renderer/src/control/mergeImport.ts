@@ -4,6 +4,7 @@ import type { ItemSource, ServiceItem } from '@shared/types'
 const SUNDAY_SCHOOL = /sunday school/i
 const SERMON = /sermon|వాక్యోపదేశం/i
 const OFFERINGS = /offering|కానుక/i
+const ANNOUNCEMENTS = /announcement|ప్రకటన/i
 
 /**
  * Merge Service-Builder items into an order that already exists, instead of
@@ -16,7 +17,7 @@ const OFFERINGS = /offering|కానుక/i
  *
  *   Welcome · Clock · **Praise & Worship · song · Praise & Worship · song** ·
  *   Sunday School · Sermon · **the communion song** · Offerings ·
- *   **the offering song** · Benediction …
+ *   **the offering song** · Benediction · **media** · Announcements …
  *
  * Worship goes early — between the clock and Sunday School, not before the
  * Sermon — and each song gets its own Praise & Worship card in front of it,
@@ -51,7 +52,10 @@ export function mergeBySlot(
   const communion = incoming.filter((it) => it.slot === 'communion')
   // Anything not claimed by a named slot is worship — which is what an older
   // Service Builder's items, carrying no slot at all, have always meant.
-  const worship = incoming.filter((it) => it.slot !== 'offering' && it.slot !== 'communion')
+  const media = incoming.filter((it) => it.slot === 'media')
+  const worship = incoming.filter(
+    (it) => it.slot !== 'offering' && it.slot !== 'communion' && it.slot !== 'media'
+  )
 
   /**
    * Songs and scripture go out on EVERY channel — they are the words the room
@@ -82,6 +86,18 @@ export function mergeBySlot(
     const host = i >= 0 ? out[i] : out[out.length - 1]
     const placed = offering.map((it) => like(host, it))
     if (i >= 0) out.splice(i + 1, 0, ...placed)
+    else out.push(...placed)
+  }
+
+  // Media first of the three, being the latest in the order: a clip belongs
+  // just before the announcements, where the service is over and the room is
+  // being told things. Failing that it goes at the end, which is where an
+  // unslotted item has always gone.
+  if (media.length) {
+    const i = find(ANNOUNCEMENTS)
+    const host = i >= 0 ? out[i] : undefined
+    const placed = media.map((it) => like(host, it))
+    if (i >= 0) out.splice(i, 0, ...placed)
     else out.push(...placed)
   }
 
