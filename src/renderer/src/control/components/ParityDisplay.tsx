@@ -74,6 +74,44 @@ function useTwoLineFit(deps: unknown[]): React.RefObject<HTMLDivElement> {
   return ref
 }
 
+/**
+ * A pane that shows the REAL served page, not a drawing of it.
+ *
+ * The OBS lower third and the Viewer page are one HTML file, served by the
+ * relay straight from this repo's main on a five-minute cache — so they change
+ * without an app release, and only the Go Live screen is actually shipped.
+ *
+ * Which is why Parity must not draw them itself. A hand-built copy of the
+ * overlay has to be updated in step with the overlay, in the app, through a
+ * release — and every release it misses, this pane quietly lies about what is
+ * on the stream. Pointing an iframe at the same URL OBS is pointed at makes
+ * that impossible: whatever the relay is serving is what shows here.
+ *
+ * It follows the broadcast rather than the deck, because that is what these two
+ * outputs do. Off air, they have nothing on them, and this says so instead of
+ * inventing a preview.
+ */
+function ServedPane({
+  base,
+  room,
+  mode,
+  style
+}: {
+  base: string
+  room: string
+  mode: 'obs' | 'audience'
+  style: ObsStyle
+}): JSX.Element {
+  const url =
+    `${base.replace(/\/$/, '')}/broadcast/${encodeURIComponent(room)}/view` +
+    `?mode=${mode}` +
+    (mode === 'obs' ? `&size=${style.size}&pos=${style.position}` : '') +
+    // The relay caches the overlay for five minutes; this only stops the
+    // EMBED being reused from the Electron cache across a panel open.
+    `&t=${Math.floor(Date.now() / 60000)}`
+  return <iframe className="parity-served" src={url} title={mode === 'obs' ? 'OBS overlay' : 'Viewer page'} />
+}
+
 /** The OBS lower third as the browser source renders it: transparent, one
  *  language, sized and placed by the operator's ObsStyle, two lines tall. */
 function ObsPane({ state, style }: { state: LiveState; style: ObsStyle }): JSX.Element {
@@ -155,14 +193,22 @@ export function ParityDisplay(): JSX.Element | null {
   const goPrev = useStore((s) => s.goPrev)
 
   const [obsStyle, setObsStyle] = useState<ObsStyle>(DEFAULT_OBS_STYLE)
+  /** Where the served pages live, when this install is broadcasting at all. */
+  const [feed, setFeed] = useState<{ base: string; room: string } | null>(null)
   useEffect(() => {
     if (!open) return
     // The OBS look is owned by the main process (and tunable live), so read it
     // each time the panel opens rather than caching a stale copy.
     void window.lumen
       .getBroadcast()
-      .then((c) => setObsStyle({ ...DEFAULT_OBS_STYLE, ...(c?.obsStyle ?? {}) }))
-      .catch(() => setObsStyle(DEFAULT_OBS_STYLE))
+      .then((c) => {
+        setObsStyle({ ...DEFAULT_OBS_STYLE, ...(c?.obsStyle ?? {}) })
+        setFeed(c?.base && c?.room ? { base: c.base, room: c.room } : null)
+      })
+      .catch(() => {
+        setObsStyle(DEFAULT_OBS_STYLE)
+        setFeed(null)
+      })
   }, [open])
 
   useEffect(() => {
@@ -229,11 +275,17 @@ export function ParityDisplay(): JSX.Element | null {
               {offUsers ? (
                 <span className="parity-off">Off air for this item</span>
               ) : (
-                <span className="parity-note">phones &amp; browsers · both languages</span>
+                <span className="parity-note">
+                  phones &amp; browsers · both languages{feed ? ' · live page' : ' · preview'}
+                </span>
               )}
             </div>
             <div className="parity-frame">
-              <Stage state={usersLive} />
+              {feed ? (
+                <ServedPane base={feed.base} room={feed.room} mode="audience" style={obsStyle} />
+              ) : (
+                <Stage state={usersLive} />
+              )}
             </div>
           </div>
 
@@ -245,11 +297,16 @@ export function ParityDisplay(): JSX.Element | null {
               ) : (
                 <span className="parity-note">
                   transparent · {slide?.kind === 'scripture' ? 'Telugu' : 'transliteration'} only
+                  {feed ? ' · live page' : ' · preview'}
                 </span>
               )}
             </div>
             <div className="parity-frame checker">
-              <ObsPane state={streamLive} style={obsStyle} />
+              {feed ? (
+                <ServedPane base={feed.base} room={feed.room} mode="obs" style={obsStyle} />
+              ) : (
+                <ObsPane state={streamLive} style={obsStyle} />
+              )}
             </div>
           </div>
         </div>
