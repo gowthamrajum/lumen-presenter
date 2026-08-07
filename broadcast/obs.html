@@ -198,6 +198,13 @@
   /* single-line title cards don't wrap */
   .lyrics.nowrap .line { white-space: nowrap; }
 
+  /* The lower third is two lines tall whatever is on it.
+     Held at the OPERATOR's size, not the fitted one, so the strip does not
+     shrink along with a line that had to be shrunk — the whole point is a band
+     that stays put over the camera while the words inside it change. A slide
+     with one line sits centred in it rather than making it half as tall. */
+  html.mode-obs .lyrics { min-height: calc(var(--size) * 1.22 * 2); display: grid; align-content: center; }
+
   /* ============ OBS mode: transparent alpha, lyrics lower-third ============ */
   html.mode-obs #stage { justify-content: flex-end; align-items: center; }
   html.mode-obs.pos-center #stage { justify-content: center; }
@@ -746,28 +753,56 @@
     if (mode === 'audience') lyricsEl.style.fontSize = sizeFor(lines.length, scale);
   }
 
-  // OBS: keep each single-line lyric on ONE line by shrinking the font just enough
-  // to fit the width (the operator's --size stays the ceiling; we only shrink, and
-  // only when a line would overflow). Wrapping (non-single-line) slides are left
-  // to the operator's size as before.
-  function fitObsLyrics(singleLine) {
+  /**
+   * The lower third is TWO lines tall.
+   *
+   * A band across the bottom of a stream that is one line on this slide, three
+   * on the next and two after that pulls the eye every time it changes — and it
+   * is sitting over the camera, so its height is the viewer's problem, not the
+   * operator's. Two lines is what a slide built here carries, so two is what
+   * the strip is.
+   *
+   * Held to by shrinking, never by dropping a line: the words are the reason
+   * the strip exists. The operator's --size stays the ceiling and this only
+   * ever comes down from it.
+   *
+   * The exception is the one in the request: a single line too long to fit.
+   * Below OBS_MIN_SCALE the text stops being readable at broadcast size, so it
+   * is allowed to wrap past two lines rather than shrink into nothing. Tall and
+   * legible beats neat and unreadable.
+   */
+  var OBS_MAX_LINES = 2;
+  var OBS_MIN_SCALE = 0.6;
+
+  function fitObsLyrics() {
     lyricsEl.style.fontSize = ''; // reset to the operator's --size (the maximum)
-    if (!singleLine) return;
-    // Iterate: one proportional pass can undershoot, so shrink until it fits.
-    for (var i = 0; i < 4; i++) {
-      var avail = lyricsEl.clientWidth;
-      var content = lyricsEl.scrollWidth;
-      if (avail <= 0 || content <= avail + 1) break;
-      var cur = parseFloat(getComputedStyle(lyricsEl).fontSize) || 0;
-      if (cur <= 0) break;
-      lyricsEl.style.fontSize = (cur * (avail / content)).toFixed(2) + 'px';
+    var base = parseFloat(getComputedStyle(lyricsEl).fontSize) || 0;
+    if (!base) return;
+    var floor = base * OBS_MIN_SCALE;
+
+    for (var i = 0; i < 12; i++) {
+      var cur = parseFloat(getComputedStyle(lyricsEl).fontSize) || base;
+      var lh = parseFloat(getComputedStyle(lyricsEl).lineHeight) || cur * 1.22;
+      // The LINES, not the box. The box is pinned to two lines at the
+      // operator's size, so its height never changes and measuring it made this
+      // loop shrink every slide to the floor chasing a number that could not
+      // move. Each .line reports its own wrapped height; their sum is the text.
+      var text = 0;
+      var els = lyricsEl.querySelectorAll('.line');
+      for (var k = 0; k < els.length; k++) text += els[k].getBoundingClientRect().height;
+      // A slack half-line: these heights carry sub-pixel rounding, and testing
+      // flush makes the loop shrink a block that already fits.
+      if (text <= lh * OBS_MAX_LINES + lh * 0.5) break;
+      var next = cur * 0.94;
+      if (next <= floor) { lyricsEl.style.fontSize = floor.toFixed(2) + 'px'; break; }
+      lyricsEl.style.fontSize = next.toFixed(2) + 'px';
     }
   }
   // Re-fit when the (Telugu) web font finishes loading — measuring with the
   // fallback font under-shrinks, then the real glyphs overflow.
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(function () {
-      if (mode === 'obs' && liveSlide && !isTimer(liveSlide)) fitObsLyrics(!!liveSlide.singleLine);
+      if (mode === 'obs' && liveSlide && !isTimer(liveSlide)) fitObsLyrics();
     }).catch(function () {});
   }
 
@@ -826,8 +861,11 @@
       }
       if (!lines.length) { stage.classList.remove('show'); setLiveShowing(false); return; }
       renderLines(lines, scale);
-      lyricsEl.classList.toggle('nowrap', !!slide.singleLine);
-      if (mode === 'obs') fitObsLyrics(!!slide.singleLine);
+      // nowrap would make the height the LINE COUNT and nothing else, so a long
+      // line could only be handled by shrinking it away. OBS lets it wrap and
+      // then fits the block to two lines instead.
+      lyricsEl.classList.toggle('nowrap', mode !== 'obs' && !!slide.singleLine);
+      if (mode === 'obs') fitObsLyrics();
     }
 
     var composedShown = mode === 'audience' && slide.composed && slide.composed.length;
@@ -846,9 +884,10 @@
 
   function apply(msg) { if (msg && typeof msg === 'object' && 'state' in msg) render(msg.state); }
 
-  // Re-fit single-line OBS lyrics when the browser source is resized.
+  // Re-fit when the browser source is resized: two lines at one width is three
+  // at a narrower one, and OBS sources get resized mid-service.
   window.addEventListener('resize', function () {
-    if (mode === 'obs' && liveSlide && !isTimer(liveSlide)) fitObsLyrics(!!liveSlide.singleLine);
+    if (mode === 'obs' && liveSlide && !isTimer(liveSlide)) fitObsLyrics();
   });
 
   // Primary: Server-Sent Events (instant). Fallback: short-poll.
