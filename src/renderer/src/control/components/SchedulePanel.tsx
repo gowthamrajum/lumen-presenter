@@ -40,6 +40,18 @@ function sinceText(iso: string): string {
   return `${days} day${days === 1 ? '' : 's'} ago`
 }
 
+/**
+ * The timer slide inside an item, if it holds one.
+ *
+ * An item is a clock or a countdown when its slides are; the item's own `kind`
+ * says 'countdown' for both, and the dialog is opened on a SLIDE, so this is
+ * what the row's gear needs to hand it.
+ */
+function timerSlideOf(it: { slides: { id: string; kind?: string }[] }): string | null {
+  const sl = it.slides.find((x) => x.kind === 'clock' || x.kind === 'countdown')
+  return sl ? sl.id : null
+}
+
 export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Element {
   const items = useStore((s) => s.items)
   const selectedItemId = useStore((s) => s.selectedItemId)
@@ -54,6 +66,7 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   const importRemoteService = useStore((s) => s.importRemoteService)
   const openRemoteService = useStore((s) => s.openRemoteService)
   const applyRemoteUpdate = useStore((s) => s.applyRemoteUpdate)
+  const openTimerConfig = useStore((s) => s.openTimerConfig)
   const adoptPublishedUpdate = useStore((s) => s.adoptPublishedUpdate)
   const remoteNotice = useStore((s) => s.remoteNotice)
   const [remoteMsg, setRemoteMsg] = useState<string | null>(null)
@@ -429,6 +442,23 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
             <BroadcastToggle item={it} />
             <span className="sched-count">{it.slides.length}</span>
             <div className="sched-actions">
+              {/* A clock or countdown is the one item whose settings are not on
+                  the slide's face — minutes, caption, time zone. They were only
+                  reachable by opening the item and finding the slide's gear,
+                  which is a long way to go for the thing you set every week. */}
+              {timerSlideOf(it) && (
+                <button
+                  className="item-btn"
+                  title={it.slides[0]?.kind === 'clock' ? 'Clock settings' : 'Countdown settings'}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const id = timerSlideOf(it)
+                    if (id) openTimerConfig(id)
+                  }}
+                >
+                  <Icon name="timer" />
+                </button>
+              )}
               <button
                 className="item-btn"
                 title="Move up"
