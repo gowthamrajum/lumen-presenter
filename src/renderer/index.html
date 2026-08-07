@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- frame-src carries plain https: because the Parity panel embeds the
+         relay's own OBS and Viewer pages, and the relay's address is the
+         operator's to set — there is no one origin to name here. It is the
+         posture img-src and media-src already take for the same reason: this
+         is a desktop app whose operator chose the server it talks to. -->
     <meta
-      <!-- frame-src carries plain https: because the Parity panel embeds the
-           relay's own OBS and Viewer pages, and the relay's address is the
-           operator's to set — there is no one origin to name here. It is the
-           posture img-src and media-src already take for the same reason: this
-           is a desktop app whose operator chose the server it talks to. -->
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: lumen-media: https:; media-src 'self' lumen-media: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https: https://www.youtube-nocookie.com https://www.youtube.com"
     />
