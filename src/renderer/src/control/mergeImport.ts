@@ -14,12 +14,19 @@ const OFFERINGS = /offering|కానుక/i
  * stamps every item with one, and is a pick-list meant to land inside the
  * Sunday order:
  *
- *   Welcome · Clock · **Praise & Worship · the songs** · Sunday School ·
- *   Sermon · [Communion] · Offerings · **the offering song** · Benediction …
+ *   Welcome · Clock · **Praise & Worship · song · Praise & Worship · song** ·
+ *   Sunday School · Sermon · **the communion song** · Offerings ·
+ *   **the offering song** · Benediction …
  *
- * Worship goes early — before Sunday School, not before the Sermon — behind a
- * single Praise & Worship card. The offering song sits against the Offerings
- * card and gets no such card: it is one song under the plate, not a section.
+ * Worship goes early — between the clock and Sunday School, not before the
+ * Sermon — and each song gets its own Praise & Worship card in front of it,
+ * rather than one card over the block. A reading in the worship slot does not:
+ * the card announces a song being sung, and a psalm is read.
+ *
+ * The communion song lands after the Sermon and before the Offerings card,
+ * which is where the Table is served. The offering song sits against the
+ * Offerings card. Neither gets a Praise & Worship card: each is one song in its
+ * moment, not a section of the service.
  *
  * A song chosen for BOTH roles arrives as two items, one in each slot, and so
  * appears once in each place — which is what picking it twice meant.
@@ -40,8 +47,11 @@ export function mergeBySlot(
   const at = (re: RegExp): number => current.findIndex((it) => re.test(it.title))
   if (at(SUNDAY_SCHOOL) < 0 && at(SERMON) < 0 && at(OFFERINGS) < 0) return null
 
-  const worship = incoming.filter((it) => it.slot !== 'offering')
   const offering = incoming.filter((it) => it.slot === 'offering')
+  const communion = incoming.filter((it) => it.slot === 'communion')
+  // Anything not claimed by a named slot is worship — which is what an older
+  // Service Builder's items, carrying no slot at all, have always meant.
+  const worship = incoming.filter((it) => it.slot !== 'offering' && it.slot !== 'communion')
 
   /**
    * Songs and scripture go out on EVERY channel — they are the words the room
@@ -75,21 +85,42 @@ export function mergeBySlot(
     else out.push(...placed)
   }
 
+  // Then communion, between the Sermon and the Offerings card. Anchored on
+  // Offerings rather than on the Sermon so it lands after the Table's own card
+  // when the month's first Sunday put one there, and still after the Sermon
+  // when it did not.
+  if (communion.length) {
+    const i = find(OFFERINGS)
+    const host = i >= 0 ? out[i] : undefined
+    const placed = communion.map((it) => like(host, it))
+    if (i >= 0) out.splice(i, 0, ...placed)
+    else {
+      const j = find(SERMON)
+      if (j >= 0) out.splice(j + 1, 0, ...placed)
+      else out.push(...placed)
+    }
+  }
+
   if (worship.length) {
     // Ahead of Sunday School; failing that ahead of the Sermon, which is where
     // worship used to go and is still better than the end of the service.
     let i = find(SUNDAY_SCHOOL)
     if (i < 0) i = find(SERMON)
     const host = i >= 0 ? out[i] : undefined
-    const block = worship.map((it) => like(host, it))
-    // One card in front of the whole block, not one per song: it announces the
-    // section. It carries the same source stamp, so re-pulling the service takes
-    // it back out with the songs instead of leaving a heading over nothing — but
-    // keeps its OWN channels, because it is a heading and not a song, whatever
-    // kind it is filed under.
-    if (bookend) {
-      const card = bookend()
-      block.unshift(source ? { ...card, source: { ...source, slot: 'worship' as const } } : card)
+    // A card in front of EACH song, not one over the block. Every card carries
+    // the same source stamp, so re-pulling the service takes them back out with
+    // the songs instead of leaving headings over nothing — but each keeps its
+    // OWN channels, because a heading is not a song whatever it is filed under.
+    //
+    // Only in front of songs: a psalm arrives in this slot too, and announcing
+    // a reading as praise and worship is simply wrong.
+    const block: ServiceItem[] = []
+    for (const it of worship) {
+      if (bookend && it.kind === 'song') {
+        const card = bookend()
+        block.push(source ? { ...card, source: { ...source, slot: 'worship' as const } } : card)
+      }
+      block.push(like(host, it))
     }
     if (i >= 0) out.splice(i, 0, ...block)
     else out.push(...block)

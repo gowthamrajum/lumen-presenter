@@ -344,7 +344,7 @@ export interface ItemSource {
   updatedAt: string
   /** the slot it was filed under, kept so a later version of the same service
    *  can be matched against it item for item */
-  slot?: 'worship' | 'offering'
+  slot?: 'worship' | 'offering' | 'communion'
 }
 
 export interface ServiceItem {
@@ -375,11 +375,12 @@ export interface ServiceItem {
   source?: ItemSource
   /**
    * Where an IMPORTED item wants to land in an order that already exists —
-   * "worship" between Sunday School and the Sermon, "offering" against the
-   * Offerings card. Written by the Service Builder, consumed and dropped by the
-   * importer, so it never appears in a service Cantica itself saved.
+   * "worship" between the clock and Sunday School, "communion" after the Sermon
+   * and before the Offerings card, "offering" against the Offerings card.
+   * Written by the Service Builder, consumed and dropped by the importer, so it
+   * never appears in a service Cantica itself saved.
    */
-  slot?: 'worship' | 'offering'
+  slot?: 'worship' | 'offering' | 'communion'
 }
 
 /** A worship service / setlist: an ordered collection of items plus the look
