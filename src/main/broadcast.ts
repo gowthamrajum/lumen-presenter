@@ -80,13 +80,26 @@ function emit(): void {
 
 export async function initBroadcast(onStatus: (s: BroadcastStatus) => void): Promise<void> {
   sendStatus = onStatus
+  /**
+   * Launching is never going on air.
+   *
+   * Everything else in this file is worth keeping between runs — the room, the
+   * control PIN, the OBS look — because they are what this install IS. Being on
+   * air is not: it is something somebody did at 10:55 last Sunday, and it was
+   * saved along with the rest, so every launch since has quietly started
+   * publishing to the relay before anyone opened a service.
+   *
+   * So the saved `enabled` is read and dropped. The only thing that starts it
+   * is LUMEN_BROADCAST=1, which is a deliberate instruction from whoever
+   * launched the app — a kiosk that is meant to come up broadcasting.
+   */
   try {
     const saved = JSON.parse(await readFile(configFile(), 'utf8'))
-    config = { ...DEFAULT_CONFIG, ...saved }
+    config = { ...DEFAULT_CONFIG, ...saved, enabled: process.env.LUMEN_BROADCAST === '1' }
     // Backfill any OBS-style fields missing from an older saved config.
     config.obsStyle = { ...DEFAULT_OBS_STYLE, ...(saved.obsStyle || {}) }
   } catch {
-    if (process.env.LUMEN_BROADCAST === '1') config.enabled = true
+    config.enabled = process.env.LUMEN_BROADCAST === '1'
   }
   // Give every install a stable, collision-free room without asking the user.
   if (!config.room) {
