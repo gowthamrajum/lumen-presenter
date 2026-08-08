@@ -96,16 +96,35 @@ export function mergeBySlot(
   // being told things. Failing that it goes at the end, which is where an
   // unslotted item has always gone.
   if (media.length) {
-    // Under the Media card when the order has one: it is off both broadcasts,
-    // and `like` gives an inserted item its host's channels — so a clip filed
-    // there is in the room and nowhere else without anything being set on it.
-    // Failing that, ahead of the announcements, which is where it used to go.
     const m = find(MEDIA)
-    const i = m >= 0 ? m + 1 : find(ANNOUNCEMENTS)
-    const host = m >= 0 ? out[m] : i >= 0 ? out[i] : undefined
-    const placed = media.map((it) => like(host, it))
-    if (i >= 0) out.splice(i, 0, ...placed)
-    else out.push(...placed)
+    if (m >= 0) {
+      /**
+       * INTO the Media section, not beside it.
+       *
+       * Clips are one section of the service, not a run of separate rows in the
+       * order — five videos should read as "Media", openable, rather than five
+       * things to scroll past. The section is empty until a service fills it.
+       *
+       * The section carries the source stamp of whatever filled it, so
+       * re-pulling that service can find it again. It is a container, so
+       * withoutSource empties it rather than deleting it — the place stays even
+       * when what was in it does not.
+       */
+      const host = out[m]
+      out[m] = {
+        ...host,
+        slides: [...host.slides, ...media.flatMap((it) => it.slides)],
+        ...(source ? { source: { ...source, slot: 'media' as const } } : {})
+      }
+    } else {
+      // An order with no Media section — from before this existed. The clips go
+      // ahead of the announcements as loose items, which is where they went then.
+      const i = find(ANNOUNCEMENTS)
+      const host = i >= 0 ? out[i] : undefined
+      const placed = media.map((it) => like(host, it))
+      if (i >= 0) out.splice(i, 0, ...placed)
+      else out.push(...placed)
+    }
   }
 
   // Then communion, between the Sermon and the Offerings card. Anchored on
@@ -169,4 +188,14 @@ export const itemsFrom = (items: ServiceItem[], serviceId: number): ServiceItem[
  * block imported from a DIFFERENT web service.
  */
 export const withoutSource = (items: ServiceItem[], serviceId: number): ServiceItem[] =>
-  items.filter((it) => it.source?.serviceId !== serviceId)
+  items
+    // The Media section is a container the template put there, filled by a
+    // service. Taking that service back out empties it; deleting it would take
+    // the place along with the clips, and the next pull would have nowhere to
+    // put them.
+    .map((it) =>
+      it.source?.serviceId === serviceId && MEDIA.test(it.title)
+        ? { ...it, slides: [], source: undefined }
+        : it
+    )
+    .filter((it) => it.source?.serviceId !== serviceId)

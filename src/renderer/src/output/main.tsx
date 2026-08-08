@@ -24,6 +24,21 @@ function Output(): JSX.Element {
   // one the operator is actually watching the clip on.
   const attachMedia = useMediaTransport(audio)
 
+  /**
+   * A cursor, but only over a clip.
+   *
+   * The output screen hides it: a pointer sitting on a lyric in front of the
+   * congregation is exactly what nobody wants to see. But a YouTube clip is
+   * driven by YouTube's own controls now, and those need something to point
+   * with — so the cursor comes back for as long as a clip is what is on the
+   * screen, and goes again the moment a slide is.
+   */
+  useEffect(() => {
+    const bg = state.slide?.background?.type
+    const overClip = bg === 'video' || bg === 'youtube'
+    document.body.classList.toggle('has-cursor', overClip)
+  }, [state.slide])
+
   useEffect(() => {
     window.lumen.getLive().then(setState)
     const offLive = window.lumen.onLiveState(setState)

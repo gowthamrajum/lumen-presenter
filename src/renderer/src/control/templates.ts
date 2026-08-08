@@ -165,14 +165,16 @@ export function announcements(): ServiceItem {
   // Slide 5 — Women's Worship Meet
   const s5 = `stanza-${uid()}`
   const slide5 = composedSlide("Women's Worship", [
-    cl("Women's Worship Meet", L, 155, 40, s5),
-    cl('First Friday of the month', L, 228, 28, s5),
-    cl('at 7 PM', L, 290, 28, s5),
-    cl('8001 Mustang Drive', L, 345, 26, s5),
-    cl('స్త్రీల ప్రార్థన కూడిక', R, 155, 38, s5),
-    cl('ప్రతి నెల మొదటి శుక్రవారం', R, 228, 27, s5),
-    cl('సాయంత్రం 7 గంటలకు', R, 290, 28, s5),
-    cl('8001 Mustang Drive', R, 345, 26, s5)
+    cl("Women's Worship Meet", L, 150, 40, s5),
+    cl('First Friday of the month', L, 220, 28, s5),
+    cl('at 7 PM', L, 278, 28, s5),
+    cl('8001 Mustang Drive', L, 334, 26, s5),
+    cl('Irving, Texas 75038', L, 384, 26, s5),
+    cl('స్త్రీల ప్రార్థన కూడిక', R, 150, 38, s5),
+    cl('ప్రతి నెల మొదటి శుక్రవారం', R, 220, 27, s5),
+    cl('సాయంత్రం 7 గంటలకు', R, 278, 28, s5),
+    cl('8001 Mustang Drive', R, 334, 26, s5),
+    cl('Irving, Texas 75038', R, 384, 26, s5)
   ])
 
   return {
@@ -216,9 +218,10 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
       { ...offerings(), ...ON_AIR },
       { ...section('Benediction', 'text', 'దీవెన', 'Go in peace'), ...ON_AIR },
       // Where the clips go: after the blessing, before the notices, and off
-      // both broadcasts. Everything the Service Builder files under "media"
-      // lands beneath this card.
-      { ...section('Media', 'text', 'వీడియోలు', 'Media'), ...ROOM_ONLY },
+      // both broadcasts. Empty on purpose — it is a place, not a card. Nothing
+      // is projected for it; the Service Builder's clips become its slides, so
+      // the order shows one Media row rather than a run of loose videos.
+      { id: uid(), title: 'Media', kind: 'media' as ItemKind, slides: [], ...ROOM_ONLY },
       { ...announcements(), ...ON_AIR },
       clip('Thank You', 'thank-you.mp4')
     ]

@@ -12,6 +12,11 @@ body,
 .output-body {
   cursor: none;
 }
+/* …except over a clip, which is driven by the player's own controls and needs
+   something to point with. Set by main.tsx from the live slide. */
+.output-body.has-cursor {
+  cursor: default;
+}
 
 /* ---------- stage display (confidence monitor) ---------- */
 .stage-display {
