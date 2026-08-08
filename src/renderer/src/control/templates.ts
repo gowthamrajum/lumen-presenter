@@ -162,11 +162,24 @@ export function announcements(): ServiceItem {
     cl('Irving, Texas 75038', R, 345, 26, s4)
   ])
 
+  // Slide 5 — Women's Worship Meet
+  const s5 = `stanza-${uid()}`
+  const slide5 = composedSlide("Women's Worship", [
+    cl("Women's Worship Meet", L, 155, 40, s5),
+    cl('First Friday of the month', L, 228, 28, s5),
+    cl('at 7 PM', L, 290, 28, s5),
+    cl('8001 Mustang Drive', L, 345, 26, s5),
+    cl('స్త్రీల ప్రార్థన కూడిక', R, 155, 38, s5),
+    cl('ప్రతి నెల మొదటి శుక్రవారం', R, 228, 27, s5),
+    cl('సాయంత్రం 7 గంటలకు', R, 290, 28, s5),
+    cl('8001 Mustang Drive', R, 345, 26, s5)
+  ])
+
   return {
     id: uid(),
     title: 'Announcements',
     kind: 'text',
-    slides: [slide1, slide2, slide3, slide4],
+    slides: [slide1, slide2, slide3, slide4, slide5],
     ...broadcastDefaults('text')
   }
 }
