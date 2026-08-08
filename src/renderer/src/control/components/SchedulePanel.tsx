@@ -112,15 +112,10 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
   }
 
   const serviceName = useStore((s) => s.serviceName)
-  const serviceId = useStore((s) => s.serviceId)
   const background = useStore((s) => s.background)
   const theme = useStore((s) => s.theme)
   const autoSaveStatus = useStore((s) => s.autoSaveStatus)
-  const newService = useStore((s) => s.newService)
   const applyTemplate = useStore((s) => s.applyTemplate)
-  const savedServices = useStore((s) => s.savedServices)
-  const openService = useStore((s) => s.openService)
-  const deleteService = useStore((s) => s.deleteService)
   const exportServiceJson = useStore((s) => s.exportServiceJson)
   const importServiceJson = useStore((s) => s.importServiceJson)
   const publishedTo = useStore((s) => s.publishedTo)
@@ -254,12 +249,6 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
             <>
               <div className="dropdown-backdrop" onClick={() => setMenu(false)} />
               <div className="service-menu">
-                <button className="menu-item" onClick={() => { newService(); setMenu(false) }}>
-                  <span className="mi-row"><Icon name="spark" /> New service</span>
-                </button>
-                <button className="menu-item" onClick={() => void doImportJson()}>
-                  <span className="mi-row"><Icon name="upload" /> Import service (JSON / ZIP)…</span>
-                </button>
                 <button
                   className="menu-item template-item"
                   onClick={() => startTemplate(GENERAL_TEMPLATE)}
@@ -267,12 +256,8 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                 >
                   <span className="mi-row"><Icon name="slides" /> General template</span>
                 </button>
-                <button
-                  className="menu-item"
-                  onClick={() => { setMenu(false); void exportPptx() }}
-                  disabled={!items.length || exp.phase === 'running'}
-                >
-                  <span className="mi-row"><Icon name="download" /> Export PowerPoint (.pptx)…</span>
+                <button className="menu-item" onClick={() => void doImportJson()}>
+                  <span className="mi-row"><Icon name="upload" /> Import service (JSON / ZIP)…</span>
                 </button>
                 <button
                   className="menu-item"
@@ -325,24 +310,6 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                     </button>
                   )
                 })}
-                <div className="menu-label">Open a saved service</div>
-                {savedServices.length === 0 && <div className="menu-empty">None saved yet</div>}
-                {savedServices.map((s) => (
-                  <div
-                    key={s.id}
-                    className={`menu-service ${s.id === serviceId ? 'active' : ''}`}
-                    onClick={() => { void openService(s.id); setMenu(false) }}
-                  >
-                    <span className="menu-service-name">{s.name}</span>
-                    <button
-                      className="menu-del"
-                      title="Delete"
-                      onClick={(e) => { e.stopPropagation(); void deleteService(s.id) }}
-                    >
-                      <Icon name="close" />
-                    </button>
-                  </div>
-                ))}
               </div>
             </>
           )}
