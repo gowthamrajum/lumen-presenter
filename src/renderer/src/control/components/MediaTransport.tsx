@@ -54,6 +54,19 @@ export function MediaTransport({ item }: { item: ServiceItem }): JSX.Element {
   const at = scrub ?? st.t
   const dur = st.duration
   const kind = slide?.background?.type === 'audio' ? 'track' : 'clip'
+  /**
+   * A YouTube clip drives itself.
+   *
+   * Its player has a seek bar and a volume control of its own, and they are
+   * better than ours at the job: they know what is buffered, they scrub against
+   * thumbnails, and the volume is the one the clip was mixed for. Two seek bars
+   * for one clip is one too many, and the second one is a slider posting
+   * messages at a player that already has the answer.
+   *
+   * Play and pause stay, because they are how the operator puts it on screen at
+   * the right moment — that is a cue, not a transport.
+   */
+  const isYouTube = slide?.background?.type === 'youtube'
   // Full until the player says otherwise: a slider that starts at zero reads as
   // "there is no sound" on a clip that is in fact about to play at full volume.
   const vol = volDrag ?? (st.muted ? 0 : st.volume ?? 100)
@@ -78,6 +91,10 @@ export function MediaTransport({ item }: { item: ServiceItem }): JSX.Element {
         <Icon name={isLive && !st.paused ? 'pause' : 'play'} />
       </button>
 
+      {isYouTube ? (
+        <span className="transport-note">Seek and volume are on the clip itself</span>
+      ) : (
+        <>
       <span className="transport-time">{clock(at)}</span>
       <input
         className="transport-seek"
@@ -99,6 +116,8 @@ export function MediaTransport({ item }: { item: ServiceItem }): JSX.Element {
         aria-label={`Seek the ${kind}`}
       />
       <span className="transport-time">{dur > 0 ? clock(dur) : '—:—'}</span>
+        </>
+      )}
 
       <button
         className={`transport-btn ${item.sound ? 'on' : ''}`}
@@ -114,7 +133,7 @@ export function MediaTransport({ item }: { item: ServiceItem }): JSX.Element {
           the service. This is the level in the room right now, which is a thing
           you adjust while it plays, so it applies as it moves rather than on
           release. Only offered on a clip that is actually making sound. */}
-      {item.sound && (
+      {item.sound && !isYouTube && (
         <input
           className="transport-volume"
           type="range"

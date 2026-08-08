@@ -47,14 +47,20 @@ export function youtubeThumb(id: string): string {
 /**
  * A privacy-friendly (nocookie) embed url with the player chrome stripped for
  * stage use: no controls/branding, autoplaying, muted or not, looping or not.
- * `enablejsapi` lets the audience window drive it (play/pause/seek) and read its
- * position back over postMessage — see YouTubeBackground.
+ * `enablejsapi` still lets the audience window start and stop it and read its
+ * position back over postMessage — see YouTubeBackground — but seeking and
+ * volume belong to YouTube's own controls now.
  */
 export function youtubeEmbedUrl(id: string, opts: { mute: boolean; loop: boolean }): string {
   const p = new URLSearchParams({
     autoplay: '1',
-    controls: '0',
-    disablekb: '1',
+    // YouTube's own bar, because YouTube is better at driving YouTube than a
+    // seek slider talking to it over postMessage: it knows the buffered ranges,
+    // it scrubs against thumbnails, and its volume is the one the clip is
+    // actually mixed for. It hides itself when nothing has moved for a few
+    // seconds, so a projected clip is not sitting under a control bar.
+    controls: '1',
+    disablekb: '0',
     fs: '0',
     modestbranding: '1',
     rel: '0',
