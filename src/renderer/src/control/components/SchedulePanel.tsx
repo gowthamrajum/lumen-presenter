@@ -439,26 +439,27 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
                 <Icon name={it.sound ? 'sound' : 'sound-off'} />
               </button>
             )}
+            {/* Always visible, unlike the move/remove group, which fades in on
+                hover. Those are things you do to a row you are already pointing
+                at; this is a thing you go LOOKING for — minutes, caption, time
+                zone — and something you have to hover to discover is the same
+                as something that is not there. Which is how it shipped. */}
+            {timerSlideOf(it) && (
+              <button
+                className="sched-timer-btn"
+                title={it.slides[0]?.kind === 'clock' ? 'Clock settings' : 'Countdown settings'}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const id = timerSlideOf(it)
+                  if (id) openTimerConfig(id)
+                }}
+              >
+                <Icon name="timer" />
+              </button>
+            )}
             <BroadcastToggle item={it} />
             <span className="sched-count">{it.slides.length}</span>
             <div className="sched-actions">
-              {/* A clock or countdown is the one item whose settings are not on
-                  the slide's face — minutes, caption, time zone. They were only
-                  reachable by opening the item and finding the slide's gear,
-                  which is a long way to go for the thing you set every week. */}
-              {timerSlideOf(it) && (
-                <button
-                  className="item-btn"
-                  title={it.slides[0]?.kind === 'clock' ? 'Clock settings' : 'Countdown settings'}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    const id = timerSlideOf(it)
-                    if (id) openTimerConfig(id)
-                  }}
-                >
-                  <Icon name="timer" />
-                </button>
-              )}
               <button
                 className="item-btn"
                 title="Move up"

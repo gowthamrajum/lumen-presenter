@@ -894,6 +894,18 @@ select,
   color: var(--accent);
   opacity: 1;
 }
+/* The clock/countdown settings button. Sits with the sound and broadcast
+   toggles rather than the hover-only actions, because it is discovered by
+   looking rather than reached by pointing. */
+.sched-timer-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--muted, rgba(0, 0, 0, 0.45));
+}
+.sched-timer-btn:hover { background: rgba(127, 127, 127, 0.16); color: inherit; }
+
 .sched-actions {
   flex: 0 0 auto;
   display: flex;
