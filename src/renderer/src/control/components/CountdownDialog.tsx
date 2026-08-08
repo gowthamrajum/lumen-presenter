@@ -18,7 +18,16 @@ export function CountdownDialog(): JSX.Element | null {
   const slide = timerSlideId
     ? items.flatMap((it) => it.slides).find((sl) => sl.id === timerSlideId) ?? null
     : null
-  const isClock = slide?.kind === 'clock'
+  /**
+   * Which of the two this card is, held here rather than read from the slide.
+   *
+   * It is a choice being made in the dialog — pick Countdown, type the minutes,
+   * then Save — so the fields have to follow the choice before anything is
+   * written. Reading the slide would mean the minutes field appearing only
+   * after saving a change nobody could see the point of yet.
+   */
+  const [mode, setMode] = useState<'clock' | 'countdown'>('clock')
+  const isClock = mode === 'clock'
 
   const [minutes, setMinutes] = useState(5)
   const [message, setMessage] = useState('')
@@ -29,6 +38,7 @@ export function CountdownDialog(): JSX.Element | null {
   // Seed the fields from the slide each time the dialog opens on a new slide.
   useEffect(() => {
     if (!slide) return
+    setMode(slide.kind === 'clock' ? 'clock' : 'countdown')
     setMinutes(slide.countdownMinutes ?? 5)
     setMessage(slide.message ?? '')
     setSeconds(!!slide.clockSeconds)
@@ -40,6 +50,7 @@ export function CountdownDialog(): JSX.Element | null {
   const save = (): void => {
     if (!slide) return
     setTimer(slide.id, {
+      kind: mode,
       minutes: isClock ? undefined : minutes,
       message,
       ...(isClock ? { seconds, timeZone } : {})
@@ -67,12 +78,31 @@ export function CountdownDialog(): JSX.Element | null {
     <div className="modal-backdrop" onClick={close}>
       <div className="modal confirm" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>{isClock ? 'Clock settings' : 'Pre-service countdown'}</h2>
+          <h2>{isClock ? 'Clock settings' : 'Countdown settings'}</h2>
           <button className="modal-close" onClick={close} title="Close">
             ×
           </button>
         </div>
         <div className="modal-body timer-config">
+          {/* The same card in two moods. Switching here rather than deleting the
+              item and building the other kind, which would lose its place in the
+              order and its broadcast settings with it. */}
+          <div className="timer-mode" role="group" aria-label="What this card shows">
+            {([
+              ['clock', 'Clock'],
+              ['countdown', 'Countdown']
+            ] as const).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                className={mode === k ? 'is-on' : ''}
+                aria-pressed={mode === k}
+                onClick={() => setMode(k)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {!isClock && (
             <label className="timer-field">
               <span>Minutes</span>
@@ -103,14 +133,15 @@ export function CountdownDialog(): JSX.Element | null {
             </>
           )}
           <label className="timer-field">
-            <span>Message {isClock ? '' : '(shown above the count)'}</span>
+            <span>Heading</span>
             <input
               type="text"
-              placeholder={isClock ? 'Optional caption' : 'e.g. Service begins soon'}
+              placeholder={isClock ? 'e.g. Welcome' : 'e.g. Service begins soon'}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
           </label>
+          <p className="timer-hint">Shown above {isClock ? 'the time' : 'the count'}. Leave it empty for none.</p>
           {!isClock && (
             <p className="timer-hint">Saving restarts the countdown from {minutes}:00.</p>
           )}

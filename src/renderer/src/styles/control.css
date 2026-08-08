@@ -2137,6 +2137,30 @@ select:focus {
 .timer-config {
   gap: 14px;
 }
+/* Clock or Countdown — a two-way switch at the top of the dialog, so the fields
+   below it are visibly the consequence of the choice rather than a fixed form. */
+.timer-mode {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.12);
+}
+.timer-mode button {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted, rgba(0, 0, 0, 0.55));
+}
+.timer-mode button.is-on {
+  background: var(--panel, #fff);
+  color: inherit;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+}
+
 .timer-field {
   display: flex;
   flex-direction: column;
