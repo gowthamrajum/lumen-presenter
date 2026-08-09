@@ -894,6 +894,23 @@ select,
   color: var(--accent);
   opacity: 1;
 }
+/* Media ready / not ready, on the Media section's row. A letter rather than a
+   dot: colour alone is the one thing a red/green pair cannot say to everybody,
+   and "M" still reads when the colour does not. */
+.sched-media-flag {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+.sched-media-flag.has { background: rgba(22, 163, 74, 0.16); color: #15803d; }
+.sched-media-flag.none { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }
+
 /* The clock/countdown settings button. Sits with the sound and broadcast
    toggles rather than the hover-only actions, because it is discovered by
    looking rather than reached by pointing. */

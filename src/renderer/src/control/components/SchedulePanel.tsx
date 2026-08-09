@@ -47,6 +47,10 @@ function sinceText(iso: string): string {
  * says 'countdown' for both, and the dialog is opened on a SLIDE, so this is
  * what the row's gear needs to hand it.
  */
+/** The Media section — the container the Service Builder's clips are filed into. */
+const isMediaSection = (it: { title: string; kind?: string }): boolean =>
+  /^media$/i.test(it.title.trim()) && it.kind === 'media'
+
 function timerSlideOf(it: { slides: { id: string; kind?: string }[] }): string | null {
   const sl = it.slides.find((x) => x.kind === 'clock' || x.kind === 'countdown')
   return sl ? sl.id : null
@@ -387,6 +391,25 @@ export function SchedulePanel({ onBrowse }: { onBrowse: () => void }): JSX.Eleme
             <span className="sched-title" title={it.title}>
               {it.title}
             </span>
+            {/* Whether there is anything to play, answerable from across the
+                room. The Media section is empty far more often than not — it is
+                empty by default and only a published service fills it — so its
+                row looks identical whether Sunday has a clip or not, and the
+                only way to find out was to open it. Green means there is
+                something; red means the section is sitting there empty. */}
+            {isMediaSection(it) && (
+              <span
+                className={`sched-media-flag ${it.slides.length ? 'has' : 'none'}`}
+                title={
+                  it.slides.length
+                    ? `${it.slides.length} clip${it.slides.length === 1 ? '' : 's'} ready to play`
+                    : 'Nothing in the media section'
+                }
+                aria-label={it.slides.length ? 'Media ready' : 'No media'}
+              >
+                M
+              </span>
+            )}
             {it.slides.some(
               (sl) =>
                 sl.background?.type === 'video' ||
