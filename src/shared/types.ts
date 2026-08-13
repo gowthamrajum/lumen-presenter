@@ -161,20 +161,6 @@ export interface SlideContent {
    */
   broadcastUsers?: boolean
   broadcastStream?: boolean
-  /**
-   * How long the OBS lower third keeps showing this slide, in seconds.
-   *
-   * For a verse quoted mid-sermon. The room and the church's phones hold it
-   * until the operator moves on — they are reading it. The stream is a strip
-   * across a camera pointed at somebody still preaching, and a reference that
-   * sat there for the next ten minutes stopped describing anything. It goes by
-   * itself and the shot comes back.
-   *
-   * Read only by the overlay, which is where the timing belongs: nothing has to
-   * be re-published, and no other channel is affected. Absent means "stay",
-   * which is every other slide.
-   */
-  streamHold?: number
   /** optional per-slide background overriding the global background */
   background?: Background
   /** freely-positioned composed layout (from the Slide Composer / songs to Canvas);

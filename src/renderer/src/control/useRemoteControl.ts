@@ -8,12 +8,15 @@ import { useStore } from '../store/useStore'
  * identical to switching Broadcast off.
  */
 /**
- * Seconds a quoted verse stays on the OBS lower third.
+ * The slides the last `verse` command put up.
  *
- * Long enough to read a verse aloud and let a viewer take it in; short enough
- * that the shot is not still carrying it when the preacher has moved on.
+ * Kept so `verseoff` can find them again. One reference can be several verses
+ * and therefore several slides, and taking "the verse" off the stream means all
+ * of the ones that went up together — the operator quoted a passage, not a
+ * slide. A module-level ref rather than state: nothing renders from it, and it
+ * must survive between two commands arriving from a phone.
  */
-const VERSE_STREAM_HOLD_S = 30
+let lastVerseSlideIds: string[] = []
 
 export function useRemoteControl(): void {
   useEffect(() => {
@@ -75,12 +78,7 @@ export function useRemoteControl(): void {
               // On the air even though the sermon card is not: this is the one
               // thing a viewer at home most needs from the sermon.
               broadcastUsers: true,
-              broadcastStream: true,
-              // …and comes off the stream by itself. The room reads it until the
-              // operator moves on; the lower third is over a camera pointed at
-              // somebody still preaching, so it says its piece and gets out of
-              // the shot.
-              streamHold: VERSE_STREAM_HOLD_S
+              broadcastStream: true
             }))
           if (!built.length) break
           const live = s.items.find((it) => it.slides.some((sl) => sl.id === s.liveId))
@@ -88,6 +86,28 @@ export function useRemoteControl(): void {
           // goLive takes the FIRST of them: a passage is read from its opening
           // verse and Next walks the rest.
           s.appendSlides(live.id, built, true)
+          // Remembered as one group, so "take it off the stream" takes off the
+          // passage the operator quoted rather than whichever slide is showing.
+          lastVerseSlideIds = built.map((sl) => sl.id)
+          break
+        }
+        case 'verseoff': {
+          /**
+           * The operator taking the last quote off the lower third.
+           *
+           * The room and the church's phones keep it — those people are reading
+           * it. This is the strip over the camera, and the moment it stops
+           * being what the preacher is on, it is covering the shot with an old
+           * reference. Only the operator knows when that moment is, which is
+           * why this is a button and not a timer.
+           *
+           * Every slide of the last quote, not the live one: a passage of four
+           * verses is four slides and half of it left on the stream is worse
+           * than all of it.
+           */
+          if (!lastVerseSlideIds.length) break
+          s.setSlideBroadcast(lastVerseSlideIds, { stream: false })
+          lastVerseSlideIds = []
           break
         }
         case 'goto': {
