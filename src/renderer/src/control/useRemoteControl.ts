@@ -7,6 +7,14 @@ import { useStore } from '../store/useStore'
  * remote "next" is identical to pressing Next here, and a remote "end" is
  * identical to switching Broadcast off.
  */
+/**
+ * Seconds a quoted verse stays on the OBS lower third.
+ *
+ * Long enough to read a verse aloud and let a viewer take it in; short enough
+ * that the shot is not still carrying it when the preacher has moved on.
+ */
+const VERSE_STREAM_HOLD_S = 30
+
 export function useRemoteControl(): void {
   useEffect(() => {
     return window.lumen.onRemoteCommand(({ cmd, arg }) => {
@@ -45,17 +53,8 @@ export function useRemoteControl(): void {
           // move on. They are standing at the back watching the preacher, and a
           // countdown would take it down mid-sentence.
           const p = arg as
-            | {
-                label?: string
-                lines?: unknown
-                slides?: { label?: string; lines?: unknown }[]
-                /** false = keep this verse off the OBS lower third */
-                stream?: boolean
-              }
+            | { label?: string; lines?: unknown; slides?: { label?: string; lines?: unknown }[] }
             | null
-          // Absent means yes, so a remote that predates the choice keeps the
-          // behaviour it has always had.
-          const onStream = p?.stream !== false
           // ONE SLIDE PER VERSE, exactly as Add verse builds them here — a whole
           // passage on a single slide is unreadable from the back of the room.
           // The flat `lines` is the fallback for a remote too old to send the
@@ -76,11 +75,12 @@ export function useRemoteControl(): void {
               // On the air even though the sermon card is not: this is the one
               // thing a viewer at home most needs from the sermon.
               broadcastUsers: true,
-              // …except when the operator says otherwise. A verse already on the
-              // preacher's own slide, or one being read rather than shown, is a
-              // lower third covering the camera with something the room can
-              // already see.
-              broadcastStream: onStream
+              broadcastStream: true,
+              // …and comes off the stream by itself. The room reads it until the
+              // operator moves on; the lower third is over a camera pointed at
+              // somebody still preaching, so it says its piece and gets out of
+              // the shot.
+              streamHold: VERSE_STREAM_HOLD_S
             }))
           if (!built.length) break
           const live = s.items.find((it) => it.slides.some((sl) => sl.id === s.liveId))

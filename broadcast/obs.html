@@ -806,7 +806,46 @@
     }).catch(function () {});
   }
 
+  /**
+   * A slide that takes itself off the lower third after a while.
+   *
+   * Only OBS, and only slides that ask for it — a verse quoted mid-sermon. The
+   * room and the church's phones keep it until the operator moves on, because
+   * they are reading it. This strip is over a camera pointed at somebody still
+   * preaching, and a reference that stayed for the next ten minutes stopped
+   * describing anything that was happening.
+   *
+   * Keyed on the slide's id, so the same verse re-published (a theme tweak, a
+   * reconnect, the poll) does not restart the clock — and a NEW slide clears
+   * it, because the hold is about this verse and not about the strip.
+   */
+  var holdTimer = null;
+  var heldId = null;
+  var holdExpired = false;
+
+  function armHold(slide) {
+    var id = slide && slide.id;
+    var secs = slide && Number(slide.streamHold);
+    if (id !== heldId) {
+      heldId = id;
+      holdExpired = false;
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      if (mode === 'obs' && secs > 0) {
+        holdTimer = setTimeout(function () {
+          holdTimer = null;
+          holdExpired = true;
+          // Re-render from what is still live, which now hides it.
+          if (liveSlide) render(lastState);
+        }, secs * 1000);
+      }
+    }
+    return holdExpired;
+  }
+
+  var lastState = null;
+
   function render(state) {
+    lastState = state;
     // Order of service is independent of the live slide — update it first, before
     // any of the slide-state early returns below.
     if (mode === 'audience') { lastOrder = state && state.order; renderOrder(lastOrder); }
@@ -842,6 +881,14 @@
     // whenever a countdown is on air, unlike the local audience output).
     if (isTimer(slide)) { renderTimer(slide, scale); startTick(); return; }
     stopTick();
+
+    // Its time is up: the strip goes, the shot is clear, and nothing else about
+    // the broadcast changes.
+    if (mode === 'obs' && armHold(slide)) {
+      stage.classList.remove('show');
+      setLiveShowing(false);
+      return;
+    }
 
     if (mode === 'audience' && slide.composed && slide.composed.length) {
       renderComposed(slide.composed);
