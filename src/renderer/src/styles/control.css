@@ -309,6 +309,12 @@ body,
   flex: 1;
   min-width: 0;
 }
+.bc-remote-note {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted, rgba(0, 0, 0, 0.5));
+}
 .bc-remote-pin {
   display: flex;
   align-items: center;

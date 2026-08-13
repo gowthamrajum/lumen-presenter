@@ -238,8 +238,13 @@ export function BroadcastMenu(): JSX.Element {
                   Open
                 </button>
               </div>
+              {/* Two PINs, and which one somebody is given is the decision.
+                  The operator PIN drives the service. The master PIN drives it
+                  AND takes the seat from whoever is already holding it — for
+                  the person responsible for the service, who should not have to
+                  find a volunteer's phone to take over. */}
               <div className="bc-remote-pin">
-                Control PIN: <b>{cfg.controlPin || '—'}</b>
+                Operator PIN: <b>{cfg.controlPin || '—'}</b>
                 <button
                   className="btn tiny"
                   title="Generate a new PIN — the old one stops working immediately"
@@ -248,6 +253,19 @@ export function BroadcastMenu(): JSX.Element {
                   New PIN
                 </button>
               </div>
+              <div className="bc-remote-pin">
+                Master PIN: <b>{cfg.masterPin || '—'}</b>
+                <button
+                  className="btn tiny"
+                  title="Generate a new master PIN — the old one stops working immediately"
+                  onClick={() => void patch({ masterPin: '' })}
+                >
+                  New PIN
+                </button>
+              </div>
+              <p className="bc-remote-note">
+                The master PIN takes over from whoever is operating; they are moved to the viewer.
+              </p>
             </div>
 
             <button className="bc-adv-toggle with-ico" onClick={() => setAdv((v) => !v)}>

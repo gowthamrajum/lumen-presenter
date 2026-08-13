@@ -107,6 +107,10 @@ export async function initBroadcast(onStatus: (s: BroadcastStatus) => void): Pro
     await persist()
   }
   // …and a stable phone-remote control PIN.
+  if (!config.masterPin) {
+    config.masterPin = pin()
+    await persist()
+  }
   if (!config.controlPin) {
     config.controlPin = pin()
     await persist()
@@ -128,6 +132,7 @@ export async function setBroadcastConfig(patch: Partial<BroadcastConfig>): Promi
   if (!config.room) config.room = slug()
   // A blank PIN means "regenerate" (the renderer's Regenerate button sends '').
   if (!config.controlPin) config.controlPin = pin()
+  if (!config.masterPin) config.masterPin = pin()
   await persist()
   emit()
   syncControl()
@@ -275,7 +280,10 @@ function controlStreamUrl(): string {
   const base = config.base.replace(/\/$/, '')
   const room = encodeURIComponent(config.room || 'live')
   const p = encodeURIComponent(config.controlPin || '')
-  return `${base}/broadcast/${room}/control/stream?pin=${p}`
+  // Both PINs are registered by the same connection: the machine running the
+  // service is the one that decides who may drive and who may take over.
+  const m = encodeURIComponent(config.masterPin || '')
+  return `${base}/broadcast/${room}/control/stream?pin=${p}${m ? `&masterPin=${m}` : ''}`
 }
 
 /** Start/stop/restart the listener to match the current broadcast config. */

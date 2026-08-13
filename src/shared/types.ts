@@ -650,6 +650,15 @@ export interface BroadcastConfig {
    *  (auto-generated once; regenerate to revoke). Paired with the unguessable
    *  room slug. */
   controlPin?: string
+  /**
+   * The senior PIN. Claims the operator seat even when somebody is holding it.
+   *
+   * Two levels because there are two kinds of person driving: a volunteer given
+   * the ordinary PIN for the morning, and whoever is responsible for the
+   * service. The second needs to be able to take over without finding the first
+   * one's phone — which by then is usually in a pocket.
+   */
+  masterPin?: string
   /** styling for the OBS lower-third (size/position/colors); applied live. */
   obsStyle?: ObsStyle
 }
