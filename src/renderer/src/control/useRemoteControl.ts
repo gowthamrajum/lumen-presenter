@@ -45,8 +45,17 @@ export function useRemoteControl(): void {
           // move on. They are standing at the back watching the preacher, and a
           // countdown would take it down mid-sentence.
           const p = arg as
-            | { label?: string; lines?: unknown; slides?: { label?: string; lines?: unknown }[] }
+            | {
+                label?: string
+                lines?: unknown
+                slides?: { label?: string; lines?: unknown }[]
+                /** false = keep this verse off the OBS lower third */
+                stream?: boolean
+              }
             | null
+          // Absent means yes, so a remote that predates the choice keeps the
+          // behaviour it has always had.
+          const onStream = p?.stream !== false
           // ONE SLIDE PER VERSE, exactly as Add verse builds them here — a whole
           // passage on a single slide is unreadable from the back of the room.
           // The flat `lines` is the fallback for a remote too old to send the
@@ -67,7 +76,11 @@ export function useRemoteControl(): void {
               // On the air even though the sermon card is not: this is the one
               // thing a viewer at home most needs from the sermon.
               broadcastUsers: true,
-              broadcastStream: true
+              // …except when the operator says otherwise. A verse already on the
+              // preacher's own slide, or one being read rather than shown, is a
+              // lower third covering the camera with something the room can
+              // already see.
+              broadcastStream: onStream
             }))
           if (!built.length) break
           const live = s.items.find((it) => it.slides.some((sl) => sl.id === s.liveId))
