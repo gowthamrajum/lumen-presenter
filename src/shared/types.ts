@@ -254,8 +254,19 @@ export interface LiveState {
   showLogo: boolean
   theme: ThemeStyle
   /** Lyric-free outline of the whole service for the audience app's "Order" tab:
-   *  one entry per schedule item, with the one owning the live slide flagged. */
-  order?: Array<{ id: string; title: string; kind: ItemKind; live: boolean }>
+   *  one entry per schedule item, with the one owning the live slide flagged.
+   *  `count` is how many slides the item plays and `nth` how far into the live
+   *  one we are, so the phone operator's drawer can say "3/10" — deciding
+   *  whether to jump needs the size of what you are jumping into. Counts, not
+   *  words: still lyric-free. */
+  order?: Array<{
+    id: string
+    title: string
+    kind: ItemKind
+    live: boolean
+    count?: number
+    nth?: number
+  }>
   /** The service's name, so the broadcast directory can label a session by the
    *  service rather than by whatever slide happens to be live. */
   name?: string
