@@ -269,7 +269,24 @@ async function flush(): Promise<void> {
 let onCommand: (cmd: string, arg: unknown) => void = () => {}
 let controlOn = false
 let controlUrlActive = ''
-let controlAbort: AbortController | null = null
+/**
+ * Which generation of the listener is the live one, and every connection
+ * currently open.
+ *
+ * A restart used to leave the old loop running. stopControl set `controlOn`
+ * false and aborted, but syncControl set it straight back to true on the same
+ * tick — so by the time the aborted read rejected, the loop's `if (!controlOn)
+ * break` saw true, slept, and reconnected. Nothing tracked the old connection
+ * afterwards, so it stayed subscribed for the rest of the session, and every
+ * config change added another. Three listeners is a verse added three times.
+ *
+ * The generation makes "you have been replaced" something a loop can see even
+ * after `controlOn` has been set back on, and the set makes sure the abort
+ * reaches the connection each loop is actually parked on rather than only the
+ * newest.
+ */
+let controlGen = 0
+const controlAborts = new Set<AbortController>()
 
 export function initControlListener(cb: (cmd: string, arg: unknown) => void): void {
   onCommand = cb
@@ -295,28 +312,36 @@ function syncControl(): void {
   if (want) {
     controlOn = true
     controlUrlActive = url
-    void controlLoop()
+    void controlLoop(controlGen)
   }
 }
 
 function stopControl(): void {
   controlOn = false
   controlUrlActive = ''
-  try {
-    controlAbort?.abort()
-  } catch {
-    /* ignore */
+  // Retire every loop, not just the newest: the module only ever held the last
+  // controller, so an earlier one was left reading with nothing able to stop it.
+  controlGen++
+  for (const a of controlAborts) {
+    try {
+      a.abort()
+    } catch {
+      /* ignore */
+    }
   }
-  controlAbort = null
+  controlAborts.clear()
 }
 
-async function controlLoop(): Promise<void> {
+async function controlLoop(gen: number): Promise<void> {
   let backoff = 1000
-  while (controlOn) {
+  // `gen` as well as controlOn: a restart flips controlOn back on immediately,
+  // so it cannot tell a loop that it is the one being replaced.
+  while (controlOn && gen === controlGen) {
+    const abort = new AbortController()
+    controlAborts.add(abort)
     try {
-      controlAbort = new AbortController()
       const res = await fetch(controlUrlActive, {
-        signal: controlAbort.signal,
+        signal: abort.signal,
         headers: { Accept: 'text/event-stream' }
       })
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
@@ -324,7 +349,7 @@ async function controlLoop(): Promise<void> {
       const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
-      while (controlOn) {
+      while (controlOn && gen === controlGen) {
         const { value, done } = await reader.read()
         if (done) break
         buf += dec.decode(value, { stream: true })
@@ -350,8 +375,10 @@ async function controlLoop(): Promise<void> {
       }
     } catch {
       /* network dropped or aborted — fall through to backoff + reconnect */
+    } finally {
+      controlAborts.delete(abort)
     }
-    if (!controlOn) break
+    if (!controlOn || gen !== controlGen) break
     await new Promise((r) => setTimeout(r, backoff))
     backoff = Math.min(backoff * 2, 15000)
   }
