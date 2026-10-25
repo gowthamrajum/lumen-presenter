@@ -216,12 +216,43 @@
   html.mode-obs.scrim-on #scrim { background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0) 46%); }
   html.mode-obs.scrim-on.pos-top #scrim { background: linear-gradient(to bottom, rgba(0,0,0,.62), rgba(0,0,0,0) 46%); }
   html.mode-obs.scrim-on.pos-center #scrim { background: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.28), rgba(0,0,0,.5)); }
+  /* A clean, solid black outline — not a shadow. A ring of sharp, fully opaque
+     copies of the text around it (16 directions, plus an inner 8 to close the
+     gaps on tight curves), sized in em so the outline stays in proportion at any
+     text size. A ring of text-shadows rather than -webkit-text-stroke: the
+     stroke straddles the glyph edge and eats into Telugu's thin strokes unless
+     paint-order is supported, and OBS's built-in browser is often too old for
+     that. This draws outside the letters everywhere. */
   html.mode-obs .lyrics, html.mode-obs .caption {
+    --ol: 0.055em;
+    --outline-color: #000;
     text-shadow:
-      0 2px 2px rgba(0,0,0,.65), 0 0 6px rgba(0,0,0,.55),
-      2px 0 0 rgba(0,0,0,.4), -2px 0 0 rgba(0,0,0,.4),
-      0 2px 0 rgba(0,0,0,.4), 0 -2px 0 rgba(0,0,0,.4);
+      calc(var(--ol) * 1.0) 0 0 var(--outline-color),
+      calc(var(--ol) * 0.924) calc(var(--ol) * 0.383) 0 var(--outline-color),
+      calc(var(--ol) * 0.707) calc(var(--ol) * 0.707) 0 var(--outline-color),
+      calc(var(--ol) * 0.383) calc(var(--ol) * 0.924) 0 var(--outline-color),
+      0 calc(var(--ol) * 1.0) 0 var(--outline-color),
+      calc(var(--ol) * -0.383) calc(var(--ol) * 0.924) 0 var(--outline-color),
+      calc(var(--ol) * -0.707) calc(var(--ol) * 0.707) 0 var(--outline-color),
+      calc(var(--ol) * -0.924) calc(var(--ol) * 0.383) 0 var(--outline-color),
+      calc(var(--ol) * -1.0) 0 0 var(--outline-color),
+      calc(var(--ol) * -0.924) calc(var(--ol) * -0.383) 0 var(--outline-color),
+      calc(var(--ol) * -0.707) calc(var(--ol) * -0.707) 0 var(--outline-color),
+      calc(var(--ol) * -0.383) calc(var(--ol) * -0.924) 0 var(--outline-color),
+      0 calc(var(--ol) * -1.0) 0 var(--outline-color),
+      calc(var(--ol) * 0.383) calc(var(--ol) * -0.924) 0 var(--outline-color),
+      calc(var(--ol) * 0.707) calc(var(--ol) * -0.707) 0 var(--outline-color),
+      calc(var(--ol) * 0.924) calc(var(--ol) * -0.383) 0 var(--outline-color),
+      calc(var(--ol) * 0.55) 0 0 var(--outline-color),
+      calc(var(--ol) * 0.389) calc(var(--ol) * 0.389) 0 var(--outline-color),
+      0 calc(var(--ol) * 0.55) 0 var(--outline-color),
+      calc(var(--ol) * -0.389) calc(var(--ol) * 0.389) 0 var(--outline-color),
+      calc(var(--ol) * -0.55) 0 0 var(--outline-color),
+      calc(var(--ol) * -0.389) calc(var(--ol) * -0.389) 0 var(--outline-color),
+      0 calc(var(--ol) * -0.55) 0 var(--outline-color),
+      calc(var(--ol) * 0.389) calc(var(--ol) * -0.389) 0 var(--outline-color);
   }
+  html.mode-obs .caption { --ol: 0.07em; }
 
   /* ============ Audience mode: full background, centered ============ */
   html.mode-audience #bg { display: block; }
