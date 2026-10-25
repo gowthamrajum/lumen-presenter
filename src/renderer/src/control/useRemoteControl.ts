@@ -111,10 +111,15 @@ export function useRemoteControl(): void {
           break
         }
         case 'goto': {
-          // arg is an index into the service outline (order) the remote sees.
-          const i = typeof arg === 'number' ? arg : -1
-          const first = i >= 0 ? s.items[i]?.slides[0]?.id : undefined
-          if (first) s.goLive(first)
+          // arg is an index into the service outline (order) the remote sees —
+          // or { item, slide } to land on a slide inside it, which is how
+          // "Back to outline" reaches the sermon's outline rather than its card.
+          const at = arg as { item?: unknown; slide?: unknown } | number | null
+          const i = typeof at === 'number' ? at : typeof at?.item === 'number' ? at.item : -1
+          const j = typeof at === 'object' && typeof at?.slide === 'number' ? at.slide : 0
+          const item = i >= 0 ? s.items[i] : undefined
+          const target = (item?.slides[j] ?? item?.slides[0])?.id
+          if (target) s.goLive(target)
           break
         }
         default:

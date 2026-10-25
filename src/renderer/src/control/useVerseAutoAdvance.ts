@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import { readingHoldMs, DEFAULT_HOLD_MS } from './readingTime'
+import { isOutline } from './outline'
 
 /** What a slide with no words to measure falls back to. Every verse is timed
  *  from its own text instead — see readingTime. */
@@ -19,7 +20,8 @@ export const VERSE_EXTEND_MS = 30_000
  *
  * A verse quoted DURING the sermon (a slide tagged `autoAdvance`) circles inside
  * the sermon instead: the next verse of the passage, and from the last one back
- * to the sermon card. It never leaves the section, because the preacher hasn't.
+ * to the sermon's outline — or the sermon card, when there is no outline. It
+ * never leaves the section, because the preacher hasn't.
  *
  * The clock only runs on the slide that is actually live — it's armed when a
  * slide goes live and thrown away when it stops being live, so a passage sitting
@@ -68,10 +70,11 @@ export function useVerseAutoAdvance(): void {
       const slide = item?.slides.find((sl) => sl.id === s.liveId)
       if (item && slide?.autoAdvance) {
         // Inside the sermon: the next verse of this passage, and from the last
-        // one back to the top of the section — the sermon card — rather than
-        // walking on into whatever comes after the sermon.
+        // one back to the outline (the preacher's points), or the top of the
+        // section — the sermon card — when there is none, rather than walking
+        // on into whatever comes after the sermon.
         const at = item.slides.findIndex((sl) => sl.id === slide.id)
-        const next = item.slides[at + 1] ?? item.slides[0]
+        const next = item.slides[at + 1] ?? item.slides.find(isOutline) ?? item.slides[0]
         if (next.id !== slide.id) s.goLive(next.id)
         return
       }

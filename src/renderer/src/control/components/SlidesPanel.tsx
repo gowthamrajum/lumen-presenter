@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { SlideThumb } from './SlideThumb'
 import { SermonVerseDialog } from './SermonVerseDialog'
+import { SermonOutlineDialog } from './SermonOutlineDialog'
 import { MediaTransport } from './MediaTransport'
 import { Icon } from '../../shared/Icon'
 
@@ -18,6 +19,7 @@ export function SlidesPanel(): JSX.Element {
   const [urlOpen, setUrlOpen] = useState(false)
   const [urlVal, setUrlVal] = useState('')
   const [verseOpen, setVerseOpen] = useState(false)
+  const [outlineOpen, setOutlineOpen] = useState(false)
   // drag-and-drop reorder within this item's slides (indices into item.slides)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
@@ -40,6 +42,7 @@ export function SlidesPanel(): JSX.Element {
   // a reference and it has to be on the screen before they have finished saying
   // it. Anywhere in this panel is the target, so it doesn't have to be aimed at.
   const isSermon = !!item && /sermon|వాక్యోపదేశం/i.test(item.title)
+  const hasOutline = !!item?.slides.some((sl) => sl.outline)
 
   const submitUrl = (): void => {
     if (!item) return
@@ -81,6 +84,9 @@ export function SlidesPanel(): JSX.Element {
     >
       {verseOpen && item && (
         <SermonVerseDialog itemId={item.id} itemTitle={item.title} onClose={() => setVerseOpen(false)} />
+      )}
+      {outlineOpen && item && (
+        <SermonOutlineDialog itemId={item.id} itemTitle={item.title} onClose={() => setOutlineOpen(false)} />
       )}
       <div className="slides-head">
         <span className="slides-title">{item.title}</span>
@@ -149,6 +155,17 @@ export function SlidesPanel(): JSX.Element {
             <Icon name="plus" />
             <span className="verse-add-title">Add a verse</span>
             <span className="verse-add-sub">Type a reference, press Enter</span>
+          </button>
+        )}
+        {/* The preacher's points, as one slide after the card. A second press
+            edits it — a sermon has one outline. */}
+        {isSermon && (
+          <button className="verse-add-tile" onClick={() => setOutlineOpen(true)}>
+            <Icon name={hasOutline ? 'pencil' : 'plus'} />
+            <span className="verse-add-title">{hasOutline ? 'Edit outline' : 'Add outline'}</span>
+            <span className="verse-add-sub">
+              {hasOutline ? 'Change or remove the points' : 'The sermon’s points, one slide'}
+            </span>
           </button>
         )}
       </div>

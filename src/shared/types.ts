@@ -138,13 +138,29 @@ export interface SlideContent {
   /**
    * This slide moves on by itself after the verse hold, WITHIN its item: to the
    * next slide of the same item, or — from the last one — back to the item's
-   * first slide. That is how a verse read during the sermon returns the screen
-   * to the sermon card instead of walking on into the offerings.
+   * first slide (or its outline, when it has one). That is how a verse read
+   * during the sermon returns the screen to the sermon instead of walking on
+   * into the offerings.
    *
    * Item-level `autoAdvance` (a Bible passage added as its own section) is the
    * other rule: it reads straight through the service. See useVerseAutoAdvance.
    */
   autoAdvance?: boolean
+  /**
+   * This slide is the sermon's outline — the preacher's points, one per line,
+   * with the sermon's title as the caption. There is at most one per item and
+   * it sits straight after the sermon card. A verse quoted during the sermon
+   * returns here rather than to the card, because the outline is where the
+   * preacher is. See control/outline.ts.
+   */
+  outline?: boolean
+  /**
+   * The web service that put this slide here, when it was folded into an item
+   * the operator owns (a Service Builder outline lands inside the template's
+   * Sermon card). Lets re-pulling that service replace it without touching
+   * the item around it.
+   */
+  fromService?: number
   /** optional caption shown above a countdown/clock */
   message?: string
   /** small caption rendered at the bottom of the audience screen */
@@ -266,6 +282,9 @@ export interface LiveState {
     live: boolean
     count?: number
     nth?: number
+    /** 0-based position of the item's outline slide, when it has one — so the
+     *  phone operator can offer "Back to outline" and `goto` straight to it. */
+    outline?: number
   }>
   /** The service's name, so the broadcast directory can label a session by the
    *  service rather than by whatever slide happens to be live. */
@@ -355,7 +374,7 @@ export interface ItemSource {
   updatedAt: string
   /** the slot it was filed under, kept so a later version of the same service
    *  can be matched against it item for item */
-  slot?: 'worship' | 'offering' | 'communion' | 'media'
+  slot?: 'worship' | 'offering' | 'communion' | 'media' | 'sermon'
 }
 
 export interface ServiceItem {
@@ -389,10 +408,12 @@ export interface ServiceItem {
    * "worship" between the clock and Sunday School, "communion" after the Sermon
    * and before the Offerings card, "offering" against the Offerings card,
    * "media" just before the announcements.
+   * "sermon" is folded INTO the Sermon card rather than placed beside it — it
+   * carries the outline.
    * Written by the Service Builder, consumed and dropped by the importer, so it
    * never appears in a service Cantica itself saved.
    */
-  slot?: 'worship' | 'offering' | 'communion' | 'media'
+  slot?: 'worship' | 'offering' | 'communion' | 'media' | 'sermon'
 }
 
 /** A worship service / setlist: an ordered collection of items plus the look

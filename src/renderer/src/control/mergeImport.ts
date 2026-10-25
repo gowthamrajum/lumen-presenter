@@ -1,4 +1,5 @@
 import type { ItemSource, ServiceItem } from '@shared/types'
+import { isOutline, outlineIndex } from './outline'
 
 /** The cards a merge files things against, by the title they are built with. */
 const SUNDAY_SCHOOL = /sunday school/i
@@ -34,6 +35,9 @@ const MEDIA = /^media$|వీడియో/i
  * A song chosen for BOTH roles arrives as two items, one in each slot, and so
  * appears once in each place — which is what picking it twice meant.
  *
+ * The sermon outline is not an item of its own at all: it goes INSIDE the
+ * Sermon card, straight after it, replacing any outline already there.
+ *
  * Returns null when there's nothing to merge INTO — no anchor item, or an empty
  * schedule — so the caller can build the order first rather than quietly
  * dropping songs at the end.
@@ -55,8 +59,9 @@ export function mergeBySlot(
   // Anything not claimed by a named slot is worship — which is what an older
   // Service Builder's items, carrying no slot at all, have always meant.
   const media = incoming.filter((it) => it.slot === 'media')
+  const sermon = incoming.filter((it) => it.slot === 'sermon')
   const worship = incoming.filter(
-    (it) => it.slot !== 'offering' && it.slot !== 'communion' && it.slot !== 'media'
+    (it) => it.slot !== 'offering' && it.slot !== 'communion' && it.slot !== 'media' && it.slot !== 'sermon'
   )
 
   /**
@@ -127,6 +132,32 @@ export function mergeBySlot(
     }
   }
 
+  // The outline, into the Sermon card. Inserting slides moves no item, so where
+  // this happens among the others doesn't matter.
+  const outline = sermon.flatMap((it) => it.slides).find(isOutline)
+  if (outline) {
+    const i = find(SERMON)
+    if (i >= 0) {
+      const host = out[i]
+      const at = outlineIndex(host.slides)
+      // Stamped with the service rather than the card being stamped: the card
+      // is the operator's, and a re-pull deletes whatever carries the service.
+      // An outline already there keeps its id, so one on the screen stays up.
+      const placed = {
+        ...outline,
+        ...(at >= 0 ? { id: host.slides[at].id } : {}),
+        ...(source ? { fromService: source.serviceId } : {})
+      }
+      const slides = host.slides.slice()
+      if (at >= 0) slides[at] = placed
+      else slides.splice(Math.min(1, slides.length), 0, placed)
+      out[i] = { ...host, slides }
+    } else {
+      // No Sermon card to fold it into: it stands as its own item, at the end.
+      out.push(...sermon.map((it) => like(undefined, it)))
+    }
+  }
+
   // Then communion, between the Sermon and the Offerings card. Anchored on
   // Offerings rather than on the Sermon so it lands after the Table's own card
   // when the month's first Sunday put one there, and still after the Sermon
@@ -175,6 +206,18 @@ export function mergeBySlot(
  *  caller can build the order first instead of merging twice to find out. */
 export const canMerge = (items: ServiceItem[]): boolean =>
   items.some((it) => SUNDAY_SCHOOL.test(it.title) || SERMON.test(it.title) || OFFERINGS.test(it.title))
+
+/**
+ * Take out an outline a web service folded into one of the operator's own
+ * items, leaving the item. The other half of `withoutSource`, for the one thing
+ * a service puts inside an item rather than beside it.
+ */
+export const withoutOutlineFrom = (items: ServiceItem[], serviceId: number): ServiceItem[] =>
+  items.map((it) =>
+    it.slides.some((sl) => sl.fromService === serviceId)
+      ? { ...it, slides: it.slides.filter((sl) => sl.fromService !== serviceId) }
+      : it
+  )
 
 /** The items a given web service put into this order. */
 export const itemsFrom = (items: ServiceItem[], serviceId: number): ServiceItem[] =>
