@@ -5,6 +5,7 @@ import {
   DEFAULT_BACKGROUND,
   DEFAULT_OBS_STYLE,
   DEFAULT_THEME,
+  LEGACY_OBS_SIZE,
   type BroadcastConfig,
   type BroadcastStatus,
   type LiveState,
@@ -97,7 +98,15 @@ export async function initBroadcast(onStatus: (s: BroadcastStatus) => void): Pro
     const saved = JSON.parse(await readFile(configFile(), 'utf8'))
     config = { ...DEFAULT_CONFIG, ...saved, enabled: process.env.LUMEN_BROADCAST === '1' }
     // Backfill any OBS-style fields missing from an older saved config.
-    config.obsStyle = { ...DEFAULT_OBS_STYLE, ...(saved.obsStyle || {}) }
+    const obsStyle = { ...DEFAULT_OBS_STYLE, ...(saved.obsStyle || {}) }
+    config.obsStyle = obsStyle
+    // Still on the old default size: move it to the new one, once. A size the
+    // operator chose themselves is left alone, and so is everything after this.
+    if (config.obsStyleRev !== 2) {
+      if (obsStyle.size === LEGACY_OBS_SIZE) config.obsStyle = { ...obsStyle, size: DEFAULT_OBS_STYLE.size }
+      config.obsStyleRev = 2
+      await persist()
+    }
   } catch {
     config.enabled = process.env.LUMEN_BROADCAST === '1'
   }

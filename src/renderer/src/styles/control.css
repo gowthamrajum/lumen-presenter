@@ -305,6 +305,27 @@ body,
   display: flex;
   gap: 6px;
 }
+/* The OBS settings that keep the stream text sharp, under its link. */
+.bc-obs-howto {
+  margin-top: 4px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text);
+}
+.bc-obs-howto ol {
+  margin: 3px 0 0;
+  padding-left: 18px;
+}
+.bc-obs-howto li + li {
+  margin-top: 1px;
+}
+.bc-obs-howto b {
+  font-weight: 700;
+}
 .bc-url input {
   flex: 1;
   min-width: 0;

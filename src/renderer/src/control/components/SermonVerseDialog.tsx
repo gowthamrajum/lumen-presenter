@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Bible, referenceOf, compactVerses, type BibleVerse } from '@shared/bible'
+import { Bible, referenceOf, bothReference, compactVerses, type BibleVerse } from '@shared/bible'
 import { useStore } from '../../store/useStore'
 import { bilingualScriptureSlides, type PsalmLang } from '../slides'
 import { LangToggle } from './LangToggle'
@@ -65,7 +65,9 @@ export function SermonVerseDialog({
   const primary = lang === 'english' ? web : telugu
   const teOf = (v: BibleVerse): string => telugu?.verse(v.book, v.chapter, v.verse)?.text ?? ''
   const enOf = (v: BibleVerse): string => web?.verse(v.book, v.chapter, v.verse)?.text ?? ''
-  const refOf = (v: BibleVerse): string => primary?.reference(v) ?? referenceOf(v)
+  // In Both, the reference names the book in both languages too.
+  const refOf = (v: BibleVerse): string =>
+    lang === 'both' ? bothReference(v, telugu, web) : (primary?.reference(v) ?? referenceOf(v))
   const keyOf = (v: BibleVerse): string => referenceOf(v)
   const previewOf = (v: BibleVerse): string => {
     const te = teOf(v)

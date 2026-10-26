@@ -170,6 +170,18 @@ export function referenceOf(v: BibleVerse): string {
 }
 
 /**
+ * The reference for a verse shown in BOTH languages: the book named in both —
+ * "కీర్తనల గ్రంథము · Psalms 23:2". The congregation reads the Telugu; the
+ * English is there for whoever doesn't, and naming the book in only one of
+ * them left half the room without it. Matches what the phone remote sends.
+ */
+export function bothReference(v: BibleVerse, telugu: Bible | null, english: Bible | null): string {
+  const te = telugu?.displayName(v.book) ?? v.book
+  const en = english?.displayName(v.book) ?? v.book
+  return `${te === en ? en : `${te} · ${en}`} ${v.chapter}:${v.verse}`
+}
+
+/**
  * Collapse a set of verse numbers into a compact reference tail: consecutive runs
  * become ranges, gaps become commas — [13,14,15,16] → "13-16", [13,16] → "13,16",
  * [13,14,15,16,20] → "13-16,20". Used to label a multi-verse selection accurately

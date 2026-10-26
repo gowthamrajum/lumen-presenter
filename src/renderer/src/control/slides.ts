@@ -14,7 +14,8 @@ export type PsalmLang = 'both' | 'telugu' | 'english'
 export function psalmSlides(verses: PsalmVerse[], lang: PsalmLang = 'both'): SlideContent[] {
   const out = verses
     .map((v) => {
-      const ref = `Psalm ${v.chapter}:${v.verse}`
+      // The book named in the language(s) on the slide — both, when both are.
+      const ref = `${lang === 'telugu' ? 'కీర్తనల గ్రంథము' : lang === 'english' ? 'Psalm' : 'కీర్తనల గ్రంథము · Psalm'} ${v.chapter}:${v.verse}`
       const lines = (lang === 'telugu' ? [v.telugu] : lang === 'english' ? [v.english] : [v.telugu, v.english]).filter(
         (l) => l && l.trim()
       )

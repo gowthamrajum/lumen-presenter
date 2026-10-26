@@ -156,7 +156,9 @@
 .stage-caption {
   flex: 0 0 auto;
   text-align: center;
-  font-size: 3.2cqmin;
+  /* The reference under a verse. 4.6, not 3.2: with the book named in Telugu
+     and English it is twice as long, and it is what the room turns to. */
+  font-size: 4.6cqmin;
   letter-spacing: 0.04em;
   font-weight: 600;
   padding-top: 1.5%;

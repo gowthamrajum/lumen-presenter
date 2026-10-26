@@ -693,6 +693,8 @@ export interface BroadcastConfig {
   masterPin?: string
   /** styling for the OBS lower-third (size/position/colors); applied live. */
   obsStyle?: ObsStyle
+  /** 2 once the saved size has been moved off the pre-1080 default. */
+  obsStyleRev?: number
 }
 
 /** Live status of the broadcast publisher, pushed to the control window. */
@@ -720,8 +722,19 @@ export const DEFAULT_THEME: ThemeStyle = {
   // lineSpacing intentionally absent: the Go Live screen spaces itself.
 }
 
+/**
+ * The stream text size before the OBS browser source was set to 1920×1080.
+ *
+ * Every size here is a share of the frame's height. At OBS's 800×600 default,
+ * stretched 2.4× to fill the frame, the page was effectively 1440px tall — so
+ * the same share drew a third larger than it does on a true 1080 page. 6.9 on
+ * a 1080 page is what 5.2 looked like then; installs still on the old default
+ * are moved up once (see broadcast.ts).
+ */
+export const LEGACY_OBS_SIZE = 5.2
+
 export const DEFAULT_OBS_STYLE: ObsStyle = {
-  size: 5.2,
+  size: 6.9,
   position: 'bottom',
   textColor: '#ffffff',
   accentColor: '#ffd27f',

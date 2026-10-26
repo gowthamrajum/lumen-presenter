@@ -136,6 +136,29 @@ export function BroadcastMenu(): JSX.Element {
                   Open
                 </button>
               </div>
+              {/* The settings that make it sharp. The page draws real text, so it
+                  is only ever as crisp as the box OBS renders it in — and OBS's
+                  default box is 800×600, stretched to fill a 1080 frame. */}
+              <div className="bc-obs-howto">
+                <b>Set it up in OBS</b>
+                <ol>
+                  <li>
+                    Sources → <b>+</b> → <b>Browser</b>, paste the link above
+                  </li>
+                  <li>
+                    Width <b>1920</b>, Height <b>1080</b> — not the 800×600 default, which blurs the text
+                  </li>
+                  <li>
+                    Right-click it → Transform → <b>Reset Transform</b> (scale 1.0, position 0,0)
+                  </li>
+                  <li>
+                    Text size: use <b>OBS text — size &amp; style</b> below, not the link
+                  </li>
+                  <li>
+                    After any change: Properties → <b>Refresh cache of current page</b>
+                  </li>
+                </ol>
+              </div>
             </div>
 
             <div className="bc-obsstyle">
