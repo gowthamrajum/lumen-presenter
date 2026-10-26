@@ -85,21 +85,6 @@ export interface LibraryBackground {
   local?: string
 }
 
-export interface BgImportProgress {
-  name: string
-  /** which of the picked files, 0-based, out of `count` */
-  index: number
-  count: number
-  sent: number
-  total: number
-}
-
-export interface BgImportResult {
-  added: LibraryBackground[]
-  errors: string[]
-  canceled?: boolean
-}
-
 /** Where a playing clip has got to, reported by the window that is playing it. */
 export interface MediaState {
   /** seconds played */

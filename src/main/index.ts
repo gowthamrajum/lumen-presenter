@@ -34,7 +34,7 @@ import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExpor
 // PowerPoint export builds its own container in pptxWrite.
 import { unzipSync, strFromU8 } from 'fflate'
 import { cachedFetchJson } from './httpCache'
-import { importBackgrounds, initBgLibrary, listLibrary, localMap, localize, prioritize, removeBackground } from './bgLibrary'
+import { initBgLibrary, listLibrary, localMap, localize, prioritize } from './bgLibrary'
 import { esvKeyStatus, esvSetKey, esvPassage } from './esv'
 import type { PptxExportRequest } from '../shared/types'
 import {
@@ -382,10 +382,6 @@ function registerIpc(): void {
 
   // ---- shared background library ----
   ipcMain.handle(IPC.bgList, () => listLibrary().catch(() => null))
-  ipcMain.handle(IPC.bgImport, () =>
-    importBackgrounds(controlWindow, (p) => controlWindow?.webContents.send(IPC.bgProgress, p))
-  )
-  ipcMain.handle(IPC.bgRemove, (_e, id: number, url: string) => removeBackground(Number(id), String(url)))
   ipcMain.handle(IPC.bgLocalMap, () => localMap())
 
   ipcMain.handle(IPC.liveGet, () => liveState)

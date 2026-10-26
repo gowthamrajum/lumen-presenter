@@ -3,8 +3,6 @@ import { IPC } from '../shared/ipc'
 import type {
   LiveState,
   LibraryBackground,
-  BgImportProgress,
-  BgImportResult,
   DisplayInfo,
   ScreenInfo,
   ScreenRole,
@@ -44,19 +42,11 @@ const api = {
   pickMedia: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC.pickMedia),
   // shared background library (uploaded once, offered on every presenter)
   bgLibrary: (): Promise<LibraryBackground[] | null> => ipcRenderer.invoke(IPC.bgList),
-  importBackgrounds: (): Promise<BgImportResult> => ipcRenderer.invoke(IPC.bgImport),
-  removeLibraryBackground: (id: number, url: string): Promise<boolean> =>
-    ipcRenderer.invoke(IPC.bgRemove, id, url),
   bgLocalMap: (): Promise<Record<string, string>> => ipcRenderer.invoke(IPC.bgLocalMap),
   onBgLocalChanged: (cb: (map: Record<string, string>) => void): (() => void) => {
     const h = (_e: unknown, map: Record<string, string>): void => cb(map)
     ipcRenderer.on(IPC.bgLocalChanged, h)
     return () => ipcRenderer.removeListener(IPC.bgLocalChanged, h)
-  },
-  onBgProgress: (cb: (p: BgImportProgress) => void): (() => void) => {
-    const h = (_e: unknown, p: BgImportProgress): void => cb(p)
-    ipcRenderer.on(IPC.bgProgress, h)
-    return () => ipcRenderer.removeListener(IPC.bgProgress, h)
   },
   importPptx: (): Promise<PptxImport[]> => ipcRenderer.invoke(IPC.pickPptx),
   pickPdf: (): Promise<PdfFile[]> => ipcRenderer.invoke(IPC.pickPdf),

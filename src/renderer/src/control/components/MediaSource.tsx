@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Background, BgImportProgress, LibraryBackground, MediaFile } from '@shared/types'
+import type { Background, LibraryBackground, MediaFile } from '@shared/types'
 import { useStore } from '../../store/useStore'
 import { mediaSlide, pptxSlides } from '../slides'
 import { renderPdfDeck } from '../pdf'
@@ -34,14 +34,13 @@ export function MediaSource(): JSX.Element {
   const [linkVal, setLinkVal] = useState('')
 
   /**
-   * The shared video library: imported once, on any presenter, and offered
-   * here on all of them. null while it loads; [] when the relay is unreachable
-   * (with a note) or simply empty.
+   * The shared video library: added by an admin in Cantica's Background
+   * Library and offered here on every presenter, read-only — nobody at the
+   * projection desk can add to it or delete from it. null while it loads; []
+   * when the relay is unreachable (with a note) or simply empty.
    */
   const [library, setLibrary] = useState<LibraryBackground[] | null>(null)
   const [libNote, setLibNote] = useState('')
-  const [uploading, setUploading] = useState<BgImportProgress | null>(null)
-  const [importing, setImporting] = useState(false)
   useEffect(() => {
     let alive = true
     void window.lumen.bgLibrary().then((list) => {
@@ -49,42 +48,10 @@ export function MediaSource(): JSX.Element {
       setLibrary(list ?? [])
       if (!list) setLibNote('Couldn’t reach the background library — check the internet connection.')
     })
-    const off = window.lumen.onBgProgress(setUploading)
     return () => {
       alive = false
-      off()
     }
   }, [])
-
-  const importVideos = async (): Promise<void> => {
-    setImporting(true)
-    setLibNote('')
-    const r = await window.lumen.importBackgrounds()
-    setImporting(false)
-    setUploading(null)
-    if (r.canceled) return
-    if (r.added.length) {
-      setLibrary((cur) => [...r.added, ...(cur ?? []).filter((b) => !r.added.some((a) => a.id === b.id))])
-      // The first one goes straight on — importing a background is usually
-      // because it is wanted now.
-      setBackground({ type: 'video', value: r.added[0].url, fit: 'cover' })
-    }
-    setLibNote(
-      [
-        r.added.length ? `Added ${r.added.length} video${r.added.length === 1 ? '' : 's'} to the library.` : '',
-        ...r.errors
-      ]
-        .filter(Boolean)
-        .join(' ')
-    )
-  }
-
-  const removeFromLibrary = async (b: LibraryBackground): Promise<void> => {
-    if (!window.confirm(`Remove “${b.name}” from the background library on every computer?`)) return
-    if (await window.lumen.removeLibraryBackground(b.id, b.url)) {
-      setLibrary((cur) => (cur ?? []).filter((x) => x.id !== b.id))
-    } else setLibNote('Couldn’t remove it — check the internet connection.')
-  }
 
   // A YouTube link, or a bare id, or any http(s) media URL — the store classifies
   // it and adds a video/media item that plays on the audience screen.
@@ -229,22 +196,11 @@ export function MediaSource(): JSX.Element {
             </button>
             {open && (
               <>
-                <button className="btn full bg-import" onClick={() => void importVideos()} disabled={importing}>
-                  {uploading
-                    ? `Uploading ${uploading.name}${uploading.count > 1 ? ` (${uploading.index + 1} of ${uploading.count})` : ''} — ${Math.round((uploading.sent / Math.max(1, uploading.total)) * 100)}%`
-                    : importing
-                      ? 'Choose videos…'
-                      : '+ Import video background…'}
-                </button>
-                {uploading && (
-                  <div className="bg-progress">
-                    <span style={{ width: `${(uploading.sent / Math.max(1, uploading.total)) * 100}%` }} />
-                  </div>
-                )}
                 {libNote && <div className="empty-note">{libNote}</div>}
                 {library && library.length === 0 && !libNote && (
                   <div className="empty-note">
-                    No video backgrounds yet. Imported videos are shared with every Cantica and play on the phones too.
+                    No video backgrounds yet. An admin adds them in Cantica’s Background Library, and they appear
+                    here on every computer.
                   </div>
                 )}
                 {library && library.length > 0 && (
@@ -276,17 +232,6 @@ export function MediaSource(): JSX.Element {
                             />
                           </span>
                           <span className="bg-name">{b.name}</span>
-                          <button
-                            className="bg-remove"
-                            title="Remove from the library"
-                            aria-label={`Remove ${b.name} from the library`}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              void removeFromLibrary(b)
-                            }}
-                          >
-                            <Icon name="close" />
-                          </button>
                         </div>
                       )
                     })}

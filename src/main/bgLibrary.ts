@@ -1,20 +1,20 @@
-import { app, dialog, type BrowserWindow } from 'electron'
+import { app } from 'electron'
 import { createHash } from 'crypto'
-import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'fs'
-import { copyFile, rename, stat, unlink } from 'fs/promises'
+import { createWriteStream, existsSync, mkdirSync } from 'fs'
+import { rename } from 'fs/promises'
 import { request as httpsRequest } from 'https'
 import { request as httpRequest, type IncomingMessage } from 'http'
-import { basename, extname, join } from 'path'
+import { extname, join } from 'path'
 import { relayBase } from './serviceFeed'
-import type { BgImportProgress, BgImportResult, LibraryBackground } from '../shared/types'
+import type { LibraryBackground } from '../shared/types'
 
 /**
- * The shared background library — video backgrounds imported once and offered
- * in every Cantica's background picker.
+ * The shared background library — video backgrounds offered in every
+ * Cantica's background picker.
  *
- * A video goes STRAIGHT to the church's media store (Cloudflare R2), with an
- * upload URL the relay signs, and is then registered with the relay so every
- * presenter lists it. The relay never carries the bytes.
+ * Read-only here: an admin adds and removes backgrounds in Cantica Web's
+ * Background Library (the relay enforces it with the admin PIN). Presenters
+ * list the library and use it.
  *
  * The projector plays its own copy. Every library file is downloaded into a
  * local cache in the background, and the live state sent to the output windows
@@ -22,13 +22,6 @@ import type { BgImportProgress, BgImportResult, LibraryBackground } from '../sha
  * 1080p video never waits on the church's network. The relay, the phones and
  * the stream get the cloud URL, which is the only one they can reach.
  */
-
-const VIDEO_TYPES: Record<string, string> = {
-  mp4: 'video/mp4',
-  m4v: 'video/x-m4v',
-  mov: 'video/quicktime',
-  webm: 'video/webm'
-}
 
 let toMediaUrl: (absPath: string) => string = (p) => p
 let onCacheChange: () => void = () => {}
@@ -154,93 +147,4 @@ async function download(url: string, dest: string): Promise<void> {
     res.on('error', reject)
   })
   await rename(part, dest)
-}
-
-/** PUT a file to a signed URL, reporting how far it has got. */
-function putFile(url: string, file: string, size: number, type: string, onBytes: (n: number) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const send = url.startsWith('https:') ? httpsRequest : httpRequest
-    const req = send(url, { method: 'PUT', headers: { 'Content-Type': type, 'Content-Length': size } }, (res) => {
-      res.resume()
-      if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) resolve()
-      else reject(new Error(`The media store refused the upload (HTTP ${res.statusCode}).`))
-    })
-    req.on('error', reject)
-    let sent = 0
-    const src = createReadStream(file)
-    src.on('data', (chunk) => {
-      sent += chunk.length
-      onBytes(sent)
-    })
-    src.on('error', reject)
-    src.pipe(req)
-  })
-}
-
-/**
- * Pick videos and add them to the library: upload each to the media store,
- * register it, and keep the original as the cached copy (no download back).
- */
-export async function importBackgrounds(
-  win: BrowserWindow | null,
-  progress: (p: BgImportProgress) => void
-): Promise<BgImportResult> {
-  const opts = {
-    title: 'Import video backgrounds',
-    properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'>,
-    filters: [{ name: 'Videos', extensions: Object.keys(VIDEO_TYPES) }]
-  }
-  const pick = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
-  if (pick.canceled || !pick.filePaths.length) return { added: [], errors: [], canceled: true }
-
-  const added: LibraryBackground[] = []
-  const errors: string[] = []
-  for (const [i, file] of pick.filePaths.entries()) {
-    const name = basename(file).replace(/\.[^.]+$/, '')
-    const type = VIDEO_TYPES[extname(file).slice(1).toLowerCase()]
-    try {
-      const { size } = await stat(file)
-      const u = await fetch(`${relayBase()}/media/upload-url`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: basename(file), contentType: type, size })
-      })
-      const signed = (await u.json().catch(() => ({}))) as { uploadUrl?: string; publicUrl?: string; message?: string }
-      if (!u.ok || !signed.uploadUrl || !signed.publicUrl) throw new Error(signed.message || `HTTP ${u.status}`)
-
-      let last = 0
-      await putFile(signed.uploadUrl, file, size, type, (sent) => {
-        const now = Date.now()
-        if (now - last < 200 && sent < size) return
-        last = now
-        progress({ name, index: i, count: pick.filePaths.length, sent, total: size })
-      })
-
-      const reg = await fetch(`${relayBase()}/media/backgrounds`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, url: signed.publicUrl, kind: 'video', bytes: size })
-      })
-      const entry = (await reg.json().catch(() => ({}))) as LibraryBackground & { message?: string }
-      if (!reg.ok) throw new Error(entry.message || `HTTP ${reg.status}`)
-
-      // The file on this machine IS the cached copy.
-      await copyFile(file, cacheFile(entry.url)).catch(() => {})
-      added.push(withLocal(entry))
-      onCacheChange()
-    } catch (e) {
-      errors.push(`${name}: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
-  return { added, errors }
-}
-
-export async function removeBackground(id: number, url: string): Promise<boolean> {
-  const r = await fetch(`${relayBase()}/media/backgrounds/${id}`, { method: 'DELETE' })
-  if (!r.ok) return false
-  // Its cached copy goes too; a service still using it falls back to the cloud.
-  local.delete(url)
-  onCacheChange()
-  await unlink(cacheFile(url)).catch(() => {})
-  return true
 }

@@ -1578,46 +1578,6 @@ select:focus {
   height: 100%;
   object-fit: cover;
 }
-.bg-import {
-  margin: 2px 0 6px;
-}
-.bg-progress {
-  height: 4px;
-  margin: -2px 0 8px;
-  border-radius: 2px;
-  background: var(--line);
-  overflow: hidden;
-}
-.bg-progress span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.2s linear;
-}
-/* Out of the library, top-right of the tile: only on hover, so a tile that is
-   being picked doesn't offer to delete itself under the pointer. */
-.bg-remove {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  display: none;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.65);
-  color: #fff;
-  cursor: pointer;
-}
-.bg-remove svg {
-  width: 12px;
-  height: 12px;
-}
-.bg-tile:hover .bg-remove {
-  display: grid;
-  place-items: center;
-}
 .bg-swatch.rainbow {
   background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
 }
