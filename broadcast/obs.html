@@ -183,7 +183,10 @@
   .lyrics { text-align: center; color: var(--text); font-weight: 700; font-size: var(--size); line-height: 1.22; max-width: 92%; text-wrap: balance; }
   .lyrics .line { display: block; }
   .lyrics.upper { text-transform: uppercase; }
-  .caption { margin-top: 1.4cqh; text-align: center; color: var(--accent); font-weight: 500; font-size: calc(var(--size) * 0.42); text-shadow: 0 2px 4px rgba(0,0,0,.7); }
+  /* The reference — book, chapter, verse. 60% of the verse size, not 42%: it is
+     what tells somebody at home which passage to turn to, and at 42% the book
+     name (Telugu and English both, now) was the hardest thing on screen to read. */
+  .caption { margin-top: 1.4cqh; text-align: center; color: var(--accent); font-weight: 600; font-size: calc(var(--size) * 0.6); text-shadow: 0 2px 4px rgba(0,0,0,.7); }
 
   #composed { position: absolute; inset: 0; display: none; }
   #composed .cline { position: absolute; transform: translate(-50%, -50%); text-align: center; white-space: nowrap; font-weight: 700; }
