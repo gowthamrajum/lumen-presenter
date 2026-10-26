@@ -64,7 +64,9 @@ const MEDIA_SCHEME = 'lumen-media'
  * what a church laptop can keep smooth, and a side screen or the stage monitor
  * gains nothing from moving. Remembered across launches by display id.
  */
+/** null = not chosen (the first audience screen); MOTION_OFF = no screen plays motion */
 let motionChoice: number | null = null
+const MOTION_OFF = -1
 const prefsFile = (): string => join(app.getPath('userData'), 'outputs.json')
 async function loadMotionChoice(): Promise<void> {
   try {
@@ -77,6 +79,7 @@ async function loadMotionChoice(): Promise<void> {
 /** The display playing motion: the one chosen, while it is an open audience
  *  screen; otherwise the first audience screen (the one that also has sound). */
 function motionDisplayId(): number | null {
+  if (motionChoice === MOTION_OFF) return null
   const chosen = motionChoice !== null ? outputs.get(motionChoice) : undefined
   if (chosen && !chosen.isDestroyed() && chosen._kind === 'audience') return motionChoice
   for (const [id, w] of outputs) if (!w.isDestroyed() && w._kind === 'audience') return id

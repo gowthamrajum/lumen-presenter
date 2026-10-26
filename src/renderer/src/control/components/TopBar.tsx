@@ -12,6 +12,10 @@ export function TopBar(): JSX.Element {
   const setScreen = useStore((s) => s.setScreen)
   const setMotionScreen = useStore((s) => s.setMotionScreen)
   const bgDl = useBgCacheProgress()
+  const [motionOpen, setMotionOpen] = useState(false)
+  const audienceScreens = screens.filter((sc) => sc.role === 'audience')
+  const motionOn = audienceScreens.find((sc) => sc.motion)
+  const labelOf = (id: number): string => displays.find((d) => d.id === id)?.label ?? 'Screen'
 
   const blackout = useStore((s) => s.blackout)
   const clearText = useStore((s) => s.clearText)
@@ -97,33 +101,67 @@ export function TopBar(): JSX.Element {
                           </button>
                         ))}
                       </div>
-                      {/* Only one screen plays a motion background — the rest
-                          show the still. Offered once two audience screens are
-                          open; with one, it is simply that one. */}
-                      {role === 'audience' && screens.filter((s) => s.role === 'audience').length > 1 && (() => {
-                        const on = !!screens.find((s) => s.displayId === d.id)?.motion
-                        return (
-                          <button
-                            className={`seg-btn motion-btn ${on ? 'active' : ''}`}
-                            onClick={() => void setMotionScreen(d.id)}
-                            title={on ? 'This screen plays the motion background' : 'Play the motion background on this screen instead'}
-                          >
-                            {on ? '● Motion' : 'Motion'}
-                          </button>
-                        )
-                      })()}
                     </div>
                   )
                 })}
                 <div className="screens-hint">
                   Audience = lyrics/scripture · Stage = confidence monitor (current + next + clock).
-                  Motion backgrounds play on songs only, and on one screen — pick it with Motion.
+                  Motion backgrounds play on songs only, on the one screen chosen under Motion.
                   On this screen it opens as a window (press F for fullscreen, Esc to close).
                 </div>
               </div>
             </>
           )}
         </div>
+        {/* Which screen plays a motion background — its own button, there as
+            soon as one screen is showing the service, so the choice is never
+            hidden behind needing two. One screen at a time, or none. */}
+        {audienceScreens.length > 0 && (
+          <div className="screens-wrap">
+            <button
+              className={`btn with-ico motion-pick ${motionOn ? 'on' : ''}`}
+              onClick={() => setMotionOpen((v) => !v)}
+              title="Choose the screen that plays motion backgrounds (songs only)"
+            >
+              Motion: {motionOn ? labelOf(motionOn.displayId) : 'Off'} <Icon name="chevron-down" />
+            </button>
+            {motionOpen && (
+              <>
+                <div className="dropdown-backdrop" onClick={() => setMotionOpen(false)} />
+                <div className="screens-menu motion-menu">
+                  <div className="screens-title">Motion background plays on</div>
+                  {audienceScreens.map((sc) => (
+                    <button
+                      key={sc.displayId}
+                      className={`motion-opt ${sc.motion ? 'active' : ''}`}
+                      onClick={() => {
+                        void setMotionScreen(sc.displayId)
+                        setMotionOpen(false)
+                      }}
+                    >
+                      <span className="motion-dot" />
+                      {labelOf(sc.displayId)}
+                      {sc.windowed ? ' (this screen)' : ''}
+                    </button>
+                  ))}
+                  <button
+                    className={`motion-opt ${!motionOn ? 'active' : ''}`}
+                    onClick={() => {
+                      void setMotionScreen(-1)
+                      setMotionOpen(false)
+                    }}
+                  >
+                    <span className="motion-dot" />
+                    Off — every screen still
+                  </button>
+                  <div className="screens-hint">
+                    Songs only. The other screens, and the phones, show the default background.
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
         <button
           className="btn with-ico"
           onClick={() => setParityOpen(true)}
