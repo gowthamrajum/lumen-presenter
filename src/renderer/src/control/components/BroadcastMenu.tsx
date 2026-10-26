@@ -27,6 +27,11 @@ function viewUrl(c: BroadcastConfig, mode: 'audience' | 'obs'): string {
 /** Text size in the OBS link — what 5.2 looked like at OBS's old 800×600 default. */
 const OBS_LINK_SIZE = 6.9
 
+/** The stream footer — church name and ticker — served by the same relay. */
+function footerUrl(c: BroadcastConfig): string {
+  return c.base ? `${c.base.replace(/\/$/, '')}/overlay/footer` : ''
+}
+
 /** Deep link that opens the phone remote pre-filled with this room + PIN. */
 function remoteUrl(c: BroadcastConfig): string {
   if (!c.room || !c.controlPin) return ''
@@ -47,7 +52,7 @@ export function BroadcastMenu(): JSX.Element {
   const [styleOpen, setStyleOpen] = useState(true)
   const [cfg, setCfg] = useState<BroadcastConfig>(EMPTY)
   const [status, setStatus] = useState<BroadcastStatus | null>(null)
-  const [copied, setCopied] = useState<'audience' | 'obs' | 'remote' | null>(null)
+  const [copied, setCopied] = useState<'audience' | 'obs' | 'footer' | 'remote' | null>(null)
 
   useEffect(() => {
     void window.lumen.getBroadcast().then(setCfg)
@@ -72,11 +77,12 @@ export function BroadcastMenu(): JSX.Element {
 
   const audienceUrl = viewUrl(cfg, 'audience')
   const obsUrl = viewUrl(cfg, 'obs')
+  const footUrl = footerUrl(cfg)
   const phoneUrl = remoteUrl(cfg)
   const live = cfg.enabled && status?.ok
   const dotClass = !cfg.enabled ? 'off' : status?.ok ? 'on' : 'warn'
 
-  const copy = (which: 'audience' | 'obs' | 'remote', url: string): void => {
+  const copy = (which: 'audience' | 'obs' | 'footer' | 'remote', url: string): void => {
     if (!url) return
     void navigator.clipboard.writeText(url).then(() => {
       setCopied(which)
@@ -165,6 +171,25 @@ export function BroadcastMenu(): JSX.Element {
                     After any change: Properties → <b>Refresh cache of current page</b>
                   </li>
                 </ol>
+              </div>
+            </div>
+            {/* The footer — church name and ticker — is a hosted page too now,
+                not a file on the streaming computer, so a change to it reaches
+                OBS without copying anything there. Same box size as the lyrics. */}
+            <div className="bc-field">
+              <span>Footer — church name &amp; ticker (Browser source, under the lyrics)</span>
+              <div className="bc-url">
+                <input readOnly value={footUrl} placeholder="…" spellCheck={false} />
+                <button className="btn tiny" onClick={() => copy('footer', footUrl)} disabled={!footUrl}>
+                  {copied === 'footer' ? 'Copied' : 'Copy'}
+                </button>
+                <button className="btn tiny" onClick={() => openPage(footUrl)} disabled={!footUrl}>
+                  Open
+                </button>
+              </div>
+              <div className="bc-obs-howto">
+                Same setup as the lyrics: a <b>Browser</b> source at <b>1920 × 1080</b>, Reset Transform, and keep it
+                below the Lyrics source in the list. Untick <b>Local file</b> if it was one.
               </div>
             </div>
 
