@@ -85,6 +85,20 @@ export interface LibraryBackground {
   local?: string
 }
 
+/** How far this computer has got bringing the background library down. */
+export interface BgCacheProgress {
+  /** something is downloading */
+  active: boolean
+  /** files in this round of downloading, and how many are done */
+  files: number
+  done: number
+  /** the one coming down now */
+  name?: string
+  /** bytes, across the whole round — the bar is by size, not file count */
+  bytes: number
+  totalBytes: number
+}
+
 /** Where a playing clip has got to, reported by the window that is playing it. */
 export interface MediaState {
   /** seconds played */

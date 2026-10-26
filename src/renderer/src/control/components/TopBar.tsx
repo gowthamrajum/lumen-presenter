@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../../store/useStore'
+import { progressText, useBgCacheProgress } from '../useBgCacheProgress'
 import { BroadcastMenu } from './BroadcastMenu'
 import { Icon } from '../../shared/Icon'
 import { useAppTheme } from '../appTheme'
@@ -10,6 +11,7 @@ export function TopBar(): JSX.Element {
   const screens = useStore((s) => s.screens)
   const setScreen = useStore((s) => s.setScreen)
   const setMotionScreen = useStore((s) => s.setMotionScreen)
+  const bgDl = useBgCacheProgress()
 
   const blackout = useStore((s) => s.blackout)
   const clearText = useStore((s) => s.clearText)
@@ -43,6 +45,21 @@ export function TopBar(): JSX.Element {
       </div>
 
       <div className="topbar-spacer" />
+
+      {/* A first launch brings the whole background library down, and until a
+          video is here the projector can't play it from disk. Say so, where it
+          is seen from any tab, for exactly as long as it is happening. */}
+      {bgDl?.active && (() => {
+        const { label, fraction } = progressText(bgDl)
+        return (
+          <div className="bg-dl" title={bgDl.name ? `Downloading ${bgDl.name}` : 'Downloading backgrounds'}>
+            <span className="bg-dl-label">Downloading backgrounds {label}</span>
+            <span className="bg-dl-bar">
+              <span style={{ width: `${fraction * 100}%` }} />
+            </span>
+          </div>
+        )
+      })()}
 
       <div className="output-controls">
         <span className={`status-dot ${activeCount ? 'on' : 'off'}`} />

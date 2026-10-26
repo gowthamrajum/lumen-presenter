@@ -3,6 +3,7 @@ import { IPC } from '../shared/ipc'
 import type {
   LiveState,
   LibraryBackground,
+  BgCacheProgress,
   DisplayInfo,
   ScreenInfo,
   ScreenRole,
@@ -45,6 +46,12 @@ const api = {
   // shared background library (uploaded once, offered on every presenter)
   bgLibrary: (): Promise<LibraryBackground[] | null> => ipcRenderer.invoke(IPC.bgList),
   bgLocalMap: (): Promise<Record<string, string>> => ipcRenderer.invoke(IPC.bgLocalMap),
+  bgCacheStatus: (): Promise<BgCacheProgress> => ipcRenderer.invoke(IPC.bgCacheStatus),
+  onBgCacheProgress: (cb: (p: BgCacheProgress) => void): (() => void) => {
+    const h = (_e: unknown, p: BgCacheProgress): void => cb(p)
+    ipcRenderer.on(IPC.bgCacheProgress, h)
+    return () => ipcRenderer.removeListener(IPC.bgCacheProgress, h)
+  },
   onBgLocalChanged: (cb: (map: Record<string, string>) => void): (() => void) => {
     const h = (_e: unknown, map: Record<string, string>): void => cb(map)
     ipcRenderer.on(IPC.bgLocalChanged, h)

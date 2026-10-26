@@ -34,7 +34,7 @@ import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExpor
 // PowerPoint export builds its own container in pptxWrite.
 import { unzipSync, strFromU8 } from 'fflate'
 import { cachedFetchJson } from './httpCache'
-import { initBgLibrary, listLibrary, localMap, localize, prioritize } from './bgLibrary'
+import { cacheProgress, initBgLibrary, listLibrary, localMap, localize, prioritize } from './bgLibrary'
 import { stillBackgrounds } from '../shared/motion'
 import { esvKeyStatus, esvSetKey, esvPassage } from './esv'
 import type { PptxExportRequest } from '../shared/types'
@@ -428,6 +428,7 @@ function registerIpc(): void {
   // ---- shared background library ----
   ipcMain.handle(IPC.bgList, () => listLibrary().catch(() => null))
   ipcMain.handle(IPC.bgLocalMap, () => localMap())
+  ipcMain.handle(IPC.bgCacheStatus, () => cacheProgress())
 
   ipcMain.handle(IPC.liveGet, () => liveState)
   ipcMain.handle(IPC.liveSet, (_e, patch: Partial<LiveState>) => {
@@ -1073,7 +1074,8 @@ app.whenReady().then(async () => {
     onCacheChange: () => {
       broadcastLive()
       controlWindow?.webContents.send(IPC.bgLocalChanged, localMap())
-    }
+    },
+    onProgress: (p) => controlWindow?.webContents.send(IPC.bgCacheProgress, p)
   })
   void initBroadcast((s) => controlWindow?.webContents.send(IPC.broadcastStatus, s))
   createControlWindow()

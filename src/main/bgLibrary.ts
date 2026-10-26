@@ -6,7 +6,7 @@ import { request as httpsRequest } from 'https'
 import { request as httpRequest, type IncomingMessage } from 'http'
 import { extname, join } from 'path'
 import { relayBase } from './serviceFeed'
-import type { LibraryBackground } from '../shared/types'
+import type { BgCacheProgress, LibraryBackground } from '../shared/types'
 
 /**
  * The shared background library — video backgrounds offered in every
@@ -25,6 +25,41 @@ import type { LibraryBackground } from '../shared/types'
 
 let toMediaUrl: (absPath: string) => string = (p) => p
 let onCacheChange: () => void = () => {}
+let onProgress: (p: BgCacheProgress) => void = () => {}
+
+/**
+ * The current round of downloading, for the progress bar a first launch needs:
+ * a library is often a gigabyte, and a projector screen that won't play its
+ * background yet, with nothing saying why, reads as broken. A round starts
+ * when something needs fetching and ends when the last of it lands.
+ */
+const names = new Map<string, { name: string; bytes: number }>()
+const round = new Map<string, { total: number; got: number; done: boolean }>()
+let currentName: string | undefined
+let lastSent = 0
+
+export function cacheProgress(): BgCacheProgress {
+  let bytes = 0
+  let totalBytes = 0
+  let done = 0
+  for (const r of round.values()) {
+    totalBytes += r.total
+    bytes += r.done ? r.total : Math.min(r.got, r.total)
+    if (r.done) done++
+  }
+  const active = round.size > 0 && done < round.size
+  return { active, files: round.size, done, name: active ? currentName : undefined, bytes, totalBytes }
+}
+
+function report(force = false): void {
+  const now = Date.now()
+  if (!force && now - lastSent < 250) return
+  lastSent = now
+  const p = cacheProgress()
+  onProgress(p)
+  // The round is over: the next thing to fetch starts a new one from zero.
+  if (!p.active && round.size) round.clear()
+}
 /** cloud URL → lumen-media URL of the cached copy */
 const local = new Map<string, string>()
 const downloading = new Set<string>()
@@ -40,9 +75,14 @@ const cacheDir = (): string => {
 const cacheFile = (url: string): string =>
   join(cacheDir(), createHash('sha1').update(url).digest('hex').slice(0, 24) + (extname(new URL(url).pathname) || '.mp4'))
 
-export function initBgLibrary(opts: { mediaUrl: (absPath: string) => string; onCacheChange: () => void }): void {
+export function initBgLibrary(opts: {
+  mediaUrl: (absPath: string) => string
+  onCacheChange: () => void
+  onProgress?: (p: BgCacheProgress) => void
+}): void {
   toMediaUrl = opts.mediaUrl
   onCacheChange = opts.onCacheChange
+  if (opts.onProgress) onProgress = opts.onProgress
   void listLibrary().catch(() => {}) // warm the cache at launch
 }
 
@@ -76,7 +116,14 @@ export async function listLibrary(): Promise<LibraryBackground[]> {
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   const j = (await r.json()) as { backgrounds?: LibraryBackground[] }
   const list = (j.backgrounds ?? []).map(withLocal)
-  for (const b of list) known.add(b.url)
+  for (const b of list) {
+    known.add(b.url)
+    names.set(b.url, { name: b.name, bytes: b.bytes })
+  }
+  // Everything missing joins the round up front, so the bar's total is the
+  // whole download from the start rather than growing as it goes.
+  for (const b of list) if (!local.has(b.url) && !round.has(b.url)) round.set(b.url, { total: b.bytes || 1, got: 0, done: false })
+  report(true)
   void prefetch(list)
   return list
 }
@@ -85,14 +132,26 @@ export async function listLibrary(): Promise<LibraryBackground[]> {
 async function fetchOne(url: string): Promise<void> {
   if (local.has(url) || downloading.has(url)) return
   downloading.add(url)
+  const meta = names.get(url)
+  const r = round.get(url) ?? { total: meta?.bytes || 1, got: 0, done: false }
+  round.set(url, r)
+  currentName = meta?.name
+  report(true)
   try {
-    await download(url, cacheFile(url))
+    await download(url, cacheFile(url), (got, total) => {
+      r.got = got
+      if (total) r.total = total
+      report()
+    })
     local.set(url, toMediaUrl(cacheFile(url)))
     onCacheChange()
   } catch {
     /* the cloud URL still plays; the next launch tries again */
   } finally {
     downloading.delete(url)
+    // Done either way: a failure must not leave the bar stuck short of full.
+    r.done = true
+    report(true)
   }
 }
 
@@ -136,9 +195,15 @@ function get(url: string, redirects = 3): Promise<IncomingMessage> {
   })
 }
 
-async function download(url: string, dest: string): Promise<void> {
+async function download(url: string, dest: string, onBytes?: (got: number, total: number) => void): Promise<void> {
   const part = `${dest}.part`
   const res = await get(url)
+  const total = Number(res.headers['content-length']) || 0
+  let got = 0
+  res.on('data', (chunk: Buffer) => {
+    got += chunk.length
+    onBytes?.(got, total)
+  })
   await new Promise<void>((resolve, reject) => {
     const out = createWriteStream(part)
     res.pipe(out)

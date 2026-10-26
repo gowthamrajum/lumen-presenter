@@ -11,6 +11,8 @@ export const IPC = {
   bgList: 'bg:list',
   bgLocalMap: 'bg:localMap',
   bgLocalChanged: 'bg:localChanged',
+  bgCacheStatus: 'bg:cacheStatus',
+  bgCacheProgress: 'bg:cacheProgress',
   pickPptx: 'pptx:pick',
   pickPdf: 'pdf:pick',
   savePdfPage: 'pdf:savePage',

@@ -6,6 +6,7 @@ import { renderPdfDeck } from '../pdf'
 import { BACKGROUND_PRESETS, BACKGROUND_CATEGORIES } from '../presets'
 import { Icon } from '../../shared/Icon'
 import { youtubeId } from '@shared/youtube'
+import { progressText, useBgCacheProgress } from '../useBgCacheProgress'
 
 // Presets grouped into their categories, in display order (empty groups dropped).
 const BG_GROUPS = BACKGROUND_CATEGORIES.map((cat) => ({
@@ -41,6 +42,7 @@ export function MediaSource(): JSX.Element {
    */
   const [library, setLibrary] = useState<LibraryBackground[] | null>(null)
   const [libNote, setLibNote] = useState('')
+  const bgDl = useBgCacheProgress()
   useEffect(() => {
     let alive = true
     void window.lumen.bgLibrary().then((list) => {
@@ -196,6 +198,20 @@ export function MediaSource(): JSX.Element {
             </button>
             {open && (
               <>
+                {bgDl?.active && (() => {
+                  const { label, fraction } = progressText(bgDl)
+                  return (
+                    <div className="bg-dl-panel">
+                      <div className="bg-dl-panel-text">
+                        Downloading to this computer — {label}
+                        {bgDl.name && <span className="bg-dl-name">{bgDl.name}</span>}
+                      </div>
+                      <span className="bg-dl-bar">
+                        <span style={{ width: `${fraction * 100}%` }} />
+                      </span>
+                    </div>
+                  )
+                })()}
                 {libNote && <div className="empty-note">{libNote}</div>}
                 {library && library.length === 0 && !libNote && (
                   <div className="empty-note">
