@@ -18,8 +18,8 @@ const MEDIA = /^media$|వీడియో/i
  * stamps every item with one, and is a pick-list meant to land inside the
  * Sunday order:
  *
- *   Welcome · Clock · **Praise & Worship · song · Praise & Worship · song** ·
- *   Sunday School · Sermon · **the communion song** · Offerings ·
+ *   Welcome · Clock · **Praise & Worship · song · Praise & Worship · song ·
+ *   Praise & Worship** · Sunday School · Sermon · **the communion song** · Offerings ·
  *   **the offering song** · Benediction · Media · **the clips** · Announcements …
  *
  * Worship goes early — between the clock and Sunday School, not before the
@@ -188,13 +188,20 @@ export function mergeBySlot(
     // Only in front of songs: a psalm arrives in this slot too, and announcing
     // a reading as praise and worship is simply wrong.
     const block: ServiceItem[] = []
+    const card = (): ServiceItem => {
+      const c = bookend!()
+      return source ? { ...c, source: { ...source, slot: 'worship' as const } } : c
+    }
     for (const it of worship) {
-      if (bookend && it.kind === 'song') {
-        const card = bookend()
-        block.push(source ? { ...card, source: { ...source, slot: 'worship' as const } } : card)
-      }
+      if (bookend && it.kind === 'song') block.push(card())
       block.push(like(host, it))
     }
+    // …and one after the LAST song, so worship closes on its card before
+    // Sunday School rather than running straight from the final song into it.
+    // Straight after that song, so a reading that followed it stays after the
+    // card. Same stamp as the rest: a re-pull takes it back out with them.
+    const lastSong = block.map((it) => it.kind).lastIndexOf('song')
+    if (bookend && lastSong >= 0) block.splice(lastSong + 1, 0, card())
     if (i >= 0) out.splice(i, 0, ...block)
     else out.push(...block)
   }

@@ -18,8 +18,14 @@ const REMOTE_BASE = 'https://live.teluguchurchdfw.org'
 function viewUrl(c: BroadcastConfig, mode: 'audience' | 'obs'): string {
   if (!c.base || !c.room) return ''
   const u = `${c.base.replace(/\/$/, '')}/broadcast/${encodeURIComponent(c.room)}/view`
-  return mode === 'audience' ? `${u}?mode=audience` : u
+  // The OBS link carries the recommended text size for a 1920×1080 browser
+  // source. A ?size in the link wins over the panel's slider (obs.html), which
+  // is the point: the size travels with the link pasted into OBS.
+  return mode === 'audience' ? `${u}?mode=audience` : `${u}?size=${OBS_LINK_SIZE}`
 }
+
+/** Text size in the OBS link — what 5.2 looked like at OBS's old 800×600 default. */
+const OBS_LINK_SIZE = 6.9
 
 /** Deep link that opens the phone remote pre-filled with this room + PIN. */
 function remoteUrl(c: BroadcastConfig): string {
@@ -152,7 +158,8 @@ export function BroadcastMenu(): JSX.Element {
                     Right-click it → Transform → <b>Reset Transform</b> (scale 1.0, position 0,0)
                   </li>
                   <li>
-                    Text size: use <b>OBS text — size &amp; style</b> below, not the link
+                    Text size comes from <b>?size=6.9</b> in the link — change that number to resize (the size slider below
+                    doesn't apply while the link sets one)
                   </li>
                   <li>
                     After any change: Properties → <b>Refresh cache of current page</b>
