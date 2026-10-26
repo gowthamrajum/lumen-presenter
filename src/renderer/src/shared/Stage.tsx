@@ -4,6 +4,7 @@ import { AUTO_SPACING_TARGET, useFitText } from './useFitText'
 import { Icon } from './Icon'
 import { YouTubeBackground } from './YouTubeStage'
 import { useLocalMedia } from './localMedia'
+import { OUTLINE_CAPTION_SHADOW, outlineOn, textEffect } from '@shared/textEffect'
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`
@@ -71,7 +72,7 @@ function TimerDisplay({
         style={{
           color: theme.textColor,
           fontFamily: theme.fontFamily,
-          textShadow: theme.shadow ? '0 2px 18px rgba(0,0,0,0.65)' : 'none'
+          textShadow: textEffect(theme)
         }}
       >
         {text}
@@ -288,7 +289,7 @@ export function Stage({
     fontFamily: theme.fontFamily,
     textAlign: theme.textAlign,
     textTransform: theme.uppercase ? 'uppercase' : 'none',
-    textShadow: theme.shadow ? '0 2px 18px rgba(0,0,0,0.65)' : 'none',
+    textShadow: textEffect(theme),
     lineHeight: fixedLineHeight,
     fontWeight: 700
   }
@@ -380,7 +381,7 @@ export function Stage({
                 color: l.color || theme.textColor,
                 fontFamily: theme.fontFamily,
                 textAlign: l.align || 'center',
-                textShadow: theme.shadow ? '0 2px 18px rgba(0,0,0,0.65)' : 'none',
+                textShadow: textEffect(theme),
                 textTransform: theme.uppercase ? 'uppercase' : 'none'
               }}
             >
@@ -404,7 +405,14 @@ export function Stage({
             </div>
           </div>
           {caption && (
-            <div className="stage-caption" style={{ color: theme.captionColor, fontFamily: theme.fontFamily }}>
+            <div
+              className="stage-caption"
+              style={{
+                color: theme.captionColor,
+                fontFamily: theme.fontFamily,
+                ...(outlineOn(theme) ? { textShadow: OUTLINE_CAPTION_SHADOW } : {})
+              }}
+            >
               {caption}
             </div>
           )}

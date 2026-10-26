@@ -3613,3 +3613,8 @@ select:focus {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* A look switch that has nothing to do right now (Shadow while Outline is on). */
+.chk.is-off {
+  opacity: 0.45;
+}

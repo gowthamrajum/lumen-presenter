@@ -10,6 +10,8 @@ export interface ThemeStyle {
   fontScale: number
   textAlign: 'left' | 'center' | 'right'
   shadow: boolean
+  /** a thin solid black outline around the text (replaces the shadow); absent = on */
+  outline?: boolean
   uppercase: boolean
   /** 0..1 dark scrim over the background to keep text legible */
   scrim: number
@@ -746,6 +748,7 @@ export const DEFAULT_THEME: ThemeStyle = {
   fontScale: 1,
   textAlign: 'center',
   shadow: true,
+  outline: true,
   uppercase: false,
   scrim: 0.35
   // lineSpacing intentionally absent: the Go Live screen spaces itself.

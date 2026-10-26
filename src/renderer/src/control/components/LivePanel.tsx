@@ -209,10 +209,25 @@ export function LivePanel(): JSX.Element {
             />
             CAPS
           </label>
-          <label className="chk">
+          {/* A thin black outline by default — what reads over a bright or
+              moving background. It replaces the shadow, so Shadow only does
+              anything with the outline off. */}
+          <label className="chk" title="A thin black outline around the text">
+            <input
+              type="checkbox"
+              checked={theme.outline !== false}
+              onChange={(e) => setTheme({ outline: e.target.checked })}
+            />
+            Outline
+          </label>
+          <label
+            className={`chk ${theme.outline !== false ? 'is-off' : ''}`}
+            title={theme.outline !== false ? 'Turn Outline off to use a soft shadow instead' : 'A soft shadow under the text'}
+          >
             <input
               type="checkbox"
               checked={theme.shadow}
+              disabled={theme.outline !== false}
               onChange={(e) => setTheme({ shadow: e.target.checked })}
             />
             Shadow
