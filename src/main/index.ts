@@ -34,6 +34,7 @@ import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExpor
 // PowerPoint export builds its own container in pptxWrite.
 import { unzipSync, strFromU8 } from 'fflate'
 import { cachedFetchJson } from './httpCache'
+import { importBackgrounds, initBgLibrary, listLibrary, localize, removeBackground } from './bgLibrary'
 import { esvKeyStatus, esvSetKey, esvPassage } from './esv'
 import type { PptxExportRequest } from '../shared/types'
 import {
@@ -257,7 +258,7 @@ function buildOutputWindow(
   win.loadURL(outputUrl(kind))
   win.webContents.once('did-finish-load', () => {
     if (win.isDestroyed()) return
-    win.webContents.send(IPC.liveState, liveState)
+    win.webContents.send(IPC.liveState, localize(liveState))
     syncAudioOwner()
   })
 
@@ -343,8 +344,11 @@ function syncAudioOwner(): void {
 }
 
 function broadcastLive(): void {
+  // The projector plays this computer's cached copy of a library background;
+  // the relay (publishBroadcast) keeps the cloud URL, the only one phones reach.
+  const state = localize(liveState)
   for (const win of outputs.values()) {
-    if (!win.isDestroyed()) win.webContents.send(IPC.liveState, liveState)
+    if (!win.isDestroyed()) win.webContents.send(IPC.liveState, state)
   }
 }
 
@@ -375,6 +379,13 @@ function registerIpc(): void {
     for (const win of outputs.values()) if (!win.isDestroyed()) win.webContents.send(IPC.mediaControl, cmd)
   })
   ipcMain.on(IPC.mediaState, (_e, st: unknown) => controlWindow?.webContents.send(IPC.mediaState, st))
+
+  // ---- shared background library ----
+  ipcMain.handle(IPC.bgList, () => listLibrary().catch(() => null))
+  ipcMain.handle(IPC.bgImport, () =>
+    importBackgrounds(controlWindow, (p) => controlWindow?.webContents.send(IPC.bgProgress, p))
+  )
+  ipcMain.handle(IPC.bgRemove, (_e, id: number, url: string) => removeBackground(Number(id), String(url)))
 
   ipcMain.handle(IPC.liveGet, () => liveState)
   ipcMain.handle(IPC.liveSet, (_e, patch: Partial<LiveState>) => {
@@ -1011,6 +1022,8 @@ app.whenReady().then(async () => {
   // the live deck). Wire the callback before initBroadcast so a listener that
   // starts as soon as config loads has somewhere to deliver.
   initControlListener((cmd, arg) => controlWindow?.webContents.send(IPC.remoteCommand, { cmd, arg }))
+  // A newly cached library file reaches a projector already showing it.
+  initBgLibrary({ mediaUrl, onCacheChange: broadcastLive })
   void initBroadcast((s) => controlWindow?.webContents.send(IPC.broadcastStatus, s))
   createControlWindow()
   // Push, not poll: the relay tells us the moment a service is saved, edited or

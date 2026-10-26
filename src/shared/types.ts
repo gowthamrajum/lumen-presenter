@@ -72,6 +72,34 @@ export interface Background {
   anim?: string
 }
 
+/** A background in the shared library: uploaded once, offered on every presenter. */
+export interface LibraryBackground {
+  id: number
+  name: string
+  /** the media store's public URL — what goes in a Background and to the relay */
+  url: string
+  kind: 'video' | 'image'
+  bytes: number
+  createdAt: string
+  /** lumen-media URL of this computer's cached copy, once it has one */
+  local?: string
+}
+
+export interface BgImportProgress {
+  name: string
+  /** which of the picked files, 0-based, out of `count` */
+  index: number
+  count: number
+  sent: number
+  total: number
+}
+
+export interface BgImportResult {
+  added: LibraryBackground[]
+  errors: string[]
+  canceled?: boolean
+}
+
 /** Where a playing clip has got to, reported by the window that is playing it. */
 export interface MediaState {
   /** seconds played */

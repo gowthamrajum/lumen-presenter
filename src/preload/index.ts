@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc'
 import type {
   LiveState,
+  LibraryBackground,
+  BgImportProgress,
+  BgImportResult,
   DisplayInfo,
   ScreenInfo,
   ScreenRole,
@@ -39,6 +42,16 @@ const api = {
   setScreen: (displayId: number, role: ScreenRole): Promise<ScreenInfo[]> =>
     ipcRenderer.invoke(IPC.screenSet, displayId, role),
   pickMedia: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC.pickMedia),
+  // shared background library (uploaded once, offered on every presenter)
+  bgLibrary: (): Promise<LibraryBackground[] | null> => ipcRenderer.invoke(IPC.bgList),
+  importBackgrounds: (): Promise<BgImportResult> => ipcRenderer.invoke(IPC.bgImport),
+  removeLibraryBackground: (id: number, url: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.bgRemove, id, url),
+  onBgProgress: (cb: (p: BgImportProgress) => void): (() => void) => {
+    const h = (_e: unknown, p: BgImportProgress): void => cb(p)
+    ipcRenderer.on(IPC.bgProgress, h)
+    return () => ipcRenderer.removeListener(IPC.bgProgress, h)
+  },
   importPptx: (): Promise<PptxImport[]> => ipcRenderer.invoke(IPC.pickPptx),
   pickPdf: (): Promise<PdfFile[]> => ipcRenderer.invoke(IPC.pickPdf),
   savePdfPage: (key: string, index: number, bytes: Uint8Array): Promise<string> =>
