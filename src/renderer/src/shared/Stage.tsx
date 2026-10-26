@@ -3,6 +3,7 @@ import { DEFAULT_LINE_SPACING, GO_LIVE_LINE_SPACING, countdownRemaining, formatC
 import { AUTO_SPACING_TARGET, useFitText } from './useFitText'
 import { Icon } from './Icon'
 import { YouTubeBackground } from './YouTubeStage'
+import { useLocalMedia } from './localMedia'
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`
@@ -96,10 +97,15 @@ function BackgroundLayer({
   live,
   sound,
   audio,
+  still,
   onEnded,
   onEl
 }: {
   bg: Background
+  /** A thumbnail: show a video's first frame, don't play it. Forty slide
+   *  thumbnails each looping their own copy of a 1080p background was enough
+   *  to stall the machine, the projector included. */
+  still?: boolean
   /** true only on the audience Go Live screen — where a YouTube link actually
    *  plays (elsewhere it stands in as its poster still) */
   live?: boolean
@@ -109,6 +115,9 @@ function BackgroundLayer({
   /** the element actually playing, so a transport elsewhere can drive it */
   onEl?: (el: HTMLMediaElement | null) => void
 }): JSX.Element {
+  // A shared-library background plays this computer's cached copy where it has
+  // one (the output windows are already sent it; this covers the previews).
+  const src = useLocalMedia(bg.value)
   if (bg.type === 'youtube') {
     return <YouTubeBackground id={bg.value} live={live} sound={sound} audio={audio} onEnded={onEnded} />
   }
@@ -118,13 +127,27 @@ function BackgroundLayer({
     return <div className={cls} style={{ background: bg.value }} />
   }
   if (bg.type === 'video') {
+    if (still) {
+      // #t=0.1 makes the browser decode a frame to show while paused; at 0 it
+      // can sit on black until played.
+      return (
+        <video
+          className="stage-bg"
+          style={{ objectFit: bg.fit ?? 'cover' }}
+          src={`${src}#t=0.1`}
+          muted
+          playsInline
+          preload="metadata"
+        />
+      )
+    }
     const heard = !!sound && !!audio
     return (
       <video
         ref={onEl}
         className="stage-bg"
         style={{ objectFit: bg.fit ?? 'cover' }}
-        src={bg.value}
+        src={src}
         autoPlay
         loop={!sound}
         muted={!heard}
@@ -137,7 +160,7 @@ function BackgroundLayer({
     <img
       className="stage-bg"
       style={{ objectFit: bg.fit ?? 'cover' }}
-      src={bg.value}
+      src={src}
       alt=""
     />
   )
@@ -305,6 +328,7 @@ export function Stage({
       <BackgroundLayer
         bg={bg}
         live={live}
+        still={preview}
         sound={state.sound}
         audio={audio}
         onEnded={() => window.lumen?.mediaEnded()}

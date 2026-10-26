@@ -35,6 +35,8 @@ let onCacheChange: () => void = () => {}
 /** cloud URL → lumen-media URL of the cached copy */
 const local = new Map<string, string>()
 const downloading = new Set<string>()
+/** Every URL in the library, as last listed — what is worth caching. */
+const known = new Set<string>()
 
 const cacheDir = (): string => {
   const d = join(app.getPath('userData'), 'bg-cache')
@@ -50,6 +52,9 @@ export function initBgLibrary(opts: { mediaUrl: (absPath: string) => string; onC
   onCacheChange = opts.onCacheChange
   void listLibrary().catch(() => {}) // warm the cache at launch
 }
+
+/** cloud URL → cached copy, for the control window's previews to play locally too. */
+export const localMap = (): Record<string, string> => Object.fromEntries(local)
 
 /** Any cloud URL in `v` with a cached copy, swapped for that copy. */
 export function localize<T>(v: T): T {
@@ -78,25 +83,46 @@ export async function listLibrary(): Promise<LibraryBackground[]> {
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   const j = (await r.json()) as { backgrounds?: LibraryBackground[] }
   const list = (j.backgrounds ?? []).map(withLocal)
+  for (const b of list) known.add(b.url)
   void prefetch(list)
   return list
 }
 
+/** Bring one file into the cache; resolves once it is there (or has failed). */
+async function fetchOne(url: string): Promise<void> {
+  if (local.has(url) || downloading.has(url)) return
+  downloading.add(url)
+  try {
+    await download(url, cacheFile(url))
+    local.set(url, toMediaUrl(cacheFile(url)))
+    onCacheChange()
+  } catch {
+    /* the cloud URL still plays; the next launch tries again */
+  } finally {
+    downloading.delete(url)
+  }
+}
+
 /** Download, one at a time, whatever the cache doesn't hold yet. */
 async function prefetch(list: LibraryBackground[]): Promise<void> {
-  for (const b of list) {
-    if (local.has(b.url) || downloading.has(b.url)) continue
-    downloading.add(b.url)
-    try {
-      await download(b.url, cacheFile(b.url))
-      local.set(b.url, toMediaUrl(cacheFile(b.url)))
-      onCacheChange()
-    } catch {
-      /* the cloud URL still plays; the next launch tries again */
-    } finally {
-      downloading.delete(b.url)
-    }
+  for (const b of list) await fetchOne(b.url)
+}
+
+/**
+ * A library background just went on screen and isn't cached yet: fetch it
+ * now, alongside the queue, rather than wherever it falls in the library's
+ * order — a 4K library is a gigabyte, and the one on the projector shouldn't
+ * wait behind all of it.
+ */
+export function prioritize(v: unknown): void {
+  if (!known.size) return
+  const walk = (x: unknown): void => {
+    if (typeof x === 'string') {
+      if (known.has(x)) void fetchOne(x)
+    } else if (Array.isArray(x)) x.forEach(walk)
+    else if (x && typeof x === 'object') Object.values(x).forEach(walk)
   }
+  walk(v)
 }
 
 function get(url: string, redirects = 3): Promise<IncomingMessage> {

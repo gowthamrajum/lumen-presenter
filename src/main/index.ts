@@ -34,7 +34,7 @@ import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExpor
 // PowerPoint export builds its own container in pptxWrite.
 import { unzipSync, strFromU8 } from 'fflate'
 import { cachedFetchJson } from './httpCache'
-import { importBackgrounds, initBgLibrary, listLibrary, localize, removeBackground } from './bgLibrary'
+import { importBackgrounds, initBgLibrary, listLibrary, localMap, localize, prioritize, removeBackground } from './bgLibrary'
 import { esvKeyStatus, esvSetKey, esvPassage } from './esv'
 import type { PptxExportRequest } from '../shared/types'
 import {
@@ -386,10 +386,12 @@ function registerIpc(): void {
     importBackgrounds(controlWindow, (p) => controlWindow?.webContents.send(IPC.bgProgress, p))
   )
   ipcMain.handle(IPC.bgRemove, (_e, id: number, url: string) => removeBackground(Number(id), String(url)))
+  ipcMain.handle(IPC.bgLocalMap, () => localMap())
 
   ipcMain.handle(IPC.liveGet, () => liveState)
   ipcMain.handle(IPC.liveSet, (_e, patch: Partial<LiveState>) => {
     liveState = { ...liveState, ...patch }
+    prioritize(liveState) // a library video just put up goes to the front of the cache queue
     broadcastLive()
     publishBroadcast(liveState)
     return liveState
@@ -1023,7 +1025,14 @@ app.whenReady().then(async () => {
   // starts as soon as config loads has somewhere to deliver.
   initControlListener((cmd, arg) => controlWindow?.webContents.send(IPC.remoteCommand, { cmd, arg }))
   // A newly cached library file reaches a projector already showing it.
-  initBgLibrary({ mediaUrl, onCacheChange: broadcastLive })
+  // …and to the control window's previews, which then stop streaming it.
+  initBgLibrary({
+    mediaUrl,
+    onCacheChange: () => {
+      broadcastLive()
+      controlWindow?.webContents.send(IPC.bgLocalChanged, localMap())
+    }
+  })
   void initBroadcast((s) => controlWindow?.webContents.send(IPC.broadcastStatus, s))
   createControlWindow()
   // Push, not poll: the relay tells us the moment a service is saved, edited or

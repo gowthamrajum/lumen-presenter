@@ -47,6 +47,12 @@ const api = {
   importBackgrounds: (): Promise<BgImportResult> => ipcRenderer.invoke(IPC.bgImport),
   removeLibraryBackground: (id: number, url: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC.bgRemove, id, url),
+  bgLocalMap: (): Promise<Record<string, string>> => ipcRenderer.invoke(IPC.bgLocalMap),
+  onBgLocalChanged: (cb: (map: Record<string, string>) => void): (() => void) => {
+    const h = (_e: unknown, map: Record<string, string>): void => cb(map)
+    ipcRenderer.on(IPC.bgLocalChanged, h)
+    return () => ipcRenderer.removeListener(IPC.bgLocalChanged, h)
+  },
   onBgProgress: (cb: (p: BgImportProgress) => void): (() => void) => {
     const h = (_e: unknown, p: BgImportProgress): void => cb(p)
     ipcRenderer.on(IPC.bgProgress, h)
