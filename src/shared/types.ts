@@ -230,6 +230,12 @@ export interface SlideContent {
    *  wrapping (used by bilingual title cards). */
   singleLine?: boolean
   /**
+   * Derived, never stored: the largest share of the screen height this slide's
+   * text may take, so a song's slides stay within a band of its typical size
+   * (renderer/shared/songSizing). Absent = the usual ceiling.
+   */
+  sizeCap?: number
+  /**
    * Shrink this slide's text against the normal ceiling: 1 is the usual size,
    * 0.5 is half of it. A two-word title card otherwise grows until the block
    * fills the screen edge to edge, which reads as shouting rather than as a

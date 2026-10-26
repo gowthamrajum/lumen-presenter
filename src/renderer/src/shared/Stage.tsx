@@ -1,10 +1,31 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { DEFAULT_LINE_SPACING, GO_LIVE_LINE_SPACING, countdownRemaining, formatClock, type Background, type LiveState, type SlideContent, type ThemeStyle } from '@shared/types'
 import { AUTO_SPACING_TARGET, useFitText } from './useFitText'
 import { Icon } from './Icon'
 import { YouTubeBackground } from './YouTubeStage'
 import { useLocalMedia } from './localMedia'
 import { OUTLINE_CAPTION_SHADOW, outlineOn, textEffect } from '@shared/textEffect'
+import { smartRows } from '@shared/smartRows'
+import { DEFAULT_MAX_FRACTION, fontsMeasuredVersion, measurerFor } from './songSizing'
+
+/** Re-render once the web fonts have loaded, so measurements use the real ones. */
+function useFontsVersion(): number {
+  const [v, setV] = useState(fontsMeasuredVersion)
+  useEffect(() => {
+    if (!document.fonts) return
+    let alive = true
+    const bump = (): void => {
+      if (alive) setV(fontsMeasuredVersion())
+    }
+    void document.fonts.ready.then(bump)
+    document.fonts.addEventListener?.('loadingdone', bump)
+    return () => {
+      alive = false
+      document.fonts.removeEventListener?.('loadingdone', bump)
+    }
+  }, [])
+  return v
+}
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`
@@ -302,9 +323,46 @@ export function Stage({
   // the screen, and one 142-character verse dragged a whole psalm down with it.
   // Pressing through a song now varies in size, which is the accepted trade for
   // each slide actually using the screen.
+  // ---- smart rows and the song's band (song lyrics only) ----
+  // The box the text is fitted into, measured, so the layout can be chosen
+  // against the real width and height rather than guessed.
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null)
+  useLayoutEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const update = (): void =>
+      setBox((b) => (b && b.w === el.clientWidth && b.h === el.clientHeight ? b : { w: el.clientWidth, h: el.clientHeight }))
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [showText])
+  const fontsVersion = useFontsVersion()
+  const scale = theme.fontScale * (slide?.textScale ?? 1)
+  // A song slide may not run above its song's band (songSizing) — the ceiling
+  // comes down to it; the operator's Size bias still multiplies on top.
+  const maxFraction = Math.min(DEFAULT_MAX_FRACTION, slide?.sizeCap ?? DEFAULT_MAX_FRACTION)
+  const linesKey = lines.join('\n')
+  const rows = useMemo(
+    () =>
+      slide?.singleLine && box
+        ? smartRows(lines, {
+            measure: measurerFor(theme.fontFamily, theme.uppercase),
+            boxW: box.w,
+            boxH: box.h,
+            lineHeight: autoSpacing ? AUTO_SPACING_TARGET : fixedLineHeight,
+            cap: box.h * maxFraction * scale
+          })
+        : lines,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [linesKey, slide?.singleLine, box?.w, box?.h, theme.fontFamily, theme.uppercase, autoSpacing, fixedLineHeight, maxFraction, scale, fontsVersion]
+  )
+
   const { ref, fontSize, lineHeight } = useFitText(
     [
-      lines.join('\n'),
+      rows.join('\n'),
+      maxFraction,
       theme.fontScale,
       theme.uppercase,
       slide?.singleLine,
@@ -318,7 +376,8 @@ export function Stage({
       // A slide may ask to sit below the usual ceiling (a title card, which
       // would otherwise fill the screen); the operator's Size bias still
       // multiplies on top of it.
-      scale: theme.fontScale * (slide?.textScale ?? 1),
+      scale,
+      maxFraction,
       autoSpacing,
       lineHeight: fixedLineHeight
     }
@@ -393,13 +452,13 @@ export function Stage({
 
       {showText && (
         <div className="stage-textwrap">
-          <div className="stage-fitbox">
+          <div className="stage-fitbox" ref={boxRef}>
             <div
               ref={ref}
               className={`stage-text${slide?.singleLine ? ' oneline' : ''}`}
               style={{ ...textStyle, fontSize, lineHeight }}
             >
-              {lines.map((l, i) => (
+              {rows.map((l, i) => (
                 <div key={i}>{formatLyric(l) || ' '}</div>
               ))}
             </div>

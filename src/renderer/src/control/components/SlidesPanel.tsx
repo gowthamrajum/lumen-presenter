@@ -134,6 +134,7 @@ export function SlidesPanel(): JSX.Element {
             key={sl.id}
             slide={sl}
             itemKind={item.kind}
+            siblings={item.slides}
             index={i}
             live={sl.id === liveId}
             dragging={dragIndex === i}

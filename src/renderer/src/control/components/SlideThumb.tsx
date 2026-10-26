@@ -4,10 +4,12 @@ import { Stage } from '../../shared/Stage'
 import { Icon } from '../../shared/Icon'
 import type { ItemKind, LiveState, SlideContent } from '@shared/types'
 import { stillUnlessSong } from '@shared/motion'
+import { withSongCap } from '../../shared/songSizing'
 
 export function SlideThumb({
   slide,
   itemKind,
+  siblings,
   index,
   live,
   dragging = false,
@@ -20,6 +22,8 @@ export function SlideThumb({
   slide: SlideContent
   /** The item's kind — a thumbnail shows motion only where a song would. */
   itemKind?: ItemKind
+  /** the item's slides — a thumbnail sizes its text in step with the song, as the projector will */
+  siblings?: SlideContent[]
   index: number
   live: boolean
   dragging?: boolean
@@ -34,7 +38,7 @@ export function SlideThumb({
   // The preview shows it as the projector will — outside a song, a video
   // background is still. Only the preview: edits and moves act on the slide
   // itself, so the still is never saved into it.
-  const shown = stillUnlessSong(slide, itemKind, background)
+  const shown = withSongCap(stillUnlessSong(slide, itemKind, background), siblings, theme)
   const goLive = useStore((s) => s.goLive)
   const removeSlide = useStore((s) => s.removeSlide)
   const duplicateSlide = useStore((s) => s.duplicateSlide)
