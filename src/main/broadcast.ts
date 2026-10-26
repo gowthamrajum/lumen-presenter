@@ -160,6 +160,35 @@ export async function setBroadcastConfig(patch: Partial<BroadcastConfig>): Promi
   return config
 }
 
+/**
+ * Everything published to the relay goes to phones — the congregation's and
+ * the operator's — and a video behind the words is never worth that: a motion
+ * background is hundreds of megabytes of 4K for a phone to fetch and decode,
+ * to sit behind a lyric. So any VIDEO used as a background, the service's or
+ * a slide's behind its text, leaves this machine as the default still one.
+ * The projector, which is sent the live state directly, keeps the video.
+ *
+ * A slide with no words whose video IS the slide — a welcome clip, an
+ * announcement — is content, not background, and goes out unchanged.
+ */
+export function stillForPhones<T>(v: T): T {
+  const hasText = (o: Record<string, unknown>): boolean =>
+    (Array.isArray(o.lines) && o.lines.some((l) => typeof l === 'string' && l.trim())) ||
+    (Array.isArray(o.composed) && o.composed.length > 0)
+  const isSlide = (o: Record<string, unknown>): boolean => 'lines' in o || 'composed' in o || 'kind' in o
+  const walk = (x: unknown): unknown => {
+    if (Array.isArray(x)) return x.map(walk)
+    if (!x || typeof x !== 'object') return x
+    const o = x as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+    for (const [k, val] of Object.entries(o)) out[k] = walk(val)
+    const bg = o.background as { type?: string } | undefined
+    if (bg?.type === 'video' && (!isSlide(o) || hasText(o))) out.background = DEFAULT_BACKGROUND
+    return out
+  }
+  return walk(v) as T
+}
+
 /** Push a final blacked-out frame to the relay so both the audience and OBS
  *  views clear when the operator stops broadcasting (blackout hides both). */
 async function publishOff(): Promise<void> {
@@ -169,7 +198,7 @@ async function publishOff(): Promise<void> {
   const t = setTimeout(() => controller.abort(), 10_000)
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (ENV_ADMIN_TOKEN) headers.Authorization = `Bearer ${ENV_ADMIN_TOKEN}`
-  const payload = {
+  const payload = stillForPhones({
     background: latest?.background ?? DEFAULT_BACKGROUND,
     blackout: true,
     clearText: false,
@@ -179,7 +208,7 @@ async function publishOff(): Promise<void> {
     users: { slide: null, next: null },
     stream: { slide: null, next: null },
     operator: { slide: null, next: null }
-  }
+  })
   try {
     await fetch(url, { method: 'POST', signal: controller.signal, headers, body: JSON.stringify(payload) })
   } catch {
@@ -231,7 +260,7 @@ async function flush(): Promise<void> {
     nextNoBroadcastStream,
     ...rest
   } = latest
-  const payload = {
+  const payload = stillForPhones({
     ...rest,
     // Go-Live-screen-only fields (line spacing) never leave the machine.
     theme: webTheme(rest.theme),
@@ -250,7 +279,7 @@ async function flush(): Promise<void> {
     // every slide, just like the desktop presenter. Only users/stream inherit
     // the per-item broadcast restrictions.
     operator: { slide: slide ?? null, next: next ?? null }
-  }
+  })
   try {
     const res = await fetch(url, { method: 'POST', signal: controller.signal, headers, body: JSON.stringify(payload) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
