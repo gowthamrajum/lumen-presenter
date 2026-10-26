@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { Stage } from '../../shared/Stage'
 import { Icon } from '../../shared/Icon'
-import type { LiveState, SlideContent } from '@shared/types'
+import type { ItemKind, LiveState, SlideContent } from '@shared/types'
+import { stillUnlessSong } from '@shared/motion'
 
 export function SlideThumb({
   slide,
+  itemKind,
   index,
   live,
   dragging = false,
@@ -16,6 +18,8 @@ export function SlideThumb({
   onDragEndSlide
 }: {
   slide: SlideContent
+  /** The item's kind — a thumbnail shows motion only where a song would. */
+  itemKind?: ItemKind
   index: number
   live: boolean
   dragging?: boolean
@@ -27,6 +31,10 @@ export function SlideThumb({
 }): JSX.Element {
   const theme = useStore((s) => s.theme)
   const background = useStore((s) => s.background)
+  // The preview shows it as the projector will — outside a song, a video
+  // background is still. Only the preview: edits and moves act on the slide
+  // itself, so the still is never saved into it.
+  const shown = stillUnlessSong(slide, itemKind, background)
   const goLive = useStore((s) => s.goLive)
   const removeSlide = useStore((s) => s.removeSlide)
   const duplicateSlide = useStore((s) => s.duplicateSlide)
@@ -58,8 +66,8 @@ export function SlideThumb({
   }, [live])
 
   const preview: LiveState = {
-    slide,
-    background: slide.background ?? background,
+    slide: shown,
+    background: shown.background ?? background,
     blackout: false,
     clearText: false,
     showLogo: false,

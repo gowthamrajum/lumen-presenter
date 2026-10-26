@@ -12,6 +12,7 @@ import {
   type SlideContent
 } from '../shared/types'
 import { stripSingingMarks } from '../shared/lyrics'
+import { stillBackgrounds } from '../shared/motion'
 
 /**
  * Web broadcast publisher. Pushes the canonical LiveState to a small open relay
@@ -160,34 +161,10 @@ export async function setBroadcastConfig(patch: Partial<BroadcastConfig>): Promi
   return config
 }
 
-/**
- * Everything published to the relay goes to phones — the congregation's and
- * the operator's — and a video behind the words is never worth that: a motion
- * background is hundreds of megabytes of 4K for a phone to fetch and decode,
- * to sit behind a lyric. So any VIDEO used as a background, the service's or
- * a slide's behind its text, leaves this machine as the default still one.
- * The projector, which is sent the live state directly, keeps the video.
- *
- * A slide with no words whose video IS the slide — a welcome clip, an
- * announcement — is content, not background, and goes out unchanged.
- */
-export function stillForPhones<T>(v: T): T {
-  const hasText = (o: Record<string, unknown>): boolean =>
-    (Array.isArray(o.lines) && o.lines.some((l) => typeof l === 'string' && l.trim())) ||
-    (Array.isArray(o.composed) && o.composed.length > 0)
-  const isSlide = (o: Record<string, unknown>): boolean => 'lines' in o || 'composed' in o || 'kind' in o
-  const walk = (x: unknown): unknown => {
-    if (Array.isArray(x)) return x.map(walk)
-    if (!x || typeof x !== 'object') return x
-    const o = x as Record<string, unknown>
-    const out: Record<string, unknown> = {}
-    for (const [k, val] of Object.entries(o)) out[k] = walk(val)
-    const bg = o.background as { type?: string } | undefined
-    if (bg?.type === 'video' && (!isSlide(o) || hasText(o))) out.background = DEFAULT_BACKGROUND
-    return out
-  }
-  return walk(v) as T
-}
+// Everything published to the relay reaches phones — the congregation's and
+// the operator's — and they never get a motion background: hundreds of
+// megabytes of 4K is no thing to make a phone fetch to sit behind a lyric.
+const stillForPhones = stillBackgrounds
 
 /** Push a final blacked-out frame to the relay so both the audience and OBS
  *  views clear when the operator stops broadcasting (blackout hides both). */

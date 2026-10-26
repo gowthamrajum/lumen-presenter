@@ -4,6 +4,7 @@ export const IPC = {
   displaysList: 'displays:list',
   screenSet: 'screen:set',
   screensStatus: 'screens:status',
+  screenMotion: 'screen:motion',
   liveGet: 'live:get',
   liveSet: 'live:set',
   pickMedia: 'media:pick',

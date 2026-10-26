@@ -133,6 +133,7 @@ export function SlidesPanel(): JSX.Element {
           <SlideThumb
             key={sl.id}
             slide={sl}
+            itemKind={item.kind}
             index={i}
             live={sl.id === liveId}
             dragging={dragIndex === i}

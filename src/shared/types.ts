@@ -326,6 +326,8 @@ export interface ScreenInfo {
   role: ScreenRole
   /** true when it opened as a movable window (shares the operator's screen) */
   windowed: boolean
+  /** the one screen that plays a motion background; the others show a still */
+  motion?: boolean
 }
 
 /** The kind of a service item, used for its badge/icon in the program view. */

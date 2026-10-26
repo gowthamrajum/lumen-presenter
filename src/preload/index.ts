@@ -39,6 +39,8 @@ const api = {
   screensStatus: (): Promise<ScreenInfo[]> => ipcRenderer.invoke(IPC.screensStatus),
   setScreen: (displayId: number, role: ScreenRole): Promise<ScreenInfo[]> =>
     ipcRenderer.invoke(IPC.screenSet, displayId, role),
+  /** Make this display the one that plays motion backgrounds. */
+  setMotionScreen: (displayId: number): Promise<ScreenInfo[]> => ipcRenderer.invoke(IPC.screenMotion, displayId),
   pickMedia: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC.pickMedia),
   // shared background library (uploaded once, offered on every presenter)
   bgLibrary: (): Promise<LibraryBackground[] | null> => ipcRenderer.invoke(IPC.bgList),

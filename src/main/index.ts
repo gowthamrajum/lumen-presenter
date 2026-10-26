@@ -35,6 +35,7 @@ import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExpor
 import { unzipSync, strFromU8 } from 'fflate'
 import { cachedFetchJson } from './httpCache'
 import { initBgLibrary, listLibrary, localMap, localize, prioritize } from './bgLibrary'
+import { stillBackgrounds } from '../shared/motion'
 import { esvKeyStatus, esvSetKey, esvPassage } from './esv'
 import type { PptxExportRequest } from '../shared/types'
 import {
@@ -55,6 +56,38 @@ const outputs = new Map<number, OutputWindow>()
 let liveState: LiveState = structuredClone(DEFAULT_LIVE)
 
 const MEDIA_SCHEME = 'lumen-media'
+
+// ---- the motion screen -------------------------------------------------------
+/**
+ * Only one projection screen plays a motion background — the one the operator
+ * picks in Screens; every other output shows the still. One video decoding is
+ * what a church laptop can keep smooth, and a side screen or the stage monitor
+ * gains nothing from moving. Remembered across launches by display id.
+ */
+let motionChoice: number | null = null
+const prefsFile = (): string => join(app.getPath('userData'), 'outputs.json')
+async function loadMotionChoice(): Promise<void> {
+  try {
+    const j = JSON.parse(await readFile(prefsFile(), 'utf8')) as { motionDisplayId?: unknown }
+    motionChoice = typeof j.motionDisplayId === 'number' ? j.motionDisplayId : null
+  } catch {
+    motionChoice = null
+  }
+}
+/** The display playing motion: the one chosen, while it is an open audience
+ *  screen; otherwise the first audience screen (the one that also has sound). */
+function motionDisplayId(): number | null {
+  const chosen = motionChoice !== null ? outputs.get(motionChoice) : undefined
+  if (chosen && !chosen.isDestroyed() && chosen._kind === 'audience') return motionChoice
+  for (const [id, w] of outputs) if (!w.isDestroyed() && w._kind === 'audience') return id
+  return null
+}
+/** What one output window is sent: library files swapped for this computer's
+ *  copies, and motion kept only on the motion screen. */
+function stateFor(displayId: number | undefined): LiveState {
+  const local = localize(liveState)
+  return displayId !== undefined && displayId === motionDisplayId() ? local : stillBackgrounds(local)
+}
 
 // Register the media scheme as privileged BEFORE app ready so image/video
 // elements can load local files without relaxing webSecurity.
@@ -258,7 +291,7 @@ function buildOutputWindow(
   win.loadURL(outputUrl(kind))
   win.webContents.once('did-finish-load', () => {
     if (win.isDestroyed()) return
-    win.webContents.send(IPC.liveState, localize(liveState))
+    win.webContents.send(IPC.liveState, stateFor(display.id))
     syncAudioOwner()
   })
 
@@ -318,7 +351,12 @@ function pruneOutputs(): void {
 function screensStatus(): ScreenInfo[] {
   const out: ScreenInfo[] = []
   for (const [displayId, win] of outputs) {
-    out.push({ displayId, role: (win._kind ?? 'audience') as ScreenRole, windowed: !!win._windowed })
+    out.push({
+      displayId,
+      role: (win._kind ?? 'audience') as ScreenRole,
+      windowed: !!win._windowed,
+      motion: displayId === motionDisplayId()
+    })
   }
   return out
 }
@@ -326,6 +364,8 @@ function screensStatus(): ScreenInfo[] {
 function broadcastScreens(): void {
   controlWindow?.webContents.send(IPC.screensChanged, screensStatus())
   syncAudioOwner()
+  // Opening or closing a screen can move the motion to another one.
+  broadcastLive()
 }
 
 /**
@@ -346,9 +386,8 @@ function syncAudioOwner(): void {
 function broadcastLive(): void {
   // The projector plays this computer's cached copy of a library background;
   // the relay (publishBroadcast) keeps the cloud URL, the only one phones reach.
-  const state = localize(liveState)
-  for (const win of outputs.values()) {
-    if (!win.isDestroyed()) win.webContents.send(IPC.liveState, state)
+  for (const [id, win] of outputs) {
+    if (!win.isDestroyed()) win.webContents.send(IPC.liveState, stateFor(id))
   }
 }
 
@@ -368,6 +407,12 @@ function registerIpc(): void {
   ipcMain.handle(IPC.displaysList, () => listDisplays())
   ipcMain.handle(IPC.screensStatus, () => screensStatus())
   ipcMain.handle(IPC.screenSet, (_e, displayId: number, role: ScreenRole) => setScreen(displayId, role))
+  ipcMain.handle(IPC.screenMotion, async (_e, displayId: number) => {
+    motionChoice = Number(displayId)
+    await writeFile(prefsFile(), JSON.stringify({ motionDisplayId: motionChoice }), 'utf8').catch(() => {})
+    broadcastScreens()
+    return screensStatus()
+  })
 
   // The clip that just finished is on the output screen; the schedule it belongs
   // to lives in the control window, so the end of it has to travel back.
@@ -1015,6 +1060,7 @@ app.whenReady().then(async () => {
     }
   })
 
+  await loadMotionChoice()
   registerIpc()
   // Forward phone-remote commands to the control window (which runs them against
   // the live deck). Wire the callback before initBroadcast so a listener that

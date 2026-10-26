@@ -9,6 +9,7 @@ export function TopBar(): JSX.Element {
   const displays = useStore((s) => s.displays)
   const screens = useStore((s) => s.screens)
   const setScreen = useStore((s) => s.setScreen)
+  const setMotionScreen = useStore((s) => s.setMotionScreen)
 
   const blackout = useStore((s) => s.blackout)
   const clearText = useStore((s) => s.clearText)
@@ -79,11 +80,27 @@ export function TopBar(): JSX.Element {
                           </button>
                         ))}
                       </div>
+                      {/* Only one screen plays a motion background — the rest
+                          show the still. Offered once two audience screens are
+                          open; with one, it is simply that one. */}
+                      {role === 'audience' && screens.filter((s) => s.role === 'audience').length > 1 && (() => {
+                        const on = !!screens.find((s) => s.displayId === d.id)?.motion
+                        return (
+                          <button
+                            className={`seg-btn motion-btn ${on ? 'active' : ''}`}
+                            onClick={() => void setMotionScreen(d.id)}
+                            title={on ? 'This screen plays the motion background' : 'Play the motion background on this screen instead'}
+                          >
+                            {on ? '● Motion' : 'Motion'}
+                          </button>
+                        )
+                      })()}
                     </div>
                   )
                 })}
                 <div className="screens-hint">
                   Audience = lyrics/scripture · Stage = confidence monitor (current + next + clock).
+                  Motion backgrounds play on songs only, and on one screen — pick it with Motion.
                   On this screen it opens as a window (press F for fullscreen, Esc to close).
                 </div>
               </div>
