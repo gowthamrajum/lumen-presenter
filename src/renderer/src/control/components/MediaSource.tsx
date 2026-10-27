@@ -43,6 +43,9 @@ export function MediaSource(): JSX.Element {
   const [library, setLibrary] = useState<LibraryBackground[] | null>(null)
   const [libNote, setLibNote] = useState('')
   const bgDl = useBgCacheProgress()
+  /** Finding one in a growing library: by name or tag, or a tapped tag. */
+  const [bgQuery, setBgQuery] = useState('')
+  const [bgTag, setBgTag] = useState<string | null>(null)
   useEffect(() => {
     let alive = true
     void window.lumen.bgLibrary().then((list) => {
@@ -219,9 +222,41 @@ export function MediaSource(): JSX.Element {
                     here on every computer.
                   </div>
                 )}
-                {library && library.length > 0 && (
+                {library && library.length > 0 && (() => {
+                  const counts = new Map<string, number>()
+                  for (const b of library) for (const t of b.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1)
+                  const tags = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                  const q = bgQuery.trim().toLowerCase().replace(/^#/, '')
+                  const shown = library.filter(
+                    (b) =>
+                      (!bgTag || (b.tags ?? []).includes(bgTag)) &&
+                      (!q || b.name.toLowerCase().includes(q) || (b.tags ?? []).some((t) => t.includes(q)))
+                  )
+                  return (
+                    <>
+                      <input
+                        className="bg-search"
+                        type="search"
+                        placeholder="Search backgrounds — name or tag"
+                        value={bgQuery}
+                        onChange={(e) => setBgQuery(e.target.value)}
+                      />
+                      {tags.length > 0 && (
+                        <div className="bg-tags">
+                          {tags.map(([t, n]) => (
+                            <button
+                              key={t}
+                              className={`bg-tag ${bgTag === t ? 'active' : ''}`}
+                              onClick={() => setBgTag((cur) => (cur === t ? null : t))}
+                            >
+                              #{t} <span>{n}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {!shown.length && <div className="empty-note">No backgrounds match.</div>}
                   <div className="bg-gallery">
-                    {library.map((b) => {
+                    {shown.map((b) => {
                       const bg: Background = { type: 'video', value: b.url, fit: 'cover' }
                       return (
                         <div
@@ -252,7 +287,9 @@ export function MediaSource(): JSX.Element {
                       )
                     })}
                   </div>
-                )}
+                    </>
+                  )
+                })()}
               </>
             )}
           </div>

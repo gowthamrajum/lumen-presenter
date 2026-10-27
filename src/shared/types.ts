@@ -83,6 +83,8 @@ export interface LibraryBackground {
   kind: 'video' | 'image'
   bytes: number
   createdAt: string
+  /** lower-case tags for searching ("christmas", "water", "light") */
+  tags?: string[]
   /** lumen-media URL of this computer's cached copy, once it has one */
   local?: string
 }

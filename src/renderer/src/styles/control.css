@@ -3618,3 +3618,41 @@ select:focus {
 .chk.is-off {
   opacity: 0.45;
 }
+
+/* ---- searching the background library ---- */
+.bg-search {
+  width: 100%;
+  margin: 2px 0 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 12px;
+}
+.bg-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.bg-tag {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+}
+.bg-tag span {
+  color: var(--muted);
+}
+.bg-tag.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.bg-tag.active span {
+  color: rgba(255, 255, 255, 0.75);
+}
