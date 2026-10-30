@@ -352,6 +352,8 @@ export interface ScreenInfo {
   windowed: boolean
   /** the one screen that plays a motion background; the others show a still */
   motion?: boolean
+  /** this screen's own background, in place of the service's; unset = the service's */
+  background?: Background
 }
 
 /** The kind of a service item, used for its badge/icon in the program view. */

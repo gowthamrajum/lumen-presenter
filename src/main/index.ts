@@ -11,6 +11,7 @@ import { is } from '@electron-toolkit/utils'
 import { IPC } from '../shared/ipc'
 import {
   DEFAULT_LIVE,
+  type Background,
   type LiveState,
   type DisplayInfo,
   type ScreenInfo,
@@ -35,7 +36,7 @@ import { exportSessionToPptx, exportUrlFrom, preloadPathFrom } from './pptxExpor
 import { unzipSync, strFromU8 } from 'fflate'
 import { cachedFetchJson } from './httpCache'
 import { cacheProgress, initBgLibrary, listLibrary, localMap, localize, prioritize } from './bgLibrary'
-import { stillBackgrounds } from '../shared/motion'
+import { stillBackgrounds, withScreenBackground } from '../shared/motion'
 import { esvKeyStatus, esvSetKey, esvPassage } from './esv'
 import type { PptxExportRequest } from '../shared/types'
 import {
@@ -67,14 +68,33 @@ const MEDIA_SCHEME = 'lumen-media'
 /** null = not chosen (the first audience screen); MOTION_OFF = no screen plays motion */
 let motionChoice: number | null = null
 const MOTION_OFF = -1
+/**
+ * A screen's own background, by display id — a side screen that keeps the
+ * church logo, say, whatever the main screen is showing. Audience screens only;
+ * a screen without one shows the service's background.
+ */
+const screenBackgrounds = new Map<number, Background>()
 const prefsFile = (): string => join(app.getPath('userData'), 'outputs.json')
 async function loadMotionChoice(): Promise<void> {
   try {
-    const j = JSON.parse(await readFile(prefsFile(), 'utf8')) as { motionDisplayId?: unknown }
+    const j = JSON.parse(await readFile(prefsFile(), 'utf8')) as {
+      motionDisplayId?: unknown
+      screenBackgrounds?: Record<string, unknown>
+    }
     motionChoice = typeof j.motionDisplayId === 'number' ? j.motionDisplayId : null
+    screenBackgrounds.clear()
+    for (const [id, bg] of Object.entries(j.screenBackgrounds ?? {})) {
+      const b = bg as Partial<Background> | null
+      if (b && typeof b.type === 'string' && typeof b.value === 'string') screenBackgrounds.set(Number(id), b as Background)
+    }
   } catch {
     motionChoice = null
   }
+}
+/** Both choices go in the one file, so saving one must not drop the other. */
+async function saveOutputPrefs(): Promise<void> {
+  const prefs = { motionDisplayId: motionChoice, screenBackgrounds: Object.fromEntries(screenBackgrounds) }
+  await writeFile(prefsFile(), JSON.stringify(prefs), 'utf8').catch(() => {})
 }
 /** The display playing motion: the one chosen, while it is an open audience
  *  screen; otherwise the first audience screen (the one that also has sound). */
@@ -88,7 +108,10 @@ function motionDisplayId(): number | null {
 /** What one output window is sent: library files swapped for this computer's
  *  copies, and motion kept only on the motion screen. */
 function stateFor(displayId: number | undefined): LiveState {
-  const local = localize(liveState)
+  const own = displayId !== undefined ? screenBackgrounds.get(displayId) : undefined
+  const win = displayId !== undefined ? outputs.get(displayId) : undefined
+  const mine = own && win?._kind === 'audience' ? withScreenBackground(liveState, own) : liveState
+  const local = localize(mine)
   return displayId !== undefined && displayId === motionDisplayId() ? local : stillBackgrounds(local)
 }
 
@@ -358,7 +381,8 @@ function screensStatus(): ScreenInfo[] {
       displayId,
       role: (win._kind ?? 'audience') as ScreenRole,
       windowed: !!win._windowed,
-      motion: displayId === motionDisplayId()
+      motion: displayId === motionDisplayId(),
+      background: screenBackgrounds.get(displayId)
     })
   }
   return out
@@ -412,7 +436,15 @@ function registerIpc(): void {
   ipcMain.handle(IPC.screenSet, (_e, displayId: number, role: ScreenRole) => setScreen(displayId, role))
   ipcMain.handle(IPC.screenMotion, async (_e, displayId: number) => {
     motionChoice = Number(displayId)
-    await writeFile(prefsFile(), JSON.stringify({ motionDisplayId: motionChoice }), 'utf8').catch(() => {})
+    await saveOutputPrefs()
+    broadcastScreens()
+    return screensStatus()
+  })
+  // null puts the screen back on the service's background.
+  ipcMain.handle(IPC.screenBackground, async (_e, displayId: number, bg: Background | null) => {
+    if (bg && typeof bg.type === 'string' && typeof bg.value === 'string') screenBackgrounds.set(Number(displayId), bg)
+    else screenBackgrounds.delete(Number(displayId))
+    await saveOutputPrefs()
     broadcastScreens()
     return screensStatus()
   })

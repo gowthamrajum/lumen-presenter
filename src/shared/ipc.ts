@@ -5,6 +5,7 @@ export const IPC = {
   screenSet: 'screen:set',
   screensStatus: 'screens:status',
   screenMotion: 'screen:motion',
+  screenBackground: 'screen:background',
   liveGet: 'live:get',
   liveSet: 'live:set',
   pickMedia: 'media:pick',

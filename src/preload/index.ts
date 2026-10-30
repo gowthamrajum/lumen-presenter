@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc'
 import type {
+  Background,
   LiveState,
   LibraryBackground,
   BgCacheProgress,
@@ -42,6 +43,9 @@ const api = {
     ipcRenderer.invoke(IPC.screenSet, displayId, role),
   /** Make this display the one that plays motion backgrounds. */
   setMotionScreen: (displayId: number): Promise<ScreenInfo[]> => ipcRenderer.invoke(IPC.screenMotion, displayId),
+  /** Give this display its own background; null puts it back on the service's. */
+  setScreenBackground: (displayId: number, bg: Background | null): Promise<ScreenInfo[]> =>
+    ipcRenderer.invoke(IPC.screenBackground, displayId, bg),
   pickMedia: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC.pickMedia),
   // shared background library (uploaded once, offered on every presenter)
   bgLibrary: (): Promise<LibraryBackground[] | null> => ipcRenderer.invoke(IPC.bgList),

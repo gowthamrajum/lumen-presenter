@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { progressText, useBgCacheProgress } from '../useBgCacheProgress'
 import { BroadcastMenu } from './BroadcastMenu'
+import { ScreenBackgroundPicker, screenBackgroundLabel } from './ScreenBackgroundPicker'
 import { Icon } from '../../shared/Icon'
 import { useAppTheme } from '../appTheme'
 import type { ScreenRole } from '@shared/types'
@@ -25,6 +26,8 @@ export function TopBar(): JSX.Element {
   const toggleLogo = useStore((s) => s.toggleLogo)
 
   const [open, setOpen] = useState(false)
+  /** The screen whose background picker is open in the Screens menu, if any. */
+  const [bgFor, setBgFor] = useState<number | null>(null)
   const setParityOpen = useStore((s) => s.setParityOpen)
   const [themeMode, toggleTheme] = useAppTheme()
 
@@ -83,6 +86,7 @@ export function TopBar(): JSX.Element {
                 <div className="screens-title">Output screens</div>
                 {displays.map((d) => {
                   const role = roleOf(d.id)
+                  const own = screens.find((s) => s.displayId === d.id)?.background
                   return (
                     <div key={d.id} className="screen-row">
                       <div className="screen-name" title={d.label}>
@@ -101,12 +105,29 @@ export function TopBar(): JSX.Element {
                           </button>
                         ))}
                       </div>
+                      {role === 'audience' && (
+                        <>
+                          <button
+                            className={`screen-bg-btn ${own ? 'custom' : ''}`}
+                            onClick={() => setBgFor((v) => (v === d.id ? null : d.id))}
+                            title="Give this screen its own background"
+                          >
+                            <span className="screen-bg-label">Background</span>
+                            <span className="screen-bg-value">{screenBackgroundLabel(own)}</span>
+                            <Icon name={bgFor === d.id ? 'chevron-down' : 'chevron-right'} />
+                          </button>
+                          {bgFor === d.id && (
+                            <ScreenBackgroundPicker displayId={d.id} current={own} onPicked={() => setBgFor(null)} />
+                          )}
+                        </>
+                      )}
                     </div>
                   )
                 })}
                 <div className="screens-hint">
                   Audience = lyrics/scripture · Stage = confidence monitor (current + next + clock).
                   Motion backgrounds play on songs only, on the one screen chosen under Motion.
+                  Each audience screen can have its own background.
                   On this screen it opens as a window (press F for fullscreen, Esc to close).
                 </div>
               </div>

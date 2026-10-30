@@ -55,3 +55,34 @@ export function stillBackgrounds<T>(v: T): T {
   }
   return walk(v) as T
 }
+
+/**
+ * A live state as one screen with its own background should show it.
+ *
+ * The screen's background takes the place of whatever sits behind the words —
+ * the service's, and a slide's own — so a side screen keeps its look whatever
+ * the operator does on the main one. What is NOT behind words is left alone: a
+ * wordless clip or picture is the slide itself, and an audio or YouTube
+ * background is something to hear or watch, not a backdrop.
+ *
+ * Motion still follows the church's rule: a video plays for songs only, so
+ * outside a song a screen's video becomes the still. Which screen may play it
+ * at all is decided after this, by the motion screen.
+ */
+export function withScreenBackground<T extends LiveStateLike>(state: T, own: Background): T {
+  const liveKind = state.order?.find((o) => o.live)?.kind
+  const bg = own.type === 'video' && liveKind !== undefined && liveKind !== 'song' ? STILL_BACKGROUND : own
+  const replace = (slide: SlideContent | null | undefined): SlideContent | null | undefined => {
+    if (!slide?.background) return slide
+    if (!hasWords(slide)) return slide
+    if (slide.background.type === 'audio' || slide.background.type === 'youtube') return slide
+    return { ...slide, background: undefined }
+  }
+  return { ...state, background: bg, slide: replace(state.slide) }
+}
+
+interface LiveStateLike {
+  background: Background
+  slide: SlideContent | null
+  order?: Array<{ kind: ItemKind; live: boolean }>
+}
