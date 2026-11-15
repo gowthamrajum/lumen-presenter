@@ -134,24 +134,26 @@ export function mergeBySlot(
 
   // The outline, into the Sermon card. Inserting slides moves no item, so where
   // this happens among the others doesn't matter.
-  const outline = sermon.flatMap((it) => it.slides).find(isOutline)
-  if (outline) {
+  const outline = sermon.flatMap((it) => it.slides).filter(isOutline)
+  if (outline.length) {
     const i = find(SERMON)
     if (i >= 0) {
       const host = out[i]
       const at = outlineIndex(host.slides)
+      const old = host.slides.filter(isOutline).map((sl) => sl.id)
+      const rest = host.slides.filter((sl) => !isOutline(sl))
       // Stamped with the service rather than the card being stamped: the card
       // is the operator's, and a re-pull deletes whatever carries the service.
-      // An outline already there keeps its id, so one on the screen stays up.
-      const placed = {
-        ...outline,
-        ...(at >= 0 ? { id: host.slides[at].id } : {}),
+      // Every slide of a split outline comes in, together, in place of the
+      // outline already there — whose ids they take by position, so one on the
+      // screen stays up.
+      const placed = outline.map((sl, k) => ({
+        ...sl,
+        ...(old[k] ? { id: old[k] } : {}),
         ...(source ? { fromService: source.serviceId } : {})
-      }
-      const slides = host.slides.slice()
-      if (at >= 0) slides[at] = placed
-      else slides.splice(Math.min(1, slides.length), 0, placed)
-      out[i] = { ...host, slides }
+      }))
+      const where = at >= 0 ? at : Math.min(1, rest.length)
+      out[i] = { ...host, slides: [...rest.slice(0, where), ...placed, ...rest.slice(where)] }
     } else {
       // No Sermon card to fold it into: it stands as its own item, at the end.
       out.push(...sermon.map((it) => like(undefined, it)))

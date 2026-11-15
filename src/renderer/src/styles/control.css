@@ -1252,6 +1252,16 @@ select,
   resize: vertical;
   line-height: 1.5;
 }
+.outline-slide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.outline-modal .modal-body > .btn {
+  align-self: flex-start;
+  margin-bottom: 12px;
+}
 .outline-note {
   margin: 0;
   color: var(--muted);
